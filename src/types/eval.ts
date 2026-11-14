@@ -25,6 +25,27 @@ export type RequestStatus =
   | 'expired';
 
 export type ConfidenceLevel = 'high' | 'medium' | 'low';
+export type OcrEngineType = 'gemini' | 'groq' | 'local';
+
+export interface OcrAuditRecord {
+  id: string;
+  sheetId?: string;
+  fileName: string;
+  paperId?: string;
+  subjectLabel?: string;
+  studentLabel?: string;
+  timestamp: string;
+  engine: OcrEngineType;
+  engineLabel: string;
+  model: string;
+  confidenceScore: number; // 0-100
+  confidence: ConfidenceLevel;
+  questionCount: number;
+  fallbackTriggered: boolean;
+  fallbackReason?: string | null;
+  evaluatedWithRubric: boolean;
+  durationMs?: number;
+}
 
 export type ReviewFlagReason =
   | 'low_ocr_confidence'
@@ -223,6 +244,9 @@ export interface Sheet {
   spotCheckCompleted: boolean;
   timeSpentSeconds: number;
   lastQuestionIndex: number;
+  ocrEngine?: OcrEngineType;
+  ocrModel?: string;
+  processedAt?: string;
   answers: AnswerEvaluation[];
   submittedAt?: string;
   publishedAt?: string;

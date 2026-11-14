@@ -11,6 +11,7 @@ import {
   Upload,
 } from 'lucide-react';
 import { useEval } from '../../store/EvalContext';
+import { AdminOcrAuditLog } from './AdminOcrAuditLog';
 import { PaperStatusBadge, RequestStatusBadge } from '../ui/StatusBadge';
 
 export function AdminDashboard() {
@@ -359,6 +360,9 @@ export function AdminDashboard() {
           </div>
         </div>
       </div>
+
+      {/* OCR Confidence & Engine Audit Log */}
+      <AdminOcrAuditLog embedded />
     </div>
   );
 }

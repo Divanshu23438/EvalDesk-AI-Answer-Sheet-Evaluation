@@ -18,6 +18,7 @@ import {
   ScanLine,
   Search,
   Settings,
+  ShieldCheck,
   SlidersHorizontal,
   UserCheck,
   Users,
@@ -35,6 +36,7 @@ const NAV_ICONS: Record<string, typeof LayoutDashboard> = {
   admin_assignments: UserCheck,
   admin_requests: Inbox,
   admin_results: FileCheck2,
+  admin_audit: ShieldCheck,
   admin_settings: Settings,
 
   teacher_dashboard: LayoutDashboard,

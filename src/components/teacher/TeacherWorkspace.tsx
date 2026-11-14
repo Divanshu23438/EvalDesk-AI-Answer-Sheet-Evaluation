@@ -9,6 +9,7 @@ import {
   Eye,
   Flag,
   History,
+  Loader2,
   Lock,
   RefreshCw,
   RotateCw,
@@ -16,6 +17,7 @@ import {
   Send,
   ShieldAlert,
   SkipForward,
+  Sparkles,
   Undo2,
   X,
   ZoomIn,
@@ -24,6 +26,16 @@ import {
 import { STRINGS } from '../../i18n/strings';
 import { useEval } from '../../store/EvalContext';
 import type { ProblemReport } from '../../types/eval';
+import {
+  callEvaluateSheetApi,
+  type ServerEvaluateSheetResult,
+  type ServerExtractedQuestion,
+} from '../../utils/apiOcr';
+import {
+  computeExtractedConfidenceScore,
+  scoreToConfidenceLevel,
+} from '../../utils/ocrAudit';
+import { ServerOcrResultPanel } from '../ui/ServerOcrResultPanel';
 import {
   canSubmitSheet,
   computeSheetTotals,
@@ -56,6 +68,7 @@ export function TeacherWorkspace() {
     lastSavedAt,
     updateAnswerEvaluation,
     recheckAnswerFromOcr,
+    recordOcrAudit,
     submitEvaluatedSheet,
     reportSheetProblem,
   } = useEval();
@@ -118,6 +131,12 @@ export function TeacherWorkspace() {
   } | null>(null);
   const [marksError, setMarksError] = useState('');
   const [showHistory, setShowHistory] = useState(false);
+
+  // Server-side AI OCR & Evaluation state
+  const [forceGroqFallback, setForceGroqFallback] = useState(false);
+  const [serverOcrLoading, setServerOcrLoading] = useState(false);
+  const [serverOcrError, setServerOcrError] = useState('');
+  const [serverOcrResult, setServerOcrResult] = useState<ServerEvaluateSheetResult | null>(null);
 
   // Timer
   const [elapsedSec, setElapsedSec] = useState(sheet?.timeSpentSeconds || 0);
@@ -309,6 +328,123 @@ export function TeacherWorkspace() {
     if (diff) {
       setRecheckBanner(diff);
     }
+  };
+
+  const handleServerAiOcr = async () => {
+    if (isLocked) return;
+    const pageSrc = sheet.pages[activePageIdx] || sheet.pages[0];
+    if (!pageSrc) return;
+
+    setServerOcrLoading(true);
+    setServerOcrError('');
+
+    try {
+      const paperRubric = `${activeQuestion.label} (${activeQuestion.marks} marks): ${activeQuestion.text}\nModel Answer: ${activeQuestion.modelAnswer}${
+        activeQuestion.keyPoints.length > 0
+          ? `\nKey Points: ${activeQuestion.keyPoints.map((kp) => `${kp.text} [${kp.marks}m]`).join('; ')}`
+          : ''
+      }`;
+      const subjLabel = subject ? `${subject.code} — ${subject.name}` : '';
+
+      let result: ServerEvaluateSheetResult;
+      if (pageSrc.startsWith('data:')) {
+        result = await callEvaluateSheetApi({
+          fileDataUrl: pageSrc,
+          fileName: `${sheet.id}_page_${activePageIdx + 1}.jpg`,
+          rubric: paperRubric,
+          subject: subjLabel,
+          forceFallback: forceGroqFallback,
+        });
+      } else {
+        const res = await fetch(pageSrc);
+        const blob = await res.blob();
+        result = await callEvaluateSheetApi({
+          file: blob,
+          fileName: `${sheet.id}_page_${activePageIdx + 1}.jpg`,
+          rubric: paperRubric,
+          subject: subjLabel,
+          forceFallback: forceGroqFallback,
+        });
+      }
+
+      setServerOcrResult(result);
+
+      const confidenceScore = computeExtractedConfidenceScore(result.questions);
+      recordOcrAudit({
+        sheetId: sheet.id,
+        fileName: `${sheet.id}_page_${activePageIdx + 1}.jpg`,
+        paperId: paper.id,
+        subjectLabel: subjLabel || paper.id,
+        studentLabel: student
+          ? formatStudentIdentity(student, paper.anonymousEvaluation)
+          : undefined,
+        timestamp: new Date().toISOString(),
+        engine: result.engine,
+        engineLabel: result.engineLabel,
+        model: result.model,
+        confidenceScore,
+        confidence: scoreToConfidenceLevel(confidenceScore, state.settings),
+        questionCount: result.questions.length,
+        fallbackTriggered: result.fallbackTriggered,
+        fallbackReason: result.fallbackReason,
+        evaluatedWithRubric: result.evaluatedWithRubric,
+      });
+
+      const matched =
+        result.questions.find(
+          (q) =>
+            q.q_no.toLowerCase() === activeQuestion.label.toLowerCase() ||
+            q.q_no.toLowerCase() === `q${activeQuestion.number}`
+        ) ?? result.questions[0];
+
+      if (matched) {
+        const nextText = matched.diagram_notes
+          ? `${matched.transcribed_text}\n${matched.diagram_notes}`.trim()
+          : matched.transcribed_text;
+        if (nextText) {
+          setOcrDraft(nextText);
+          recheckAnswerFromOcr(sheet.id, activeAnswer.questionId, nextText);
+        }
+        if (
+          result.evaluatedWithRubric &&
+          typeof matched.suggested_marks === 'number'
+        ) {
+          const clamped = Math.max(0, Math.min(activeQuestion.marks, matched.suggested_marks));
+          updateAnswerEvaluation(sheet.id, activeAnswer.questionId, (prev) => ({
+            ...prev,
+            suggestedMarks: clamped,
+            finalMarks: clamped,
+            feedback: matched.feedback || prev.feedback,
+            aiDraftFeedback: matched.feedback || prev.aiDraftFeedback,
+            confidence: matched.confidence,
+          }));
+        }
+      }
+    } catch (err) {
+      setServerOcrError(err instanceof Error ? err.message : 'Server AI OCR request failed.');
+    } finally {
+      setServerOcrLoading(false);
+    }
+  };
+
+  const handleApplyServerQuestion = (q: ServerExtractedQuestion) => {
+    if (isLocked) return;
+    const text = q.diagram_notes
+      ? `${q.transcribed_text}\n${q.diagram_notes}`.trim()
+      : q.transcribed_text;
+    setOcrDraft(text);
+    recheckAnswerFromOcr(sheet.id, activeAnswer.questionId, text);
+    if (typeof q.suggested_marks === 'number' || q.feedback) {
+      updateAnswerEvaluation(sheet.id, activeAnswer.questionId, (prev) => ({
+        ...prev,
+        finalMarks:
+          typeof q.suggested_marks === 'number'
+            ? Math.max(0, Math.min(activeQuestion.marks, q.suggested_marks))
+            : prev.finalMarks,
+        feedback: q.feedback ?? prev.feedback,
+      }));
+    }
+    showToast(`Applied ${q.q_no} OCR result to ${activeQuestion.label}.`);
   };
 
   const renderHighlightedOcrPreview = () => {
@@ -682,19 +818,43 @@ export function TeacherWorkspace() {
 
             {/* Handwriting Line Crop + Editable OCR Text */}
             <div className="space-y-2">
-              <div className="flex items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="text-xs font-semibold text-[#0b1c30]">
                   Handwriting Crop & Editable OCR Text
                 </span>
                 {!isLocked && (
-                  <button
-                    type="button"
-                    onClick={handleRecheck}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-[#eff4ff] border border-[#a5c8ff] hover:bg-[#d4e3ff] text-[#004786] text-[11px] font-semibold whitespace-nowrap shrink-0"
-                  >
-                    <RefreshCw className="w-3 h-3 shrink-0" />
-                    <span>{STRINGS.workspace.recheckBtn}</span>
-                  </button>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <label className="inline-flex items-center gap-1.5 text-[11px] font-medium text-[#414752] cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={forceGroqFallback}
+                        onChange={(e) => setForceGroqFallback(e.target.checked)}
+                        className="rounded border-[#c1c6d4] text-[#005dac]"
+                      />
+                      <span>Force Groq Fallback (Test Mode)</span>
+                    </label>
+                    <button
+                      type="button"
+                      disabled={serverOcrLoading}
+                      onClick={handleServerAiOcr}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-[#196b22] hover:bg-[#005312] disabled:opacity-50 text-white text-[11px] font-semibold whitespace-nowrap shrink-0"
+                    >
+                      {serverOcrLoading ? (
+                        <Loader2 className="w-3 h-3 animate-spin shrink-0" />
+                      ) : (
+                        <Sparkles className="w-3 h-3 shrink-0" />
+                      )}
+                      <span>{serverOcrLoading ? 'Running AI OCR...' : 'AI OCR & Evaluate'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleRecheck}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-[#eff4ff] border border-[#a5c8ff] hover:bg-[#d4e3ff] text-[#004786] text-[11px] font-semibold whitespace-nowrap shrink-0"
+                    >
+                      <RefreshCw className="w-3 h-3 shrink-0" />
+                      <span>{STRINGS.workspace.recheckBtn}</span>
+                    </button>
+                  </div>
                 )}
               </div>
 
@@ -724,6 +884,36 @@ export function TeacherWorkspace() {
                 onChange={(e) => setOcrDraft(e.target.value)}
                 className="w-full rounded border border-[#c1c6d4] p-2.5 text-xs font-mono text-[#0b1c30] focus:outline-none focus:border-[#005dac] disabled:bg-slate-50"
               />
+
+              {serverOcrError && (
+                <div
+                  role="alert"
+                  className="p-2.5 rounded border border-[#ba1a1a] bg-[#ffdad6] text-xs text-[#93000a] flex items-start gap-2"
+                >
+                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span>{serverOcrError}</span>
+                </div>
+              )}
+
+              {serverOcrResult && (
+                <ServerOcrResultPanel
+                  result={serverOcrResult}
+                  onUpdateQuestion={(qIdx, patch) =>
+                    setServerOcrResult((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            questions: prev.questions.map((q, idx) =>
+                              idx === qIdx ? { ...q, ...patch } : q
+                            ),
+                          }
+                        : prev
+                    )
+                  }
+                  onApplyQuestion={handleApplyServerQuestion}
+                  applyButtonLabel={`Apply to ${activeQuestion.label}`}
+                />
+              )}
 
               {recheckBanner && (
                 <div className="p-2.5 rounded border border-[#88d982] bg-[#e8f5e9] text-xs text-[#196b22]">

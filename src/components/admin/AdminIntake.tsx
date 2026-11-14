@@ -6,21 +6,37 @@ import {
   ChevronUp,
   FileText,
   FileUp,
+  Loader2,
   RefreshCw,
   ScanLine,
+  Sparkles,
   Upload,
 } from 'lucide-react';
 import { useEval } from '../../store/EvalContext';
+import {
+  callEvaluateSheetApi,
+  type ServerEvaluateSheetResult,
+  type ServerExtractedQuestion,
+} from '../../utils/apiOcr';
+import {
+  computeExtractedConfidenceScore,
+  scoreToConfidenceLevel,
+} from '../../utils/ocrAudit';
+import { ServerOcrResultPanel } from '../ui/ServerOcrResultPanel';
 import { SheetStatusBadge } from '../ui/StatusBadge';
 
 interface StagedFile {
   id: string;
+  file: File;
   fileName: string;
   studentId: string;
   previewUrl: string;
   tiltDegrees: number;
   ocrByQuestion: Record<string, string>;
   expandedOcr: boolean;
+  aiLoading?: boolean;
+  aiError?: string;
+  aiResult?: ServerEvaluateSheetResult | null;
 }
 
 function createPdfPreviewDataUrl(fileName: string, sizeBytes: number): string {
@@ -100,24 +116,170 @@ async function fileToPersistentDataUrl(file: File): Promise<string> {
 }
 
 export function AdminIntake() {
-  const { state, processingQueue, uploadSheetsBatch, retryFailedSheet, setActiveView } = useEval();
+  const { state, processingQueue, uploadSheetsBatch, recordOcrAudit, retryFailedSheet, setActiveView } = useEval();
   const [paperId, setPaperId] = useState(state.papers[0]?.id || '');
   const [staged, setStaged] = useState<StagedFile[]>([]);
   const [dragOver, setDragOver] = useState(false);
   const [uploadNotice, setUploadNotice] = useState('');
+  const [subjectInput, setSubjectInput] = useState('');
+  const [rubricInput, setRubricInput] = useState('');
+  const [forceFallback, setForceFallback] = useState(false);
+  const [runningAllOcr, setRunningAllOcr] = useState(false);
+  const [apiErrorBanner, setApiErrorBanner] = useState('');
 
   const effectivePaperId = state.papers.some((p) => p.id === paperId)
     ? paperId
     : state.papers[0]?.id || '';
+  const selectedPaper = state.papers.find((p) => p.id === effectivePaperId) ?? null;
+  const selectedSubject = selectedPaper
+    ? state.subjects.find((s) => s.id === selectedPaper.subjectId)
+    : undefined;
 
   const students = state.users.filter((u) => u.role === 'student' && u.status === 'active');
   const paperQuestions = state.questions
     .filter((q) => q.paperId === effectivePaperId)
     .sort((a, b) => a.number - b.number);
 
+  const loadPaperRubric = () => {
+    if (paperQuestions.length === 0) return;
+    const text = paperQuestions
+      .map(
+        (q) =>
+          `${q.label} (${q.marks} marks): ${q.text}\nModel Answer: ${q.modelAnswer}${
+            q.keyPoints.length > 0
+              ? `\nKey Points: ${q.keyPoints.map((kp) => `${kp.text} [${kp.marks}m]`).join('; ')}`
+              : ''
+          }`
+      )
+      .join('\n\n');
+    setRubricInput(text);
+    if (!subjectInput.trim() && selectedSubject) {
+      setSubjectInput(`${selectedSubject.code} — ${selectedSubject.name}`);
+    }
+  };
+
+  const runServerOcrForItem = async (item: StagedFile): Promise<boolean> => {
+    setApiErrorBanner('');
+    setStaged((prev) =>
+      prev.map((x) =>
+        x.id === item.id ? { ...x, aiLoading: true, aiError: undefined } : x
+      )
+    );
+
+    try {
+      const effectiveSubject =
+        subjectInput.trim() ||
+        (selectedSubject ? `${selectedSubject.code} — ${selectedSubject.name}` : '');
+      const result = await callEvaluateSheetApi({
+        file: item.file,
+        rubric: rubricInput,
+        subject: effectiveSubject,
+        forceFallback,
+      });
+
+      const confidenceScore = computeExtractedConfidenceScore(result.questions);
+      const matchedStudent = students.find((st) => st.id === item.studentId);
+      recordOcrAudit({
+        fileName: item.fileName,
+        paperId: effectivePaperId || undefined,
+        subjectLabel: effectiveSubject || undefined,
+        studentLabel: matchedStudent
+          ? `${matchedStudent.name} (${matchedStudent.rollNumber || matchedStudent.rollCode || ''})`
+          : undefined,
+        timestamp: new Date().toISOString(),
+        engine: result.engine,
+        engineLabel: result.engineLabel,
+        model: result.model,
+        confidenceScore,
+        confidence: scoreToConfidenceLevel(confidenceScore, state.settings),
+        questionCount: result.questions.length,
+        fallbackTriggered: result.fallbackTriggered,
+        fallbackReason: result.fallbackReason,
+        evaluatedWithRubric: result.evaluatedWithRubric,
+      });
+
+      setStaged((prev) =>
+        prev.map((x) => {
+          if (x.id !== item.id) return x;
+          const mappedOcr: Record<string, string> = { ...x.ocrByQuestion };
+          result.questions.forEach((extracted, idx) => {
+            const matchedQ =
+              paperQuestions.find(
+                (pq) =>
+                  pq.label.toLowerCase() === extracted.q_no.toLowerCase() ||
+                  `q${pq.number}` === extracted.q_no.toLowerCase()
+              ) ?? paperQuestions[idx];
+            if (matchedQ) {
+              const combined = extracted.diagram_notes
+                ? `${extracted.transcribed_text}\n${extracted.diagram_notes}`.trim()
+                : extracted.transcribed_text;
+              mappedOcr[matchedQ.id] = combined;
+            }
+          });
+          return {
+            ...x,
+            aiLoading: false,
+            aiError: undefined,
+            aiResult: result,
+            ocrByQuestion: mappedOcr,
+          };
+        })
+      );
+      return true;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to process answer sheet OCR.';
+      setStaged((prev) =>
+        prev.map((x) =>
+          x.id === item.id ? { ...x, aiLoading: false, aiError: msg } : x
+        )
+      );
+      return false;
+    }
+  };
+
+  const handleRunAllServerOcr = async () => {
+    if (staged.length === 0) return;
+    setRunningAllOcr(true);
+    setApiErrorBanner('');
+    let failedCount = 0;
+    try {
+      for (const item of staged) {
+        const ok = await runServerOcrForItem(item);
+        if (!ok) failedCount++;
+      }
+      if (failedCount > 0 && staged.length > 1) {
+        setApiErrorBanner(`${failedCount} of ${staged.length} answer sheet(s) failed AI OCR — see details on the marked rows below.`);
+      }
+    } finally {
+      setRunningAllOcr(false);
+    }
+  };
+
+  const handleUpdateExtractedQuestion = (
+    stagedId: string,
+    qIndex: number,
+    patch: Partial<ServerExtractedQuestion>
+  ) => {
+    setStaged((prev) =>
+      prev.map((x) => {
+        if (x.id !== stagedId || !x.aiResult) return x;
+        return {
+          ...x,
+          aiResult: {
+            ...x.aiResult,
+            questions: x.aiResult.questions.map((q, idx) =>
+              idx === qIndex ? { ...q, ...patch } : q
+            ),
+          },
+        };
+      })
+    );
+  };
+
   const stageFiles = async (files: File[]) => {
     if (files.length === 0) return;
     setUploadNotice('');
+    setApiErrorBanner('');
     const mapped: StagedFile[] = [];
     for (let idx = 0; idx < files.length; idx++) {
       const file = files[idx];
@@ -127,12 +289,14 @@ export function AdminIntake() {
       const previewUrl = await fileToPersistentDataUrl(file);
       mapped.push({
         id: `pick-${Date.now()}-${idx}-${Math.random().toString(36).slice(2, 5)}`,
+        file,
         fileName: file.name,
         studentId: matched?.id || students[0]?.id || '',
         previewUrl,
         tiltDegrees: 0.4,
         ocrByQuestion: {},
         expandedOcr: false,
+        aiResult: null,
       });
     }
     setStaged((prev) => [...prev, ...mapped]);
@@ -168,6 +332,8 @@ export function AdminIntake() {
         pages: [s.previewUrl],
         tiltDegrees: s.tiltDegrees,
         ocrByQuestion: s.ocrByQuestion,
+        ocrEngine: s.aiResult?.engine,
+        ocrModel: s.aiResult?.model,
       }))
     );
     setUploadNotice(`Queued ${staged.length} sheet(s) into the local OCR processing queue.`);
@@ -246,11 +412,32 @@ export function AdminIntake() {
                 type="file"
                 accept=".jpg,.jpeg,.png,.webp,.pdf"
                 multiple
-                disabled={!effectivePaperId || students.length === 0}
                 onChange={handleFilePick}
                 className="hidden"
               />
             </label>
+            <label className="inline-flex items-center gap-2 px-3 py-2 rounded border border-[#e2e8f0] bg-[#f8f9ff] text-xs font-medium text-[#0b1c30] cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={forceFallback}
+                onChange={(e) => setForceFallback(e.target.checked)}
+                className="rounded border-[#c1c6d4] text-[#005dac] focus:ring-[#005dac]"
+              />
+              <span>Force Groq Fallback (Test Mode)</span>
+            </label>
+            <button
+              type="button"
+              disabled={staged.length === 0 || runningAllOcr}
+              onClick={handleRunAllServerOcr}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded bg-[#196b22] hover:bg-[#005312] disabled:opacity-40 text-white text-xs font-semibold"
+            >
+              {runningAllOcr ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Sparkles className="w-3.5 h-3.5" />
+              )}
+              <span>{runningAllOcr ? 'Running AI OCR...' : 'Run AI OCR & Evaluate'}</span>
+            </button>
             <button
               type="button"
               disabled={staged.length === 0 || !effectivePaperId || students.length === 0}
@@ -260,6 +447,51 @@ export function AdminIntake() {
               <Upload className="w-3.5 h-3.5" />
               <span>Queue {staged.length} Sheet(s)</span>
             </button>
+          </div>
+        </div>
+
+        {/* Optional Subject & Rubric for AI OCR & Evaluation */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-3 pt-1 border-t border-[#e2e8f0]">
+          <div className="md:col-span-4">
+            <label htmlFor="intake-subject" className="block text-xs font-semibold text-[#0b1c30] mb-1">
+              Subject (optional)
+            </label>
+            <input
+              id="intake-subject"
+              type="text"
+              value={subjectInput}
+              onChange={(e) => setSubjectInput(e.target.value)}
+              placeholder={
+                selectedSubject
+                  ? `${selectedSubject.code} — ${selectedSubject.name}`
+                  : 'e.g., Physics, Mathematics'
+              }
+              className="w-full rounded border border-[#c1c6d4] px-3 py-2 text-xs text-[#0b1c30] focus:outline-none focus:border-[#005dac]"
+            />
+          </div>
+          <div className="md:col-span-8">
+            <div className="flex items-center justify-between mb-1">
+              <label htmlFor="intake-rubric" className="block text-xs font-semibold text-[#0b1c30]">
+                Teacher Rubric / Model Answer Key (optional)
+              </label>
+              {paperQuestions.length > 0 && (
+                <button
+                  type="button"
+                  onClick={loadPaperRubric}
+                  className="text-[11px] font-semibold text-[#005dac] hover:underline"
+                >
+                  Load selected paper rubric
+                </button>
+              )}
+            </div>
+            <textarea
+              id="intake-rubric"
+              rows={2}
+              value={rubricInput}
+              onChange={(e) => setRubricInput(e.target.value)}
+              placeholder="Paste model answers & marks per question to evaluate answers, or leave empty to run raw verbatim OCR speed & transcription tests."
+              className="w-full rounded border border-[#c1c6d4] px-3 py-2 text-xs text-[#0b1c30] focus:outline-none focus:border-[#005dac]"
+            />
           </div>
         </div>
 
@@ -287,6 +519,16 @@ export function AdminIntake() {
             )}
           </p>
         </div>
+
+        {apiErrorBanner && (
+          <div
+            role="alert"
+            className="p-3 rounded border border-[#ba1a1a] bg-[#ffdad6] text-xs text-[#93000a] flex items-start gap-2"
+          >
+            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+            <span>{apiErrorBanner}</span>
+          </div>
+        )}
 
         {uploadNotice && (
           <div className="p-3 rounded border border-[#88d982] bg-[#e8f5e9] text-xs text-[#196b22]">
@@ -349,7 +591,20 @@ export function AdminIntake() {
                       <option value="tilted">Tilted / Blurry (4.8°)</option>
                     </select>
                   </div>
-                  <div className="sm:col-span-2 flex items-center justify-end gap-2">
+                  <div className="sm:col-span-2 flex items-center justify-end gap-1.5 flex-wrap">
+                    <button
+                      type="button"
+                      disabled={Boolean(item.aiLoading)}
+                      onClick={() => runServerOcrForItem(item)}
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded border border-[#a5c8ff] bg-[#eff4ff] text-[#004786] hover:bg-[#d4e3ff] disabled:opacity-50 font-semibold"
+                    >
+                      {item.aiLoading ? (
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                      ) : (
+                        <Sparkles className="w-3 h-3" />
+                      )}
+                      <span>{item.aiLoading ? 'Scanning' : 'AI OCR'}</span>
+                    </button>
                     <button
                       type="button"
                       onClick={() =>
@@ -378,6 +633,25 @@ export function AdminIntake() {
                     </button>
                   </div>
                 </div>
+
+                {item.aiError && (
+                  <div
+                    role="alert"
+                    className="p-2.5 rounded border border-[#ba1a1a] bg-[#ffdad6] text-xs text-[#93000a] flex items-start gap-2"
+                  >
+                    <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                    <span>{item.aiError}</span>
+                  </div>
+                )}
+
+                {item.aiResult && (
+                  <ServerOcrResultPanel
+                    result={item.aiResult}
+                    onUpdateQuestion={(qIdx, patch) =>
+                      handleUpdateExtractedQuestion(item.id, qIdx, patch)
+                    }
+                  />
+                )}
 
                 {item.expandedOcr && (
                   <div className="p-3 rounded bg-[#f8f9ff] border border-[#e2e8f0] space-y-2.5">

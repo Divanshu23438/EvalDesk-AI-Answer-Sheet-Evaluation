@@ -83,6 +83,7 @@ export const STRINGS = {
       { id: 'admin_assignments', label: 'Assignments' },
       { id: 'admin_requests', label: 'Student Requests' },
       { id: 'admin_results', label: 'Results & Publish' },
+      { id: 'admin_audit', label: 'Audit Log' },
       { id: 'admin_settings', label: 'Settings & Audit' },
     ],
     teacher: [

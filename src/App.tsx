@@ -3,6 +3,7 @@ import { AdminAssignments } from './components/admin/AdminAssignments';
 import { AdminDashboard } from './components/admin/AdminDashboard';
 import { AdminExamsPapers } from './components/admin/AdminExamsPapers';
 import { AdminIntake } from './components/admin/AdminIntake';
+import { AdminOcrAuditLog } from './components/admin/AdminOcrAuditLog';
 import { AdminRequests } from './components/admin/AdminRequests';
 import { AdminResults } from './components/admin/AdminResults';
 import { AdminSettingsAudit } from './components/admin/AdminSettingsAudit';
@@ -181,6 +182,8 @@ function ActiveRoleRouter() {
           return <AdminRequests />;
         case 'admin_results':
           return <AdminResults />;
+        case 'admin_audit':
+          return <AdminOcrAuditLog />;
         case 'admin_settings':
           return <AdminSettingsAudit />;
         case 'admin_dashboard':

@@ -9,6 +9,8 @@ import type {
   AnswerEvaluation,
   AuditEntry,
   Exam,
+  OcrAuditRecord,
+  OcrEngineType,
   Paper,
   PaperMode,
   ProblemReport,
@@ -97,8 +99,11 @@ interface EvalContextValue {
       pages?: string[];
       tiltDegrees?: number;
       ocrByQuestion?: Record<string, string>;
+      ocrEngine?: OcrEngineType;
+      ocrModel?: string;
     }[]
   ) => void;
+  recordOcrAudit: (entry: Omit<OcrAuditRecord, 'id'>) => void;
   retryFailedSheet: (sheetId: string) => void;
   assignSheets: (paperId: string, teacherId: string, sheetIds: string[], dueDate: string) => void;
 
@@ -176,7 +181,10 @@ function loadStoredState(): EvalStoreState {
     if (raw) {
       const parsed = JSON.parse(raw) as EvalStoreState;
       if (parsed && Array.isArray(parsed.users) && Array.isArray(parsed.sheets)) {
-        return parsed;
+        return {
+          ...parsed,
+          ocrAuditLogs: Array.isArray(parsed.ocrAuditLogs) ? parsed.ocrAuditLogs : [],
+        };
       }
     }
   } catch {
@@ -740,6 +748,8 @@ export function EvalProvider({ children }: { children: React.ReactNode }) {
         pages?: string[];
         tiltDegrees?: number;
         ocrByQuestion?: Record<string, string>;
+        ocrEngine?: OcrEngineType;
+        ocrModel?: string;
       }[]
     ) => {
       const paper = state.papers.find((p) => p.id === paperId);
@@ -811,6 +821,15 @@ export function EvalProvider({ children }: { children: React.ReactNode }) {
           item.pages && item.pages.length > 0
             ? item.pages
             : [item.previewUrl || fallbackImg];
+        const processedAt = new Date().toISOString();
+        const ocrEngine: OcrEngineType = item.ocrEngine ?? 'local';
+        const ocrModel =
+          item.ocrModel ??
+          (ocrEngine === 'gemini'
+            ? 'gemini-3.8-flash'
+            : ocrEngine === 'groq'
+            ? 'qwen/qwen3.8-27b'
+            : 'EvalDesk Rubric OCR');
 
         createdSheets.push({
           id: sheetId,
@@ -818,6 +837,9 @@ export function EvalProvider({ children }: { children: React.ReactNode }) {
           studentId: item.studentId,
           pages,
           status: 'processing',
+          ocrEngine,
+          ocrModel,
+          processedAt,
           quality: {
             blurOk,
             tiltDegrees: tilt,
@@ -838,15 +860,57 @@ export function EvalProvider({ children }: { children: React.ReactNode }) {
         });
       }
 
+      const newOcrLogs: OcrAuditRecord[] = createdSheets.map((cs, i) => {
+        const avgConf =
+          cs.answers.length > 0
+            ? Math.round(cs.answers.reduce((acc, a) => acc + a.confidenceScore, 0) / cs.answers.length)
+            : 0;
+        const confLevel =
+          avgConf >= state.settings.highConfidenceThreshold
+            ? 'high'
+            : avgConf >= state.settings.mediumConfidenceThreshold
+            ? 'medium'
+            : 'low';
+        const engine = cs.ocrEngine ?? 'local';
+        return {
+          id: uid('ocraudit'),
+          sheetId: cs.id,
+          fileName: items[i]?.fileName || cs.id,
+          paperId,
+          timestamp: cs.processedAt || new Date().toISOString(),
+          engine,
+          engineLabel:
+            engine === 'gemini'
+              ? 'OCR Engine: Gemini (Primary)'
+              : engine === 'groq'
+              ? 'OCR Engine: Groq (Fallback)'
+              : 'OCR Engine: Local Queue',
+          model: cs.ocrModel || 'EvalDesk Rubric OCR',
+          confidenceScore: avgConf,
+          confidence: confLevel,
+          questionCount: cs.answers.length,
+          fallbackTriggered: engine === 'groq',
+          evaluatedWithRubric: cs.answers.length > 0,
+        };
+      });
+
       setState((prev) => ({
         ...prev,
         sheets: [...createdSheets, ...prev.sheets],
+        ocrAuditLogs: [...newOcrLogs, ...(prev.ocrAuditLogs || [])].slice(0, 300),
         auditLogs: appendAudit(prev, 'Upload Answer Sheets', `${items.length} sheet(s) -> ${paperId}`),
       }));
       setProcessingQueue((prev) => [...prev, ...queueAdditions]);
     },
     [state.papers, state.questions, state.settings, appendAudit]
   );
+
+  const recordOcrAudit = useCallback((entry: Omit<OcrAuditRecord, 'id'>) => {
+    setState((prev) => ({
+      ...prev,
+      ocrAuditLogs: [{ id: uid('ocraudit'), ...entry }, ...(prev.ocrAuditLogs || [])].slice(0, 300),
+    }));
+  }, []);
 
   const retryFailedSheet = useCallback(
     (sheetId: string) => {
@@ -1604,6 +1668,7 @@ export function EvalProvider({ children }: { children: React.ReactNode }) {
     deleteQuestion,
     toggleRubricLock,
     uploadSheetsBatch,
+    recordOcrAudit,
     retryFailedSheet,
     assignSheets,
     decideStudentRequest,

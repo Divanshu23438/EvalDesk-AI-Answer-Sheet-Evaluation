@@ -7,6 +7,7 @@ import type {
   ClassSection,
   Exam,
   NotificationItem,
+  OcrAuditRecord,
   Paper,
   ProblemReport,
   Question,
@@ -29,6 +30,7 @@ export interface EvalStoreState {
   requests: StudentRequest[];
   notifications: NotificationItem[];
   auditLogs: AuditEntry[];
+  ocrAuditLogs: OcrAuditRecord[];
   problemReports: ProblemReport[];
   settings: SystemSettings;
   teacherPreferences: Record<string, TeacherPreferences>;
@@ -315,6 +317,7 @@ export function createInitialState(): EvalStoreState {
     requests: [],
     notifications: [],
     auditLogs: [],
+    ocrAuditLogs: [],
     problemReports: [],
     settings,
     teacherPreferences: {},
