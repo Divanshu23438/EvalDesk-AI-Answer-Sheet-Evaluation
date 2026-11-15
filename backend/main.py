@@ -53,6 +53,7 @@ from backend.marking_engine import (
 )
 from backend.reports_generator import (
     generate_student_report_card_pdf,
+    generate_paper_summary_pdf,
     generate_paper_report_excel,
 )
 from backend.training_export import build_training_export_zip
@@ -1902,8 +1903,7 @@ def delete_sheet(sheet_id: str):
 
 # ----------------- SCREEN 5: REPORTS (PDF & EXCEL) -----------------
 
-@app.get("/api/papers/{paper_id}/reports")
-def generate_reports(paper_id: str):
+async def build_paper_reports_data(paper_id: str) -> Dict[str, Any]:
     reports_dir = get_reports_dir(paper_id)
 
     with get_db() as conn:
@@ -1919,9 +1919,31 @@ def generate_reports(paper_id: str):
         cursor.execute("SELECT * FROM sheets WHERE paper_id = ? ORDER BY roll_number ASC", (paper_id,))
         sheets = [dict(r) for r in cursor.fetchall()]
 
-    # Generate student report card PDFs
+        cursor.execute("SELECT * FROM \"references\" WHERE paper_id = ?", (paper_id,))
+        references = {r["question_id"]: dict(r) for r in cursor.fetchall()}
+
+        cursor.execute(
+            """
+            SELECT r.*, e.question_id, e.sheet_id
+            FROM reviews r
+            JOIN evaluations e ON r.evaluation_id = e.id
+            WHERE e.sheet_id IN (SELECT id FROM sheets WHERE paper_id = ?)
+            """,
+            (paper_id,),
+        )
+        reviews = [dict(r) for r in cursor.fetchall()]
+
+    total_students = len(sheets)
+    total_overrides = len(reviews)
+
+    # Calculate question-level stats
+    question_stats = []
+    question_eval_map = {q["id"]: [] for q in questions}
+
     generated_reports = []
     student_records = []
+    all_missed_points = []
+    total_flagged_count = 0
 
     for s in sheets:
         sheet_id = s["id"]
@@ -1929,7 +1951,8 @@ def generate_reports(paper_id: str):
             cursor = conn.cursor()
             cursor.execute(
                 """
-                SELECT q.q_no, q.max_marks, e.final_marks,
+                SELECT q.id as question_id, q.q_no, q.question_text, q.max_marks,
+                       e.ai_marks, e.final_marks, e.reason, e.evidence_quote, e.flags_json, e.resolved,
                        CASE WHEN e.resolved = 1 THEN 'Checked' ELSE 'Flagged' END as status_label
                 FROM evaluations e
                 JOIN questions q ON e.question_id = q.id
@@ -1940,6 +1963,68 @@ def generate_reports(paper_id: str):
             )
             q_evals = [dict(r) for r in cursor.fetchall()]
 
+        for qe in q_evals:
+            question_eval_map[qe["question_id"]].append(qe)
+            flags = json.loads(qe.get("flags_json") or "[]")
+            if flags or not qe["resolved"]:
+                total_flagged_count += 1
+
+        # Task T7: Generate strengths and areas to improve from DB marks and key points
+        student_strengths = []
+        student_improvements = []
+
+        # Analyze student's question results
+        achieved_topics = []
+        missed_topics = []
+        for qe in q_evals:
+            ref = references.get(qe["question_id"])
+            kps = json.loads(ref.get("key_points_json") or "[]") if ref else []
+            max_m = qe["max_marks"]
+            score = qe["final_marks"]
+
+            if max_m > 0 and score >= max_m * 0.75:
+                achieved_topics.append(f"Q.{qe['q_no']} ({qe['question_text'][:60]})")
+            else:
+                missed_topics.append(f"Q.{qe['q_no']} ({qe['question_text'][:60]})")
+                for kp in kps:
+                    kp_text = kp.get("text", "")
+                    if kp_text:
+                        all_missed_points.append(f"Q.{qe['q_no']}: {kp_text}")
+
+        # Call AI for T7 synthesis if available
+        t7_prompt = f"""
+        You are an objective academic evaluator writing a report card summary.
+        Student: {s['student_name'] or 'Student'} ({s['roll_number'] or 'N/A'}).
+        Exam: {paper['title']}. Total Score: {s['total_score']} / {s['max_marks']}.
+        Achieved Topics (High/Full Marks): {achieved_topics}
+        Missed/Low Topics (Marks Deducted): {missed_topics}
+
+        Based STRICTLY on this data, return JSON with:
+        {{
+          "strengths": ["<2-3 concise bullet points derived solely from achieved topics>"],
+          "improvements": ["<1-2 constructive bullet points derived solely from missed topics>"]
+        }}
+        Do NOT invent concepts not in the data.
+        """
+        try:
+            t7_res = await ai_gateway.call_gemini(t7_prompt, task="report_t7")
+            t7_data = t7_res.get("data", {}) if isinstance(t7_res, dict) else {}
+            student_strengths = t7_data.get("strengths") or []
+            student_improvements = t7_data.get("improvements") or []
+        except Exception:
+            student_strengths = []
+            student_improvements = []
+
+        if not student_strengths:
+            student_strengths = [
+                f"Strong performance on {', '.join(achieved_topics[:2])}" if achieved_topics else "Attempted core questions with consistent effort."
+            ]
+        if not student_improvements:
+            student_improvements = [
+                f"Review key concepts in {', '.join(missed_topics[:2])}" if missed_topics else "Review detailed reasoning to secure maximum marks."
+            ]
+
+        # Generate Student Report Card PDF
         pdf_name = f"report_card_{s['roll_number'] or s['student_name'] or sheet_id[:8]}.pdf"
         pdf_path = reports_dir / pdf_name
 
@@ -1949,12 +2034,12 @@ def generate_reports(paper_id: str):
             roll_number=s["roll_number"],
             paper_title=paper["title"],
             questions=q_evals,
-            total_score=s["total_score"],
-            max_marks=s["max_marks"],
-            percentage=s["percentage"],
-            grade=s["grade"],
-            strengths=["Consistent grasp of core concepts", "Accurate technical phrasing in short answers"],
-            improvements=["Ensure full working steps are documented for high-mark questions"],
+            total_score=s["total_score"] or 0.0,
+            max_marks=s["max_marks"] or 10.0,
+            percentage=s["percentage"] or 0.0,
+            grade=s["grade"] or "N/A",
+            strengths=student_strengths,
+            improvements=student_improvements,
         )
 
         rel_pdf = f"/storage/reports/{paper_id}/{pdf_name}"
@@ -1969,24 +2054,106 @@ def generate_reports(paper_id: str):
         s_dict["question_scores"] = {q["q_no"]: q["final_marks"] for q in q_evals}
         student_records.append(s_dict)
 
-    # Generate Class Excel Results
-    excel_name = "results.xlsx"
-    excel_path = reports_dir / excel_name
-    generate_paper_report_excel(excel_path, paper["title"], student_records, questions)
-    rel_excel = f"/storage/reports/{paper_id}/{excel_name}"
+    # Compute Question Stats
+    suggestions = []
+    for q in questions:
+        q_evals_for_q = question_eval_map.get(q["id"], [])
+        if q_evals_for_q:
+            avg_m = round(sum(e["final_marks"] for e in q_evals_for_q) / len(q_evals_for_q), 2)
+            miss_cnt = sum(1 for e in q_evals_for_q if e["final_marks"] < q["max_marks"])
+        else:
+            avg_m = 0.0
+            miss_cnt = 0
 
-    # Calculate summary analytics
+        max_m = q["max_marks"] or 1.0
+        acc_pct = round((avg_m / max_m) * 100.0, 1)
+
+        # Count overrides for this question
+        q_ov_cnt = sum(1 for r in reviews if r["question_id"] == q["id"])
+
+        question_stats.append({
+            "q_no": q["q_no"],
+            "question_text": q["question_text"],
+            "max_marks": max_m,
+            "avg_marks": avg_m,
+            "accuracy_pct": acc_pct,
+            "miss_count": miss_cnt,
+            "override_count": q_ov_cnt,
+        })
+
+        if acc_pct < 50.0 and len(q_evals_for_q) > 0:
+            suggestions.append(f"Q.{q['q_no']} showed high drop-off ({acc_pct}% accuracy). Consider splitting into guided sub-parts or providing more explicit guidance in instructions.")
+
+    # Unique most-missed points (up to 5)
+    from collections import Counter
+    missed_counter = Counter(all_missed_points)
+    most_missed = [pt for pt, _ in missed_counter.most_common(5)]
+
     scores = [s["total_score"] for s in sheets if s["total_score"] is not None]
     avg_score = round(sum(scores) / len(scores), 1) if scores else 0.0
+    avg_pct = round((avg_score / (paper["total_marks"] or 1.0)) * 100.0, 1) if paper["total_marks"] else 0.0
+
+    analytics = {
+        "total_students": len(sheets),
+        "max_marks": paper["total_marks"] or 10.0,
+        "average_score": avg_score,
+        "average_percentage": avg_pct,
+        "flagged_count": total_flagged_count,
+        "override_count": total_overrides,
+    }
+
+    # Generate Paper Summary PDF
+    summary_pdf_name = "paper_summary.pdf"
+    summary_pdf_path = reports_dir / summary_pdf_name
+    generate_paper_summary_pdf(
+        output_path=summary_pdf_path,
+        paper_title=paper["title"],
+        total_students=len(sheets),
+        average_score=avg_score,
+        max_marks=paper["total_marks"] or 10.0,
+        question_stats=question_stats,
+        most_missed_points=most_missed,
+        override_count=total_overrides,
+        flagged_count=total_flagged_count,
+        suggestions=suggestions,
+    )
+    rel_summary_pdf = f"/storage/reports/{paper_id}/{summary_pdf_name}"
+
+    # Generate Class Excel Report
+    excel_name = "results.xlsx"
+    excel_path = reports_dir / excel_name
+    generate_paper_report_excel(
+        output_path=excel_path,
+        paper_title=paper["title"],
+        students=student_records,
+        questions=questions,
+        question_stats=question_stats,
+        analytics=analytics,
+    )
+    rel_excel = f"/storage/reports/{paper_id}/{excel_name}"
 
     return {
+        "status": "generated",
         "paper_title": paper["title"],
         "total_students": len(sheets),
         "average_score": avg_score,
         "max_marks": paper["total_marks"],
         "excel_report_url": rel_excel,
+        "paper_summary_pdf_url": rel_summary_pdf,
         "student_reports": generated_reports,
+        "analytics": analytics,
+        "question_stats": question_stats,
+        "most_missed_points": most_missed,
+        "suggestions": suggestions,
     }
+
+@app.post("/api/papers/{paper_id}/reports/generate")
+async def generate_reports_post(paper_id: str):
+    return await build_paper_reports_data(paper_id)
+
+@app.get("/api/papers/{paper_id}/reports")
+async def get_reports_endpoint(paper_id: str):
+    return await build_paper_reports_data(paper_id)
 
 # ----------------- SCREEN 7: VERIFY MODE & TRAINING EXPORT -----------------
 

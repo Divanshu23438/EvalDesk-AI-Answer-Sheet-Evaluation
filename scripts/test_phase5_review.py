@@ -85,7 +85,7 @@ def test_phase5():
 
     # Set identity if needed
     if sheet_data.get("status") == "needs_identity":
-        id_res = requests.post(f"{BASE_URL}/api/sheets/{sheet_id}/identity", json={"student_name": "Rohan Verma", "roll_number": "CS-101"})
+        id_res = requests.post(f"{BASE_URL}/api/sheets/{sheet_id}/identity", json={"student_name": "Aarav Verma", "roll_number": "CS-101"})
         assert id_res.status_code == 200, f"Set identity failed: {id_res.text}"
         print("[PASS] Identity set, evaluation auto-queued")
 

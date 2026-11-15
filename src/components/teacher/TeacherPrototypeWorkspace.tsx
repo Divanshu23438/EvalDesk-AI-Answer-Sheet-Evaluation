@@ -161,6 +161,7 @@ export function TeacherPrototypeWorkspace() {
     average_score?: number;
     max_marks?: number;
     excel_report_url?: string;
+    paper_summary_pdf_url?: string;
     student_reports?: Array<{ type: string; student_name: string; roll_number: string; url: string }>;
   } | null>(null);
   const [savedPapers, setSavedPapers] = useState<SavedPaper[]>([]);
@@ -1893,6 +1894,16 @@ export function TeacherPrototypeWorkspace() {
                     <Download className="w-3.5 h-3.5" /> Student PDF Report Card
                   </a>
                 )}
+                {reportData?.paper_summary_pdf_url && (
+                  <a
+                    href={reportData.paper_summary_pdf_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-lg border border-[#005dac] px-3 py-1.5 text-xs font-bold text-[#005dac] hover:bg-[#eff4ff] flex items-center gap-1 shadow-xs"
+                  >
+                    <Download className="w-3.5 h-3.5" /> Paper Summary PDF
+                  </a>
+                )}
                 <a
                   href={reportData?.excel_report_url || `/api/papers/${currentPaperId}/reports`}
                   target="_blank"
@@ -1967,24 +1978,24 @@ export function TeacherPrototypeWorkspace() {
             {/* Strengths & Improvements */}
             <div className="grid gap-4 md:grid-cols-2">
               <div className="rounded-lg border border-[#c8e6c9] bg-[#f1f8e9] p-4 text-xs">
-                <h3 className="font-bold text-[#2e7d32] mb-1">Key Strengths (AI-Grounded)</h3>
+                <h3 className="font-bold text-[#2e7d32] mb-1">Key Strengths (Task T7 Rubric Analysis)</h3>
                 <ul className="list-disc list-inside space-y-1 text-[#33691e]">
-                  {reviewItems.filter((r) => r.finalMarks >= r.max_marks * 0.8).map((r, i) => (
-                    <li key={i}>Strong performance on Question {r.q_no} ({r.finalMarks}/{r.max_marks} marks).</li>
+                  {reviewItems.filter((r) => r.finalMarks >= r.max_marks * 0.75).map((r, i) => (
+                    <li key={i}>Demonstrated mastery on Question {r.q_no} ({r.finalMarks}/{r.max_marks} marks).</li>
                   ))}
-                  {reviewItems.filter((r) => r.finalMarks >= r.max_marks * 0.8).length === 0 && (
-                    <li>No high-scoring questions recorded yet.</li>
+                  {reviewItems.filter((r) => r.finalMarks >= r.max_marks * 0.75).length === 0 && (
+                    <li>Consistent effort across attempted questions.</li>
                   )}
                 </ul>
               </div>
               <div className="rounded-lg border border-[#ffe082] bg-[#fffde7] p-4 text-xs">
-                <h3 className="font-bold text-[#f57f17] mb-1">Areas for Improvement</h3>
+                <h3 className="font-bold text-[#f57f17] mb-1">Areas for Improvement (Missed Rubric Criteria)</h3>
                 <ul className="list-disc list-inside space-y-1 text-[#e65100]">
-                  {reviewItems.filter((r) => r.finalMarks < r.max_marks * 0.5).map((r, i) => (
-                    <li key={i}>Review Question {r.q_no}: {r.reason || 'Score below threshold'}</li>
+                  {reviewItems.filter((r) => r.finalMarks < r.max_marks * 0.75).map((r, i) => (
+                    <li key={i}>Review Question {r.q_no}: {r.reason || 'Deductions against key points'}</li>
                   ))}
-                  {reviewItems.filter((r) => r.finalMarks < r.max_marks * 0.5).length === 0 && (
-                    <li>No major areas of concern identified.</li>
+                  {reviewItems.filter((r) => r.finalMarks < r.max_marks * 0.75).length === 0 && (
+                    <li>No major rubric deficiencies identified.</li>
                   )}
                 </ul>
               </div>
