@@ -262,3 +262,6 @@ def init_db():
         add_column_if_missing("questions", "key TEXT", "key")
         add_column_if_missing("questions", "options_json TEXT DEFAULT '[]'", "options_json")
         add_column_if_missing("sheets", "failed_stage TEXT", "failed_stage")
+        add_column_if_missing("answers", "page_numbers TEXT DEFAULT '[]'", "page_numbers")
+        add_column_if_missing("answers", "bbox_json TEXT DEFAULT '{}'", "bbox_json")
+        add_column_if_missing("answers", "reader_texts_json TEXT DEFAULT '{}'", "reader_texts_json")

@@ -1,0 +1,26 @@
+=== PHASE 3 PROOF: SHEET INTAKE & AUTOMATIC FLOW ===
+Paper ID: f3d944f0-9666-47e8-9df7-45f680bb3318
+Timestamp: 2026-11-15T14:45:06Z
+
+--- Test Case 1: Sheet A with Clear Header (Auto-Queue) ---
+Upload Status Code: 200
+Detected Student Name: Devika Sharma
+Detected Roll Number: BCA-2026-77
+Header Confidence: 0.99
+Initial Sheet Status: queued
+Needs Manual Name: False
+Subsequent Stage: Reading pages
+Subsequent Status: evaluating
+
+--- Test Case 2: Sheet B without Readable Header (Waits at needs_identity) ---
+Upload Status Code: 200
+Detected Student Name: ''
+Detected Roll Number: ''
+Header Confidence: 0.0
+Initial Sheet Status: needs_identity
+Needs Manual Name: True
+Submitting manual identity via POST /api/sheets/{id}/identity:
+Identity Update Status: 200
+Result Status: queued
+Student Name Set: Karan Mehra
+Roll Number Set: BCA-2026-102

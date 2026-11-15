@@ -3,6 +3,7 @@ import zipfile
 from pathlib import Path
 from datetime import datetime
 from backend.config import (
+    BASE_DIR,
     DATA_DIR,
     STORAGE_DIR,
     PAPERS_STORAGE_DIR,
@@ -10,6 +11,21 @@ from backend.config import (
     REPORTS_STORAGE_DIR,
     EXPORTS_STORAGE_DIR,
 )
+
+def to_relative_posix(path: Path) -> str:
+    """Converts a Path to relative POSIX string for reliable cross-platform DB storage."""
+    try:
+        rel = path.relative_to(BASE_DIR)
+        return rel.as_posix()
+    except Exception:
+        return path.as_posix()
+
+def from_relative_posix(path_str: str) -> Path:
+    """Converts a stored relative POSIX string back to an absolute Path."""
+    p = Path(path_str)
+    if p.is_absolute():
+        return p
+    return BASE_DIR / p
 
 def get_paper_dir(paper_id: str) -> Path:
     p = PAPERS_STORAGE_DIR / paper_id
