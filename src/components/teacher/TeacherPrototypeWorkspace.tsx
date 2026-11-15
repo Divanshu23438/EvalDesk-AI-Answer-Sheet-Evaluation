@@ -557,6 +557,8 @@ export function TeacherPrototypeWorkspace() {
       return;
     }
 
+    setCurrentSheetId('');
+    setNeedsIdentityPrompt(false);
     setStudentFiles(files);
     setError('');
     setIsUploadingSheet(true);
@@ -581,6 +583,9 @@ export function TeacherPrototypeWorkspace() {
 
       const data = await res.json();
       const sheetId = data.sheet_id;
+      if (!sheetId) {
+        throw new Error('Server did not return a valid sheet ID.');
+      }
       setCurrentSheetId(sheetId);
       setHeaderConfidence(data.confidence ?? null);
 
@@ -595,12 +600,17 @@ export function TeacherPrototypeWorkspace() {
         setEvalStage('reading');
         setStageProgress(20);
         pollSheetStatus(sheetId);
-      } else {
-        // Low confidence or missing header
+      } else if (data.status === 'needs_identity') {
+        // Low confidence or missing header, but sheet was created successfully
         setNeedsIdentityPrompt(true);
         setStatus('Header requires manual confirmation or entry before evaluation can start.');
+      } else {
+        setNeedsIdentityPrompt(false);
+        setStatus(data.current_stage || 'Sheet processed.');
       }
     } catch (err) {
+      setCurrentSheetId('');
+      setNeedsIdentityPrompt(false);
       setStatus('');
       const msg = err instanceof Error ? err.message : 'Failed to upload answer sheet.';
       setError(msg);
@@ -1459,48 +1469,54 @@ export function TeacherPrototypeWorkspace() {
                     </div>
                   )}
 
-                  {needsIdentityPrompt && (
-                    <div className="rounded-lg border border-[#f57c00] bg-[#fff3e0] p-2.5 text-xs text-[#b26a00]">
-                      <div className="font-bold flex items-center gap-1.5 mb-1">
-                        <AlertTriangle className="w-4 h-4" /> Header Verification Required
+                  {needsIdentityPrompt && currentSheetId ? (
+                    <>
+                      <div className="rounded-lg border border-[#f57c00] bg-[#fff3e0] p-2.5 text-xs text-[#b26a00]">
+                        <div className="font-bold flex items-center gap-1.5 mb-1">
+                          <AlertTriangle className="w-4 h-4" /> Header Verification Required
+                        </div>
+                        <p className="text-[11px]">
+                          Header confidence was {headerConfidence !== null ? `${Math.round(headerConfidence * 100)}%` : 'unreadable'}. Please verify or enter student name and roll number below to proceed.
+                        </p>
                       </div>
-                      <p className="text-[11px]">
-                        Header confidence was {headerConfidence !== null ? `${Math.round(headerConfidence * 100)}%` : 'unreadable'}. Please verify or enter student name and roll number below to proceed.
-                      </p>
+
+                      <div className={`p-3 rounded-lg border ${(!studentName || !rollNo) ? 'border-[#ba1a1a] bg-[#ffdad6]' : 'border-[#c1c6d4] bg-white'}`}>
+                        <label className="text-[11px] font-bold block mb-1">Student Name *</label>
+                        <input
+                          value={studentName}
+                          onChange={(e) => setStudentName(e.target.value)}
+                          placeholder="Enter student name"
+                          className="w-full rounded border border-[#c1c6d4] px-2.5 py-1.5 text-xs mb-2 font-medium"
+                        />
+                        <label className="text-[11px] font-bold block mb-1">Roll Number *</label>
+                        <input
+                          value={rollNo}
+                          onChange={(e) => setRollNo(e.target.value)}
+                          placeholder="e.g. BCA-2026-01"
+                          className="w-full rounded border border-[#c1c6d4] px-2.5 py-1.5 text-xs font-medium"
+                        />
+                        {(!studentName || !rollNo) && (
+                          <span className="text-[10px] text-[#ba1a1a] font-bold block mt-1">
+                            Manual entry required before evaluation can start.
+                          </span>
+                        )}
+                      </div>
+
+                      <button
+                        type="button"
+                        disabled={isUploadingSheet || !studentName.trim() || !rollNo.trim() || !hasConsent}
+                        onClick={handleSaveIdentityAndStart}
+                        className="w-full rounded-lg bg-[#005dac] px-4 py-3 text-xs font-bold text-white hover:bg-[#004786] disabled:opacity-40 shadow-xs flex items-center justify-center gap-1.5"
+                      >
+                        <Sparkles className="w-4 h-4" />
+                        <span>Save Identity & Start Evaluation</span>
+                      </button>
+                    </>
+                  ) : !isUploadingSheet && (
+                    <div className="p-3 rounded-lg border border-[#e2e8f0] bg-white text-xs text-[#64748b]">
+                      Upload an answer sheet above. If the header is detected with high confidence (≥70%), evaluation begins automatically. If unreadable, you will be prompted here to enter identity.
                     </div>
                   )}
-
-                  <div className={`p-3 rounded-lg border ${(!studentName || !rollNo) && needsIdentityPrompt ? 'border-[#ba1a1a] bg-[#ffdad6]' : 'border-[#c1c6d4] bg-white'}`}>
-                    <label className="text-[11px] font-bold block mb-1">Student Name *</label>
-                    <input
-                      value={studentName}
-                      onChange={(e) => setStudentName(e.target.value)}
-                      placeholder="Enter student name"
-                      className="w-full rounded border border-[#c1c6d4] px-2.5 py-1.5 text-xs mb-2 font-medium"
-                    />
-                    <label className="text-[11px] font-bold block mb-1">Roll Number *</label>
-                    <input
-                      value={rollNo}
-                      onChange={(e) => setRollNo(e.target.value)}
-                      placeholder="e.g. BCA-2026-01"
-                      className="w-full rounded border border-[#c1c6d4] px-2.5 py-1.5 text-xs font-medium"
-                    />
-                    {(!studentName || !rollNo) && (
-                      <span className="text-[10px] text-[#ba1a1a] font-bold block mt-1">
-                        Manual entry required before evaluation can start.
-                      </span>
-                    )}
-                  </div>
-
-                  <button
-                    type="button"
-                    disabled={isUploadingSheet || !studentFiles.length || !studentName.trim() || !rollNo.trim() || !hasConsent}
-                    onClick={handleSaveIdentityAndStart}
-                    className="w-full rounded-lg bg-[#005dac] px-4 py-3 text-xs font-bold text-white hover:bg-[#004786] disabled:opacity-40 shadow-xs flex items-center justify-center gap-1.5"
-                  >
-                    <Sparkles className="w-4 h-4" />
-                    <span>{needsIdentityPrompt ? 'Save Identity & Start Evaluation' : 'Start AI Evaluation Pipeline'}</span>
-                  </button>
                 </div>
               </div>
             </div>

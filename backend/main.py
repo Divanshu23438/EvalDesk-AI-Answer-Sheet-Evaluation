@@ -1033,10 +1033,14 @@ async def upload_answer_sheet(
     try:
         for f in files:
             content = await f.read()
+            if not content or len(content) < 500:
+                raise ValueError(
+                    f"Uploaded file '{f.filename or 'upload'}' is empty or corrupt (minimum 500 bytes required)."
+                )
             is_pdf = (f.filename and f.filename.lower().endswith(".pdf")) or content.startswith(b"%PDF-")
             if is_pdf:
-                pdf_pages = process_pdf_bytes(content)
-                for p_bytes in pdf_pages:
+                pdf_res = process_pdf_bytes(content)
+                for p_bytes in pdf_res["page_images_bytes"]:
                     norm_bytes, _ = normalize_image_bytes(p_bytes)
                     page_path = sheet_dir / "original" / f"page_{page_counter:02d}.jpg"
                     with open(page_path, "wb") as out:

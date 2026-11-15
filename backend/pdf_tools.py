@@ -15,8 +15,8 @@ def process_pdf_bytes(
     - Extracts typed text layer if present.
     - Renders pages to standard JPEG images if output_image_dir is provided or text is absent.
     """
-    if not pdf_bytes or len(pdf_bytes) < 10:
-        raise ValueError("Corrupt or empty PDF data: file size too small.")
+    if not pdf_bytes or len(pdf_bytes) < 100:
+        raise ValueError("Corrupt or empty PDF data: file is empty or under 100 bytes.")
 
     try:
         doc = pymupdf.open(stream=pdf_bytes, filetype="pdf")
@@ -83,8 +83,8 @@ def normalize_image_bytes(
     - Resizes to at most max_dimension on longest edge.
     Returns: (standard_jpeg_bytes, "image/jpeg")
     """
-    if not image_bytes or len(image_bytes) < 10:
-        raise ValueError("Corrupt or empty image data: file size too small.")
+    if not image_bytes or len(image_bytes) < 100:
+        raise ValueError("Corrupt or empty image data: file is empty or under 100 bytes.")
 
     try:
         img = Image.open(io.BytesIO(image_bytes))
