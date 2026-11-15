@@ -1,10 +1,11 @@
 import os
 import uuid
 import json
+import shutil
 import asyncio
 from pathlib import Path
 from typing import Optional, List, Dict, Any
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Query, BackgroundTasks
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Query, BackgroundTasks, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
@@ -23,12 +24,14 @@ from backend.config import (
 from backend.db import init_db, get_db
 from backend.storage import (
     get_paper_dir,
+    get_paper_draft_dir,
     get_sheet_dir,
     get_reports_dir,
     delete_sheet_files,
     delete_paper_files,
     create_data_backup,
 )
+from backend.pdf_tools import process_pdf_bytes, normalize_image_bytes
 from backend.line_tools import segment_text_lines
 from backend.ai_gateway import (
     ai_gateway,
@@ -69,7 +72,70 @@ app.add_middleware(
 # Serve storage files (images and PDFs)
 app.mount("/storage", StaticFiles(directory=str(STORAGE_DIR)), name="storage")
 
-# Pydantic Request Models
+# Pydantic Request & Response Models
+class ExtractedQuestion(BaseModel):
+    key: str
+    q_no: str
+    text: str
+    marks: float
+    type: str = "short"
+    section: str = "General"
+    options: List[str] = []
+
+class ExtractPaperResponse(BaseModel):
+    draft_id: str
+    questions: List[ExtractedQuestion]
+    total_marks: float
+    instructions: str = ""
+    warnings: List[str] = []
+    source: str
+    provider: str
+    paper_file_path: Optional[str] = None
+
+class QuestionInput(BaseModel):
+    id: Optional[str] = None
+    key: Optional[str] = None
+    q_no: str
+    question_text: str
+    max_marks: float
+    question_type: str = "short"
+    section_name: str = "General"
+    options: List[str] = []
+    strictness_override: Optional[str] = None
+    checking_medium_override: Optional[str] = None
+
+class PaperCreateRequest(BaseModel):
+    draft_id: Optional[str] = None
+    title: str
+    subject: str = ""
+    strictness: str = "lenient"
+    checking_medium: str = "ai_reference"
+    total_marks: Optional[float] = None
+    instructions: Optional[str] = ""
+    questions: List[QuestionInput]
+
+class QuestionsUpdateRequest(BaseModel):
+    questions: List[QuestionInput]
+
+class KeyPoint(BaseModel):
+    text: str
+    marks: float
+
+class ReferenceItem(BaseModel):
+    id: Optional[str] = None
+    key: str
+    question_id: Optional[str] = None
+    model_answer: str
+    key_points: List[KeyPoint] = []
+    accepted_alternatives: List[str] = []
+    common_mistakes: List[str] = []
+    correct_option: Optional[str] = None
+    confidence: Optional[float] = 1.0
+    source: str = "ai_draft"
+
+class ReferenceUpdateRequest(BaseModel):
+    references: List[ReferenceItem]
+
 class QuestionUpdate(BaseModel):
     id: str
     q_no: str
@@ -165,9 +231,19 @@ def get_paper(paper_id: str):
 
         cursor.execute("SELECT * FROM questions WHERE paper_id = ? ORDER BY order_idx ASC", (paper_id,))
         questions = [dict(r) for r in cursor.fetchall()]
+        for q in questions:
+            try:
+                q["options"] = json.loads(q.get("options_json") or "[]")
+            except Exception:
+                q["options"] = []
 
-        cursor.execute("SELECT * FROM references_ai WHERE paper_id = ?", (paper_id,))
+        cursor.execute("SELECT * FROM \"references\" WHERE paper_id = ?", (paper_id,))
         references = [dict(r) for r in cursor.fetchall()]
+        for r in references:
+            try:
+                r["key_points"] = json.loads(r.get("key_points_json") or "[]")
+            except Exception:
+                r["key_points"] = []
 
         cursor.execute("SELECT * FROM sheets WHERE paper_id = ? ORDER BY created_at DESC", (paper_id,))
         sheets = [dict(r) for r in cursor.fetchall()]
@@ -179,97 +255,665 @@ def get_paper(paper_id: str):
             "sheets": sheets,
         }
 
-@app.post("/api/papers")
-async def create_paper_setup(
-    title: str = Form(...),
-    subject: str = Form(""),
-    strictness: str = Form("lenient"),
-    checking_medium: str = Form("ai_reference"),
-    paper_file: Optional[UploadFile] = File(None),
-    answer_key_file: Optional[UploadFile] = File(None),
-):
-    paper_id = str(uuid.uuid4())
-    paper_dir = get_paper_dir(paper_id)
+T1_PROMPT = """You are reading an exam question paper. List every question that must be answered.
+Keep the original wording and language (including Hindi and English together).
+For each item return:
+- `q_no` as printed (e.g. "1", "Q.1 (A) (i)")
+- `text` (the question text)
+- `marks` as a number (if marks are shown per section or group, calculate or divide and apply to each question, must be > 0)
+- `type` (one of: "mcq", "one_word", "short", "long", "maths")
+- `section` (section name as printed, e.g. "Section A", "Part I", or "General")
+- `options` (list of option strings, only for MCQ, otherwise empty list)
 
-    paper_path = None
-    if paper_file:
-        paper_path = paper_dir / f"question_paper_{paper_file.filename}"
-        with open(paper_path, "wb") as f:
-            f.write(await paper_file.read())
+Also return:
+- `total_marks` as a number if printed on the paper (or 0 if not printed)
+- `instructions` such as "attempt any N", general exam instructions, etc.
+- `warnings` list of any unreadable parts or ambiguities.
 
-    key_path = None
-    has_key = 0
-    if answer_key_file:
-        key_path = paper_dir / f"answer_key_{answer_key_file.filename}"
-        with open(key_path, "wb") as f:
-            f.write(await answer_key_file.read())
-        has_key = 1
-    # Respect user-provided checking_medium; default to ai_reference only if none specified
-    if not checking_medium:
-        checking_medium = "answer_key" if has_key else "ai_reference"
+Return ONLY a valid JSON object matching this schema:
+{
+  "questions": [
+    {
+      "q_no": "1",
+      "text": "...",
+      "marks": 2.0,
+      "type": "short",
+      "section": "Section A",
+      "options": []
+    }
+  ],
+  "total_marks": 50.0,
+  "instructions": "...",
+  "warnings": []
+}
+Do not invent questions that are not on the page. If something is unreadable, add it to `warnings`.
+"""
 
-    # Extract questions with Gemini or offline sample fallback
-    questions_data = []
-    if paper_path and paper_path.exists():
-        prompt = """
-        You are an academic exam analyzer. Extract all questions from this exam paper into a structured JSON list:
-        Return JSON format:
-        {
-          "paper_title": "Paper Name",
-          "total_marks": 60,
-          "questions": [
-            {
-              "q_no": "1",
-              "question_text": "Define operating system kernel.",
-              "max_marks": 2,
-              "question_type": "short",
-              "section_name": "Part I"
-            }
-          ]
-        }
-        """
-        with open(paper_path, "rb") as f:
-            img_bytes = f.read()
+@app.post("/api/papers/extract", response_model=ExtractPaperResponse)
+async def extract_paper_questions(paper_file: UploadFile = File(...)):
+    """
+    Task T1: Extract questions from an uploaded question paper (PDF or image).
+    Uses PDF text layer when present, otherwise renders/normalizes to JPEG and calls vision model.
+    Never returns templates or silent fallbacks.
+    """
+    if not paper_file or not paper_file.filename:
+        raise HTTPException(status_code=400, detail="No question paper file uploaded.")
+
+    content = await paper_file.read()
+    if not content or len(content) < 10:
+        raise HTTPException(status_code=400, detail="Uploaded question paper is empty or corrupted.")
+
+    draft_id = str(uuid.uuid4())
+    draft_dir = get_paper_draft_dir(draft_id)
+    saved_paper_path = draft_dir / paper_file.filename
+    saved_paper_path.write_bytes(content)
+
+    is_pdf = paper_file.filename.lower().endswith(".pdf") or content.startswith(b"%PDF-")
+    source = "vision"
+    provider = "gemini"
+    data = {}
+
+    if is_pdf:
         try:
-            res = await ai_gateway.call_gemini(prompt, image_bytes=img_bytes, task="extract_paper")
-            if "data" in res and "questions" in res["data"]:
-                questions_data = res["data"]["questions"]
+            pdf_info = process_pdf_bytes(content)
+        except ValueError as ve:
+            raise HTTPException(status_code=400, detail=f"Invalid or corrupt PDF document: {ve}")
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Failed to process PDF: {e}")
+
+        if pdf_info["is_typed"]:
+            source = "pdf_text"
+            prompt = f"{T1_PROMPT}\n\nEXAM PAPER TEXT:\n---\n{pdf_info['text']}\n---"
+            try:
+                res = await ai_gateway.call_gemini(prompt, task="extract_paper")
+                data = res.get("data", {})
+            except AIError as ae:
+                raise HTTPException(
+                    status_code=502 if ae.kind == "unavailable" else 400,
+                    detail=f"Question extraction failed: {ae.message}"
+                )
+        else:
+            source = "vision"
+            if not pdf_info["page_images_bytes"]:
+                raise HTTPException(status_code=400, detail="Scanned PDF contains no renderable pages.")
+            page_img = pdf_info["page_images_bytes"][0]
+            try:
+                res = await ai_gateway.call_gemini(T1_PROMPT, image_bytes=page_img, mime_type="image/jpeg", task="extract_paper")
+                data = res.get("data", {})
+            except AIError as ae:
+                raise HTTPException(
+                    status_code=502 if ae.kind == "unavailable" else 400,
+                    detail=f"Question extraction failed: {ae.message}"
+                )
+    else:
+        # Standard image (JPEG, PNG, etc.)
+        source = "vision"
+        try:
+            res = await ai_gateway.call_gemini(T1_PROMPT, image_bytes=content, mime_type=paper_file.content_type, task="extract_paper")
+            data = res.get("data", {})
         except AIError as ae:
             raise HTTPException(
                 status_code=502 if ae.kind == "unavailable" else 400,
                 detail=f"Question extraction failed: {ae.message}"
             )
 
-    # Do not invent dummy questions; failures must return real errors
-    if not questions_data:
+    raw_questions = data.get("questions", [])
+    if not isinstance(raw_questions, list) or len(raw_questions) == 0:
         raise HTTPException(
             status_code=400,
             detail="No questions detected in the uploaded question paper. Please verify the document format and quality, then retry."
         )
 
-    total_marks = sum(q.get("max_marks", 0.0) for q in questions_data)
+    validated_questions = []
+    warnings = data.get("warnings", [])
+    if not isinstance(warnings, list):
+        warnings = [str(warnings)]
+    instructions = str(data.get("instructions") or "").strip()
+
+    try:
+        printed_total = float(data.get("total_marks") or 0.0)
+    except (ValueError, TypeError):
+        printed_total = 0.0
+
+    for idx, q in enumerate(raw_questions):
+        key = f"q_{idx + 1}"
+        q_no = str(q.get("q_no") or (idx + 1)).strip()
+        q_text = str(q.get("text") or q.get("question_text") or "").strip()
+        try:
+            marks = float(q.get("marks") or q.get("max_marks") or 1.0)
+        except (ValueError, TypeError):
+            marks = 1.0
+        if marks <= 0:
+            marks = 1.0
+            warnings.append(f"Question {q_no} had zero or invalid marks; defaulted to 1.0")
+
+        q_type = str(q.get("type") or q.get("question_type") or "short").lower().strip()
+        if q_type not in ["mcq", "one_word", "short", "long", "maths"]:
+            q_type = "short"
+
+        section = str(q.get("section") or q.get("section_name") or "General").strip()
+        raw_options = q.get("options", [])
+        options = [str(opt).strip() for opt in raw_options] if isinstance(raw_options, list) else []
+
+        validated_questions.append({
+            "key": key,
+            "q_no": q_no,
+            "text": q_text,
+            "marks": marks,
+            "type": q_type,
+            "section": section,
+            "options": options,
+        })
+
+    sum_of_marks = sum(q["marks"] for q in validated_questions)
+    if printed_total > 0 and abs(printed_total - sum_of_marks) > 0.01:
+        warnings.append(f"Sum of question marks ({sum_of_marks:g}) does not equal printed total ({printed_total:g}).")
+        total_marks = printed_total
+    else:
+        total_marks = sum_of_marks if printed_total <= 0 else printed_total
+
+    response_payload = {
+        "draft_id": draft_id,
+        "questions": validated_questions,
+        "total_marks": total_marks,
+        "instructions": instructions,
+        "warnings": warnings,
+        "source": source,
+        "provider": provider,
+        "paper_file_path": str(saved_paper_path),
+    }
 
     with get_db() as conn:
-        cursor = conn.cursor()
-        cursor.execute(
-            """
-            INSERT INTO papers (id, title, subject, total_marks, strictness, checking_medium, has_answer_key, paper_path, answer_key_path)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (paper_id, title, subject, total_marks, strictness, checking_medium, has_key, str(paper_path) if paper_path else None, str(key_path) if key_path else None),
+        conn.execute(
+            "INSERT INTO paper_drafts (id, paper_path, extracted_data_json) VALUES (?, ?, ?)",
+            (draft_id, str(saved_paper_path), json.dumps(response_payload)),
         )
 
-        for idx, q in enumerate(questions_data):
-            q_id = str(uuid.uuid4())
+    return response_payload
+
+@app.post("/api/papers")
+async def create_paper_setup(
+    request: Request,
+    title: Optional[str] = Form(None),
+    subject: Optional[str] = Form(""),
+    strictness: Optional[str] = Form("lenient"),
+    checking_medium: Optional[str] = Form("ai_reference"),
+    draft_id: Optional[str] = Form(None),
+    paper_file: Optional[UploadFile] = File(None),
+    answer_key_file: Optional[UploadFile] = File(None),
+):
+    content_type = request.headers.get("content-type", "")
+    if "application/json" in content_type:
+        body = await request.json()
+        payload = PaperCreateRequest(**body)
+        paper_id = str(uuid.uuid4())
+        paper_dir = get_paper_dir(paper_id)
+
+        paper_path = None
+        if payload.draft_id:
+            with get_db() as conn:
+                row = conn.execute("SELECT paper_path FROM paper_drafts WHERE id = ?", (payload.draft_id,)).fetchone()
+                if row and row["paper_path"]:
+                    src = Path(row["paper_path"])
+                    if src.exists():
+                        paper_path = paper_dir / f"question_paper_{src.name}"
+                        shutil.copy2(src, paper_path)
+
+        calc_total = sum(q.max_marks for q in payload.questions)
+        total_marks = payload.total_marks if (payload.total_marks is not None and payload.total_marks > 0) else calc_total
+
+        with get_db() as conn:
+            cursor = conn.cursor()
             cursor.execute(
                 """
-                INSERT INTO questions (id, paper_id, q_no, question_text, max_marks, question_type, section_name, order_idx)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO papers (id, title, subject, total_marks, strictness, checking_medium, has_answer_key, is_locked, instructions, paper_path)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
                 """,
-                (q_id, paper_id, str(q.get("q_no", idx+1)), q.get("question_text", ""), float(q.get("max_marks", 1.0)), q.get("question_type", "short"), q.get("section_name", "General"), idx),
+                (paper_id, payload.title, payload.subject, total_marks, payload.strictness, payload.checking_medium, 0, payload.instructions or "", str(paper_path) if paper_path else None),
             )
 
-    return {"status": "created", "paper_id": paper_id, "questions_count": len(questions_data), "total_marks": total_marks}
+            for idx, q in enumerate(payload.questions):
+                q_id = str(uuid.uuid4())
+                key = q.key or f"q_{idx + 1}"
+                cursor.execute(
+                    """
+                    INSERT INTO questions (id, paper_id, key, q_no, question_text, max_marks, question_type, section_name, options_json, strictness_override, checking_medium_override, order_idx)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        q_id,
+                        paper_id,
+                        key,
+                        q.q_no,
+                        q.question_text,
+                        q.max_marks,
+                        q.question_type,
+                        q.section_name,
+                        json.dumps(q.options),
+                        q.strictness_override,
+                        q.checking_medium_override,
+                        idx,
+                    ),
+                )
+        return {"status": "created", "paper_id": paper_id, "questions_count": len(payload.questions), "total_marks": total_marks}
+    else:
+        # Form-data backward compatibility
+        paper_id = str(uuid.uuid4())
+        paper_dir = get_paper_dir(paper_id)
+        paper_path = None
+        if paper_file:
+            paper_path = paper_dir / f"question_paper_{paper_file.filename}"
+            with open(paper_path, "wb") as f:
+                f.write(await paper_file.read())
+
+        key_path = None
+        has_key = 0
+        if answer_key_file:
+            key_path = paper_dir / f"answer_key_{answer_key_file.filename}"
+            with open(key_path, "wb") as f:
+                f.write(await answer_key_file.read())
+            has_key = 1
+
+        med = checking_medium or ("answer_key" if has_key else "ai_reference")
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                INSERT INTO papers (id, title, subject, total_marks, strictness, checking_medium, has_answer_key, is_locked, paper_path, answer_key_path)
+                VALUES (?, ?, ?, 0.0, ?, ?, ?, 0, ?, ?)
+                """,
+                (paper_id, title or "Untitled Paper", subject or "", strictness or "lenient", med, has_key, str(paper_path) if paper_path else None, str(key_path) if key_path else None),
+            )
+        return {"status": "created", "paper_id": paper_id, "questions_count": 0, "total_marks": 0.0}
+
+@app.put("/api/papers/{paper_id}/questions")
+def update_paper_questions(paper_id: str, payload: QuestionsUpdateRequest):
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT is_locked FROM papers WHERE id = ?", (paper_id,))
+        row = cursor.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Paper not found")
+        if row["is_locked"]:
+            raise HTTPException(status_code=400, detail="Paper is locked. Unlock paper before editing questions.")
+
+        cursor.execute("DELETE FROM questions WHERE paper_id = ?", (paper_id,))
+        for idx, q in enumerate(payload.questions):
+            q_id = str(uuid.uuid4())
+            key = q.key or f"q_{idx + 1}"
+            cursor.execute(
+                """
+                INSERT INTO questions (id, paper_id, key, q_no, question_text, max_marks, question_type, section_name, options_json, strictness_override, checking_medium_override, order_idx)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    q_id,
+                    paper_id,
+                    key,
+                    q.q_no,
+                    q.question_text,
+                    q.max_marks,
+                    q.question_type,
+                    q.section_name,
+                    json.dumps(q.options),
+                    q.strictness_override,
+                    q.checking_medium_override,
+                    idx,
+                ),
+            )
+
+        total_marks = sum(q.max_marks for q in payload.questions)
+        cursor.execute(
+            "UPDATE papers SET total_marks = ?, updated_at = datetime('now') WHERE id = ?",
+            (total_marks, paper_id),
+        )
+    return {"status": "updated", "questions_count": len(payload.questions), "total_marks": total_marks}
+
+@app.post("/api/papers/{paper_id}/answer-key")
+async def upload_and_parse_answer_key(
+    paper_id: str,
+    answer_key_file: UploadFile = File(...)
+):
+    """
+    Task T2: Parse uploaded answer key into reference items with key points and model answers.
+    """
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM papers WHERE id = ?", (paper_id,))
+        paper = cursor.fetchone()
+        if not paper:
+            raise HTTPException(status_code=404, detail="Paper not found")
+        cursor.execute("SELECT * FROM questions WHERE paper_id = ? ORDER BY order_idx ASC", (paper_id,))
+        q_rows = cursor.fetchall()
+        if not q_rows:
+            raise HTTPException(status_code=400, detail="No questions configured for this paper.")
+
+    content = await answer_key_file.read()
+    if not content or len(content) < 10:
+        raise HTTPException(status_code=400, detail="Uploaded answer key file is empty or corrupt.")
+
+    paper_dir = get_paper_dir(paper_id)
+    key_path = paper_dir / f"answer_key_{answer_key_file.filename}"
+    key_path.write_bytes(content)
+
+    questions_info = [
+        {
+            "key": r["key"] or f"q_{idx + 1}",
+            "q_no": r["q_no"],
+            "text": r["question_text"],
+            "marks": r["max_marks"],
+            "type": r["question_type"],
+            "options": json.loads(r["options_json"] or "[]"),
+        }
+        for idx, r in enumerate(q_rows)
+    ]
+
+    t2_prompt = f"""Match the answer key to these questions (given with their keys).
+For each question key return:
+- `model_answer`: concise, accurate model answer
+- `key_points`: list of items with `{{"text": str, "marks": float}}` whose marks sum to the question's total marks
+- for MCQ: `correct_option` (the matching option text or letter)
+
+If a question has no answer in the key, return its key in `missing`.
+Return ONLY valid JSON matching this schema:
+{{
+  "references": [
+    {{
+      "key": "q_1",
+      "model_answer": "...",
+      "key_points": [
+        {{"text": "Key concept 1", "marks": 1.0}}
+      ],
+      "correct_option": null
+    }}
+  ],
+  "missing": []
+}}
+
+QUESTIONS:
+{json.dumps(questions_info, indent=2)}
+"""
+
+    is_pdf = answer_key_file.filename.lower().endswith(".pdf") or content.startswith(b"%PDF-")
+    try:
+        if is_pdf:
+            pdf_info = process_pdf_bytes(content)
+            if pdf_info["is_typed"]:
+                prompt_full = f"{t2_prompt}\n\nANSWER KEY DOCUMENT TEXT:\n---\n{pdf_info['text']}\n---"
+                res = await ai_gateway.call_gemini(prompt_full, task="parse_answer_key")
+            else:
+                if not pdf_info["page_images_bytes"]:
+                    raise HTTPException(status_code=400, detail="Scanned PDF has no renderable pages.")
+                res = await ai_gateway.call_gemini(t2_prompt, image_bytes=pdf_info["page_images_bytes"][0], mime_type="image/jpeg", task="parse_answer_key")
+        else:
+            res = await ai_gateway.call_gemini(t2_prompt, image_bytes=content, mime_type=answer_key_file.content_type, task="parse_answer_key")
+    except AIError as ae:
+        raise HTTPException(
+            status_code=502 if ae.kind == "unavailable" else 400,
+            detail=f"Answer key parsing failed: {ae.message}"
+        )
+
+    res_data = res.get("data", {})
+    raw_refs = res_data.get("references", [])
+    missing = res_data.get("missing", [])
+
+    q_map = { (r["key"] or f"q_{idx+1}"): r for idx, r in enumerate(q_rows) }
+
+    saved_refs = []
+    with get_db() as conn:
+        cursor = conn.cursor()
+        for ref in raw_refs:
+            ref_key = ref.get("key", "")
+            q_row = q_map.get(ref_key)
+            q_id = q_row["id"] if q_row else None
+            ref_id = str(uuid.uuid4())
+            model_ans = ref.get("model_answer", "")
+            kp_json = json.dumps(ref.get("key_points", []))
+            corr_opt = ref.get("correct_option")
+
+            cursor.execute(
+                """
+                INSERT OR REPLACE INTO "references" (id, paper_id, question_id, key, source, model_answer, key_points_json, correct_option, is_approved)
+                VALUES (?, ?, ?, ?, 'teacher_key', ?, ?, ?, 1)
+                """,
+                (ref_id, paper_id, q_id, ref_key, model_ans, kp_json, corr_opt),
+            )
+            saved_refs.append({
+                "id": ref_id,
+                "key": ref_key,
+                "question_id": q_id,
+                "source": "teacher_key",
+                "model_answer": model_ans,
+                "key_points": ref.get("key_points", []),
+                "correct_option": corr_opt,
+                "is_approved": 1,
+            })
+
+        cursor.execute(
+            "UPDATE papers SET has_answer_key = 1, checking_medium = 'answer_key', answer_key_path = ? WHERE id = ?",
+            (str(key_path), paper_id),
+        )
+
+    return {"status": "parsed", "paper_id": paper_id, "references": saved_refs, "missing": missing}
+
+@app.post("/api/papers/{paper_id}/reference/generate")
+async def generate_paper_reference(paper_id: str):
+    """
+    Task T3: Draft reference without an answer key.
+    Runs two independent drafts, merges them, scales depth to marks, and highlights disagreements.
+    """
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM papers WHERE id = ?", (paper_id,))
+        paper = cursor.fetchone()
+        if not paper:
+            raise HTTPException(status_code=404, detail="Paper not found")
+        cursor.execute("SELECT * FROM questions WHERE paper_id = ? ORDER BY order_idx ASC", (paper_id,))
+        q_rows = cursor.fetchall()
+        if not q_rows:
+            raise HTTPException(status_code=400, detail="No questions configured for this paper.")
+
+    questions_info = [
+        {
+            "key": r["key"] or f"q_{idx + 1}",
+            "q_no": r["q_no"],
+            "text": r["question_text"],
+            "marks": r["max_marks"],
+            "type": r["question_type"],
+            "options": json.loads(r["options_json"] or "[]"),
+        }
+        for idx, r in enumerate(q_rows)
+    ]
+
+    t3_prompt = f"""Write a marking reference for this question paper.
+For each question key return:
+- `model_answer`: a concise, clear model answer
+- `key_points`: 2 to 6 rubric items with `{{"text": str, "marks": float}}` whose marks sum to the question's marks (scale rubric depth: 1-mark = 1 point, 6-mark = 3-4 points, 10-mark = 4-6 points)
+- `accepted_alternatives`: list of acceptable alternative terms or methods
+- `common_mistakes`: list of common errors or omissions
+- for MCQ: `correct_option` and `confidence` from 0.0 to 1.0
+
+Base everything strictly on the question and the stated subject. Return ONLY valid JSON matching schema:
+{{
+  "references": [
+    {{
+      "key": "q_1",
+      "model_answer": "...",
+      "key_points": [
+        {{"text": "...", "marks": 1.0}}
+      ],
+      "accepted_alternatives": ["..."],
+      "common_mistakes": ["..."],
+      "correct_option": null,
+      "confidence": 1.0
+    }}
+  ]
+}}
+
+Subject: {paper["subject"]}
+Questions:
+{json.dumps(questions_info, indent=2)}
+"""
+
+    disagreements = []
+    draft1_refs = []
+    try:
+        res1 = await ai_gateway.call_gemini(t3_prompt, task="draft_reference")
+        draft1_refs = res1.get("data", {}).get("references", [])
+    except AIError as ae:
+        raise HTTPException(status_code=502 if ae.kind == "unavailable" else 400, detail=f"Reference generation failed: {ae.message}")
+
+    # Draft 2 cross-check
+    draft2_refs = []
+    try:
+        res2 = await ai_gateway.call_groq(t3_prompt, task="draft_reference")
+        draft2_refs = res2.get("data", {}).get("references", [])
+    except Exception:
+        try:
+            res2 = await ai_gateway.call_gemini(t3_prompt + "\nProvide an alternate rigorous pedagogical perspective.", task="draft_reference")
+            draft2_refs = res2.get("data", {}).get("references", [])
+        except Exception:
+            draft2_refs = []
+
+    d2_map = { r.get("key"): r for r in draft2_refs }
+    q_map = { (r["key"] or f"q_{idx+1}"): r for idx, r in enumerate(q_rows) }
+
+    saved_refs = []
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM \"references\" WHERE paper_id = ?", (paper_id,))
+        for ref in draft1_refs:
+            ref_key = ref.get("key", "")
+            q_row = q_map.get(ref_key)
+            q_id = q_row["id"] if q_row else None
+            max_m = q_row["max_marks"] if q_row else 1.0
+
+            # Disagreement check with draft 2
+            d2 = d2_map.get(ref_key)
+            if d2:
+                if ref.get("correct_option") and d2.get("correct_option"):
+                    if str(ref["correct_option"]).strip().lower() != str(d2["correct_option"]).strip().lower():
+                        disagreements.append(f"MCQ {ref_key}: Draft 1 suggests '{ref['correct_option']}', Draft 2 suggests '{d2['correct_option']}'")
+                sim = calculate_text_similarity(ref.get("model_answer", ""), d2.get("model_answer", ""))
+                if sim < 0.45:
+                    disagreements.append(f"Question {ref_key}: Drafts diverge on model answer formulation (similarity {sim:.2f})")
+
+            kp_list = ref.get("key_points", [])
+            kp_sum = sum(float(p.get("marks", 0)) for p in kp_list)
+            if not kp_list:
+                kp_list = [{"text": ref.get("model_answer", "Correct answer"), "marks": max_m}]
+            elif abs(kp_sum - max_m) > 0.05:
+                scale = max_m / kp_sum if kp_sum > 0 else 1.0
+                for p in kp_list:
+                    p["marks"] = round_to_half_step(float(p.get("marks", 0)) * scale)
+
+            ref_id = str(uuid.uuid4())
+            model_ans = ref.get("model_answer", "")
+            kp_json = json.dumps(kp_list)
+            corr_opt = ref.get("correct_option")
+
+            cursor.execute(
+                """
+                INSERT INTO "references" (id, paper_id, question_id, key, source, model_answer, key_points_json, correct_option, is_approved)
+                VALUES (?, ?, ?, ?, 'ai_draft', ?, ?, ?, 1)
+                """,
+                (ref_id, paper_id, q_id, ref_key, model_ans, kp_json, corr_opt),
+            )
+            saved_refs.append({
+                "id": ref_id,
+                "key": ref_key,
+                "question_id": q_id,
+                "source": "ai_draft",
+                "model_answer": model_ans,
+                "key_points": kp_list,
+                "correct_option": corr_opt,
+                "is_approved": 1,
+            })
+
+    return {"status": "generated", "paper_id": paper_id, "references": saved_refs, "disagreements": disagreements}
+
+@app.put("/api/papers/{paper_id}/reference")
+def update_paper_reference(paper_id: str, payload: ReferenceUpdateRequest):
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT is_locked FROM papers WHERE id = ?", (paper_id,))
+        paper = cursor.fetchone()
+        if not paper:
+            raise HTTPException(status_code=404, detail="Paper not found")
+        if paper["is_locked"]:
+            raise HTTPException(status_code=400, detail="Paper is locked. Unlock paper before editing reference.")
+
+        for ref in payload.references:
+            cursor.execute(
+                """
+                UPDATE "references"
+                SET model_answer = ?, key_points_json = ?, correct_option = ?, is_approved = 1, approved_at = datetime('now')
+                WHERE paper_id = ? AND key = ?
+                """,
+                (ref.model_answer, json.dumps([p.dict() for p in ref.key_points]), ref.correct_option, paper_id, ref.key),
+            )
+    return {"status": "updated", "references_count": len(payload.references)}
+
+@app.get("/api/papers/{paper_id}/reference")
+def get_paper_reference(paper_id: str):
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM \"references\" WHERE paper_id = ?", (paper_id,))
+        rows = cursor.fetchall()
+        refs = []
+        for r in rows:
+            d = dict(r)
+            try:
+                d["key_points"] = json.loads(d.get("key_points_json") or "[]")
+            except Exception:
+                d["key_points"] = []
+            refs.append(d)
+        return {"references": refs}
+
+@app.post("/api/papers/{paper_id}/lock")
+def lock_paper(paper_id: str):
+    """
+    Validates that every question has a reference and marks add up, then locks paper.
+    """
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM papers WHERE id = ?", (paper_id,))
+        paper = cursor.fetchone()
+        if not paper:
+            raise HTTPException(status_code=404, detail="Paper not found")
+
+        cursor.execute("SELECT * FROM questions WHERE paper_id = ?", (paper_id,))
+        questions = cursor.fetchall()
+        if not questions:
+            raise HTTPException(status_code=400, detail="Cannot lock paper with 0 questions.")
+
+        cursor.execute("SELECT * FROM \"references\" WHERE paper_id = ?", (paper_id,))
+        refs = cursor.fetchall()
+        if not refs:
+            raise HTTPException(status_code=400, detail="Cannot lock paper: reference has not been parsed or generated.")
+
+        ref_keys = {r["key"] for r in refs if r["key"]}
+        missing_keys = []
+        for idx, q in enumerate(questions):
+            q_key = q["key"] or f"q_{idx+1}"
+            if q_key not in ref_keys:
+                missing_keys.append(q["q_no"])
+        if missing_keys:
+            raise HTTPException(status_code=400, detail=f"Cannot lock paper: Questions missing reference: {', '.join(missing_keys)}")
+
+        # Sync to references_ai for backward compatibility
+        for r in refs:
+            cursor.execute(
+                """
+                INSERT OR REPLACE INTO references_ai (id, paper_id, question_id, model_answer, key_points_json, is_approved)
+                VALUES (?, ?, ?, ?, ?, 1)
+                """,
+                (r["id"], paper_id, r["question_id"], r["model_answer"], r["key_points_json"]),
+            )
+
+        cursor.execute("UPDATE papers SET is_locked = 1, updated_at = datetime('now') WHERE id = ?", (paper_id,))
+
+    return {"status": "locked", "paper_id": paper_id, "questions_count": len(questions)}
 
 @app.put("/api/papers/{paper_id}")
 def update_paper(paper_id: str, payload: PaperSetupUpdate):
@@ -290,7 +934,6 @@ def update_paper(paper_id: str, payload: PaperSetupUpdate):
             (payload.title, payload.subject, payload.strictness, payload.checking_medium, 1 if payload.is_locked else 0, total_marks, paper_id),
         )
 
-        # Update questions
         for q in payload.questions:
             cursor.execute(
                 """
@@ -311,7 +954,6 @@ def unlock_paper(paper_id: str):
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute("UPDATE papers SET is_locked = 0 WHERE id = ?", (paper_id,))
-        # Reset sheets that were already evaluated
         cursor.execute("UPDATE sheets SET status = 'pending', current_stage = 'Unlocked Reset', total_score = 0.0 WHERE paper_id = ?", (paper_id,))
     return {"status": "unlocked", "message": "Paper unlocked for editing. Associated sheets have been reset."}
 

@@ -23,7 +23,6 @@ import {
 } from 'lucide-react';
 import {
   callEvaluateSheetApi,
-  callGenerateAnswerKeyApi,
   type GeneratedAnswerKey,
   type ServerEvaluateSheetResult,
   type EvaluatedPaperSummary,
@@ -69,6 +68,34 @@ interface TrainingLine {
   roll_number?: string;
 }
 
+interface UIQuestion {
+  key: string;
+  q_no: string;
+  question_text: string;
+  max_marks: number;
+  question_type: string;
+  section_name: string;
+  options: string[];
+}
+
+interface UIKeyPoint {
+  text: string;
+  marks: number;
+}
+
+interface UIReferenceItem {
+  id?: string;
+  key: string;
+  question_id?: string;
+  model_answer: string;
+  key_points: UIKeyPoint[];
+  accepted_alternatives?: string[];
+  common_mistakes?: string[];
+  correct_option?: string | null;
+  confidence?: number;
+  source?: string;
+}
+
 export function TeacherPrototypeWorkspace() {
   const [step, setStep] = useState<SetupStep>('setup');
   const [paperFile, setPaperFile] = useState<File | null>(null);
@@ -87,9 +114,18 @@ export function TeacherPrototypeWorkspace() {
   const [approved, setApproved] = useState(false);
 
   // Editable Question Setup Table (empty initial state)
-  const [editableQuestions, setEditableQuestions] = useState<
-    Array<{ q_no: string; question_text: string; max_marks: number; question_type: string; section_name: string }>
-  >([]);
+  const [editableQuestions, setEditableQuestions] = useState<UIQuestion[]>([]);
+  const [draftId, setDraftId] = useState<string>('');
+  const [extractionWarnings, setExtractionWarnings] = useState<string[]>([]);
+  const [extractionSource, setExtractionSource] = useState<string>('');
+  const [isExtracting, setIsExtracting] = useState<boolean>(false);
+  const [instructions, setInstructions] = useState<string>('');
+  const [paperTotalMarks, setPaperTotalMarks] = useState<number>(0);
+
+  // Reference Review & Approval State
+  const [references, setReferences] = useState<UIReferenceItem[]>([]);
+  const [disagreements, setDisagreements] = useState<string[]>([]);
+  const [isGeneratingRef, setIsGeneratingRef] = useState<boolean>(false);
 
   // Upload Screen State
   const [hasConsent, setHasConsent] = useState(false);
@@ -140,7 +176,7 @@ export function TeacherPrototypeWorkspace() {
     () => editableQuestions.reduce((sum, q) => sum + (Number(q.max_marks) || 0), 0),
     [editableQuestions]
   );
-  const paperTotalMismatch = answerKey?.paper_max_marks ? calculatedQuestionTotal !== answerKey.paper_max_marks : false;
+  const paperTotalMismatch = paperTotalMarks > 0 ? calculatedQuestionTotal !== paperTotalMarks : false;
 
   // Load saved papers from SQLite Library
   const loadSavedPapers = async () => {
@@ -176,34 +212,139 @@ export function TeacherPrototypeWorkspace() {
     loadSavedPapers();
   }, []);
 
-  const handleSaveSetup = async () => {
+  const handlePaperUpload = async (file: File) => {
+    setPaperFile(file);
     setError('');
-    setStatus('Saving question paper & drafting rubric reference...');
+    setIsExtracting(true);
+    setStatus(`Extracting questions from ${file.name}...`);
+    setEditableQuestions([]);
+    setExtractionWarnings([]);
+    setReferences([]);
+    setDisagreements([]);
+    setSetupSaved(false);
+    setIsLocked(false);
+
     try {
-      if (answerKeyFile) {
-        setBasis('Answer Key');
-        setApproved(true);
-      } else {
-        setBasis('AI-Generated Reference');
-        setApproved(true);
-      }
-
       const form = new FormData();
-      form.append('title', paperTitle);
-      form.append('subject', subject);
-      form.append('strictness', mode);
-      form.append('checking_medium', answerKeyFile ? 'answer_key' : 'ai_reference');
-      if (paperFile) form.append('paper_file', paperFile);
-      if (answerKeyFile) form.append('answer_key_file', answerKeyFile);
-
-      const res = await fetch('/api/papers', { method: 'POST', body: form });
+      form.append('paper_file', file);
+      const res = await fetch('/api/papers/extract', {
+        method: 'POST',
+        body: form,
+      });
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.detail || `Server error (HTTP ${res.status}) saving question paper.`);
+        throw new Error(errData.detail || `Server error (HTTP ${res.status}) extracting questions.`);
       }
       const data = await res.json();
-      if (data.paper_id) {
-        setCurrentPaperId(data.paper_id);
+      setDraftId(data.draft_id);
+      setExtractionSource(data.source);
+      setExtractionWarnings(data.warnings || []);
+      setInstructions(data.instructions || '');
+      setPaperTotalMarks(data.total_marks || 0);
+      if (!paperTitle) {
+        setPaperTitle(file.name.replace(/\.[^/.]+$/, ''));
+      }
+
+      const mapped: UIQuestion[] = (data.questions || []).map((q: any) => ({
+        key: q.key,
+        q_no: q.q_no,
+        question_text: q.text,
+        max_marks: Number(q.marks) || 1,
+        question_type: q.type || 'short',
+        section_name: q.section || 'General',
+        options: q.options || [],
+      }));
+      setEditableQuestions(mapped);
+      setStatus(
+        `Successfully detected ${mapped.length} questions from question paper (${
+          data.source === 'pdf_text' ? 'PDF Text Layer' : 'Vision Extraction'
+        }).`
+      );
+    } catch (err) {
+      setStatus('');
+      const msg = err instanceof Error ? err.message : 'Question extraction failed.';
+      setError(msg);
+      setRetryAction(() => () => handlePaperUpload(file));
+    } finally {
+      setIsExtracting(false);
+    }
+  };
+
+  const handleSaveSetup = async () => {
+    if (editableQuestions.length === 0) {
+      setError('Please upload a question paper and ensure at least one question is detected.');
+      return;
+    }
+    setError('');
+    setIsGeneratingRef(true);
+    setStatus('Creating paper and preparing rubric reference...');
+
+    try {
+      // 1. Create Paper via POST /api/papers (JSON)
+      const paperPayload = {
+        draft_id: draftId || undefined,
+        title: paperTitle || 'Exam Paper',
+        subject: subject || '',
+        strictness: mode,
+        checking_medium: answerKeyFile ? 'answer_key' : 'ai_reference',
+        total_marks: paperTotalMarks || calculatedQuestionTotal,
+        instructions: instructions,
+        questions: editableQuestions.map((q) => ({
+          key: q.key,
+          q_no: q.q_no,
+          question_text: q.question_text,
+          max_marks: q.max_marks,
+          question_type: q.question_type,
+          section_name: q.section_name,
+          options: q.options,
+          strictness_override: overrides[q.q_no] || undefined,
+        })),
+      };
+
+      const pRes = await fetch('/api/papers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(paperPayload),
+      });
+      if (!pRes.ok) {
+        const errData = await pRes.json().catch(() => ({}));
+        throw new Error(errData.detail || `Server error (HTTP ${pRes.status}) creating paper.`);
+      }
+      const pData = await pRes.json();
+      const paperId = pData.paper_id;
+      setCurrentPaperId(paperId);
+
+      // 2. Parse answer key OR generate AI reference
+      if (answerKeyFile) {
+        setStatus('Parsing uploaded answer key...');
+        const keyForm = new FormData();
+        keyForm.append('answer_key_file', answerKeyFile);
+        const kRes = await fetch(`/api/papers/${paperId}/answer-key`, {
+          method: 'POST',
+          body: keyForm,
+        });
+        if (!kRes.ok) {
+          const errData = await kRes.json().catch(() => ({}));
+          throw new Error(errData.detail || `Server error (HTTP ${kRes.status}) parsing answer key.`);
+        }
+        const kData = await kRes.json();
+        setReferences(kData.references || []);
+        setBasis('Answer Key');
+        setStatus('Answer key parsed successfully. Review reference items below and click Approve & Lock.');
+      } else {
+        setStatus('AI is drafting rubric reference (running dual-draft cross check)...');
+        const rRes = await fetch(`/api/papers/${paperId}/reference/generate`, {
+          method: 'POST',
+        });
+        if (!rRes.ok) {
+          const errData = await rRes.json().catch(() => ({}));
+          throw new Error(errData.detail || `Server error (HTTP ${rRes.status}) generating AI reference.`);
+        }
+        const rData = await rRes.json();
+        setReferences(rData.references || []);
+        setDisagreements(rData.disagreements || []);
+        setBasis('AI-Generated Reference');
+        setStatus('AI reference generated. Review model answers & rubric key points below and click Approve & Lock.');
       }
 
       setAnswerKey({
@@ -219,15 +360,78 @@ export function TeacherPrototypeWorkspace() {
       });
 
       setSetupSaved(true);
-      setIsLocked(true);
-      setStatus('');
-      setStep('upload');
     } catch (err) {
       setStatus('');
       const msg = err instanceof Error ? err.message : 'Failed to save paper setup.';
       setError(msg);
       setRetryAction(() => () => handleSaveSetup());
+    } finally {
+      setIsGeneratingRef(false);
     }
+  };
+
+  const handleUpdateReferences = async () => {
+    if (!currentPaperId || references.length === 0) return;
+    setError('');
+    setStatus('Saving reference edits...');
+    try {
+      const res = await fetch(`/api/papers/${currentPaperId}/reference`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ references }),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || `Server error (HTTP ${res.status}) updating reference.`);
+      }
+      setStatus('Reference edits saved successfully.');
+    } catch (err) {
+      setStatus('');
+      const msg = err instanceof Error ? err.message : 'Failed to update reference.';
+      setError(msg);
+    }
+  };
+
+  const handleLockPaper = async () => {
+    if (!currentPaperId) {
+      setError('Paper must be saved before locking.');
+      return;
+    }
+    setError('');
+    setStatus('Validating and locking paper...');
+    try {
+      if (references.length > 0) {
+        await fetch(`/api/papers/${currentPaperId}/reference`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ references }),
+        });
+      }
+
+      const lockRes = await fetch(`/api/papers/${currentPaperId}/lock`, { method: 'POST' });
+      if (!lockRes.ok) {
+        const errData = await lockRes.json().catch(() => ({}));
+        throw new Error(errData.detail || `Server error (HTTP ${lockRes.status}) locking paper.`);
+      }
+
+      setIsLocked(true);
+      setApproved(true);
+      setStatus('Paper approved and locked! Step 2 (Upload Answer Sheets) is now unlocked.');
+    } catch (err) {
+      setStatus('');
+      const msg = err instanceof Error ? err.message : 'Failed to lock paper.';
+      setError(msg);
+      setRetryAction(() => () => handleLockPaper());
+    }
+  };
+
+  const handleNavigateStep = (targetStep: SetupStep) => {
+    if (targetStep === 'upload' && !isLocked) {
+      setError('You must approve and lock the question paper setup before uploading student answer sheets.');
+      return;
+    }
+    setError('');
+    setStep(targetStep);
   };
 
   const unlockPaperWithConfirmation = () => {
@@ -545,18 +749,27 @@ export function TeacherPrototypeWorkspace() {
               ['library', '6. Library'],
               ['verify', '7. Verify Mode'],
             ] as [SetupStep, string][]
-          ).map(([key, label]) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setStep(key)}
-              className={`px-3 py-1.5 rounded-md transition-all ${
-                step === key ? 'bg-white text-[#005dac] shadow-xs font-bold' : 'text-[#64748b] hover:text-[#0b1c30]'
-              }`}
-            >
-              {label}
-            </button>
-          ))}
+          ).map(([key, label]) => {
+            const isUploadLocked = key === 'upload' && !isLocked;
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => handleNavigateStep(key)}
+                title={isUploadLocked ? 'Locked until Paper Setup is approved and locked' : undefined}
+                className={`px-3 py-1.5 rounded-md transition-all flex items-center gap-1 ${
+                  step === key
+                    ? 'bg-white text-[#005dac] shadow-xs font-bold'
+                    : isUploadLocked
+                    ? 'text-[#94a3b8] opacity-60 cursor-not-allowed'
+                    : 'text-[#64748b] hover:text-[#0b1c30]'
+                }`}
+              >
+                <span>{label}</span>
+                {isUploadLocked && <LockKeyhole className="w-3 h-3 text-[#94a3b8]" />}
+              </button>
+            );
+          })}
         </nav>
 
         {/* Demo Mode & Quick Settings */}
@@ -648,10 +861,13 @@ export function TeacherPrototypeWorkspace() {
                   <span className="font-semibold block mb-1">Question Paper (PDF or Image) *</span>
                   <input
                     type="file"
-                    disabled={isLocked}
+                    disabled={isLocked || isExtracting}
                     accept=".pdf,.jpg,.jpeg,.png"
                     className="hidden"
-                    onChange={(e) => setPaperFile(e.target.files?.[0] || null)}
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) handlePaperUpload(f);
+                    }}
                   />
                   <span className="text-[#005dac] font-semibold flex items-center gap-1 mt-2">
                     <Upload className="w-4 h-4" /> Choose Paper
@@ -659,6 +875,16 @@ export function TeacherPrototypeWorkspace() {
                   {paperFile && (
                     <span className="block mt-2 font-medium text-[#414752] truncate">
                       {paperFile.name} · {formatBytes(paperFile.size)}
+                    </span>
+                  )}
+                  {isExtracting && (
+                    <span className="block mt-1.5 text-[11px] font-bold text-[#005dac] animate-pulse">
+                      Extracting questions with AI...
+                    </span>
+                  )}
+                  {extractionSource && !isExtracting && (
+                    <span className="block mt-1 text-[10px] text-[#196b22] font-semibold">
+                      Extracted via {extractionSource === 'pdf_text' ? 'PDF Text Layer' : 'Vision Extraction'}
                     </span>
                   )}
                 </label>
@@ -709,19 +935,48 @@ export function TeacherPrototypeWorkspace() {
                 <div className="flex flex-col justify-end gap-2">
                   <button
                     type="button"
-                    disabled={isLocked}
+                    disabled={isLocked || editableQuestions.length === 0 || isExtracting || isGeneratingRef}
                     onClick={handleSaveSetup}
-                    className="w-full rounded-lg bg-[#005dac] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#004786] disabled:opacity-40 shadow-xs"
+                    className="w-full rounded-lg bg-[#005dac] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#004786] disabled:opacity-40 shadow-xs flex items-center justify-center gap-1.5"
                   >
-                    Save Paper & Lock Setup
+                    {isGeneratingRef ? (
+                      <>
+                        <RotateCw className="w-4 h-4 animate-spin" />
+                        <span>{answerKeyFile ? 'Parsing Answer Key...' : 'Drafting Reference...'}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4" />
+                        <span>{setupSaved ? 'Re-Save Paper Setup' : (answerKeyFile ? 'Save & Parse Answer Key' : 'Save & Draft AI Reference')}</span>
+                      </>
+                    )}
                   </button>
                   {setupSaved && (
                     <span className="text-center text-[11px] font-semibold text-[#196b22] flex items-center justify-center gap-1">
-                      <CheckCircle2 className="w-3.5 h-3.5" /> Paper Locked · {basis}
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Paper Saved · {basis}
                     </span>
                   )}
                 </div>
               </div>
+
+              {/* Extraction Warnings & Instructions */}
+              {extractionWarnings.length > 0 && (
+                <div className="mt-4 rounded-lg border border-[#f57c00] bg-[#fff3e0] p-3 text-xs text-[#b26a00]">
+                  <div className="font-bold flex items-center gap-1.5 mb-1">
+                    <AlertTriangle className="w-4 h-4" /> Extraction Warnings:
+                  </div>
+                  <ul className="list-disc list-inside space-y-0.5 text-[11px]">
+                    {extractionWarnings.map((w, wIdx) => (
+                      <li key={wIdx}>{w}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {instructions && (
+                <div className="mt-3 rounded-lg border border-[#90caf9] bg-[#e3f2fd] p-2.5 text-xs text-[#0d47a1]">
+                  <strong>Paper Instructions:</strong> {instructions}
+                </div>
+              )}
 
               {/* Editable Question Breakdown Table */}
               <div className="mt-5 border-t border-[#f1f5f9] pt-4">
@@ -733,11 +988,12 @@ export function TeacherPrototypeWorkspace() {
                     <p className="text-[11px] text-[#64748b]">
                       Total Questions: <strong>{editableQuestions.length}</strong> · Sum of Marks:{' '}
                       <strong className="text-[#005dac]">{calculatedQuestionTotal} Marks</strong>
+                      {paperTotalMarks > 0 && ` (Paper Total: ${paperTotalMarks} Marks)`}
                     </p>
                   </div>
                   {paperTotalMismatch && (
                     <div className="rounded border border-[#f57c00] bg-[#fff3e0] px-3 py-1 text-[11px] font-bold text-[#b26a00] flex items-center gap-1">
-                      <AlertTriangle className="w-3.5 h-3.5" /> Warning: Sum of question marks does not equal paper total!
+                      <AlertTriangle className="w-3.5 h-3.5" /> Warning: Sum of question marks ({calculatedQuestionTotal}) does not equal paper total ({paperTotalMarks})!
                     </div>
                   )}
                 </div>
@@ -747,9 +1003,9 @@ export function TeacherPrototypeWorkspace() {
                     <thead className="bg-[#f8f9ff] border-b border-[#e2e8f0] font-bold text-[#414752]">
                       <tr>
                         <th className="p-2.5 w-16">Q #</th>
-                        <th className="p-2.5">Question Text</th>
+                        <th className="p-2.5">Question Text & MCQ Options</th>
                         <th className="p-2.5 w-24">Section</th>
-                        <th className="p-2.5 w-24">Type</th>
+                        <th className="p-2.5 w-28">Type</th>
                         <th className="p-2.5 w-24">Marks</th>
                         <th className="p-2.5 w-32">Strictness</th>
                       </tr>
@@ -757,7 +1013,18 @@ export function TeacherPrototypeWorkspace() {
                     <tbody className="divide-y divide-[#e2e8f0]">
                       {editableQuestions.map((q, idx) => (
                         <tr key={idx} className="hover:bg-[#f8f9ff]">
-                          <td className="p-2.5 font-bold">{q.q_no}</td>
+                          <td className="p-2.5 font-bold">
+                            <input
+                              disabled={isLocked}
+                              value={q.q_no}
+                              onChange={(e) => {
+                                const copy = [...editableQuestions];
+                                copy[idx].q_no = e.target.value;
+                                setEditableQuestions(copy);
+                              }}
+                              className="w-16 rounded border border-[#c1c6d4] px-1.5 py-1 text-xs font-bold disabled:bg-transparent disabled:border-none"
+                            />
+                          </td>
                           <td className="p-2.5">
                             <input
                               disabled={isLocked}
@@ -767,15 +1034,48 @@ export function TeacherPrototypeWorkspace() {
                                 copy[idx].question_text = e.target.value;
                                 setEditableQuestions(copy);
                               }}
-                              className="w-full rounded border border-[#c1c6d4] px-2 py-1 text-xs disabled:bg-transparent disabled:border-none"
+                              className="w-full rounded border border-[#c1c6d4] px-2 py-1 text-xs disabled:bg-transparent disabled:border-none mb-1"
+                            />
+                            {q.question_type === 'mcq' && q.options && q.options.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {q.options.map((opt, oIdx) => (
+                                  <span key={oIdx} className="rounded bg-[#eff4ff] border border-[#d4e3ff] px-1.5 py-0.5 text-[10px] text-[#005dac]">
+                                    {opt}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </td>
+                          <td className="p-2.5">
+                            <input
+                              disabled={isLocked}
+                              value={q.section_name}
+                              onChange={(e) => {
+                                const copy = [...editableQuestions];
+                                copy[idx].section_name = e.target.value;
+                                setEditableQuestions(copy);
+                              }}
+                              className="w-20 rounded border border-[#c1c6d4] px-1.5 py-1 text-xs disabled:bg-transparent disabled:border-none"
                             />
                           </td>
                           <td className="p-2.5">
-                            <span className="rounded bg-[#f1f5f9] px-2 py-0.5 text-[10px] font-semibold text-[#414752]">
-                              {q.section_name}
-                            </span>
+                            <select
+                              disabled={isLocked}
+                              value={q.question_type}
+                              onChange={(e) => {
+                                const copy = [...editableQuestions];
+                                copy[idx].question_type = e.target.value;
+                                setEditableQuestions(copy);
+                              }}
+                              className="rounded border border-[#c1c6d4] px-1.5 py-1 text-xs disabled:bg-transparent"
+                            >
+                              <option value="short">Short</option>
+                              <option value="long">Long</option>
+                              <option value="mcq">MCQ</option>
+                              <option value="one_word">One Word</option>
+                              <option value="maths">Maths</option>
+                            </select>
                           </td>
-                          <td className="p-2.5 capitalize">{q.question_type}</td>
                           <td className="p-2.5">
                             <input
                               disabled={isLocked}
@@ -811,6 +1111,153 @@ export function TeacherPrototypeWorkspace() {
                   </table>
                 </div>
               </div>
+
+              {/* Step 1.3: Reference Review & Approve/Lock Panel */}
+              {references.length > 0 && (
+                <div className="mt-6 rounded-xl border border-[#b9d3ff] bg-[#f8fbff] p-5 shadow-xs">
+                  <div className="flex items-center justify-between border-b border-[#dbe6f5] pb-3 mb-4">
+                    <div>
+                      <h3 className="text-sm font-bold text-[#004786] flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-[#005dac]" />
+                        Step 1.3 · Reference & Model Answers Review ({basis})
+                      </h3>
+                      <p className="text-xs text-[#526071]">
+                        Review and fine-tune model answers and rubric points before approving and locking the paper.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {!isLocked && (
+                        <button
+                          type="button"
+                          onClick={handleUpdateReferences}
+                          className="rounded-lg border border-[#c1c6d4] bg-white px-3 py-1.5 text-xs font-semibold text-[#414752] hover:bg-[#f1f5f9]"
+                        >
+                          Save Edits
+                        </button>
+                      )}
+                      {!isLocked ? (
+                        <button
+                          type="button"
+                          onClick={handleLockPaper}
+                          className="rounded-lg bg-[#005dac] px-4 py-2 text-xs font-bold text-white hover:bg-[#004786] flex items-center gap-1.5 shadow-xs"
+                        >
+                          <LockKeyhole className="w-4 h-4" /> Approve & Lock Paper
+                        </button>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <span className="rounded-lg bg-[#e8f5e9] border border-[#a5d6a7] px-3 py-1.5 text-xs font-bold text-[#1b5e20] flex items-center gap-1.5">
+                            <CheckCircle2 className="w-4 h-4 text-[#2e7d32]" /> Paper Approved & Locked
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setStep('upload')}
+                            className="rounded-lg bg-[#196b22] px-4 py-2 text-xs font-bold text-white hover:bg-[#14531b] flex items-center gap-1.5 shadow-xs"
+                          >
+                            <span>Proceed to Step 2: Upload Student Sheets</span>
+                            <Upload className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {disagreements.length > 0 && (
+                    <div className="mb-4 rounded-lg border border-[#f57c00] bg-[#fff3e0] p-3 text-xs text-[#b26a00]">
+                      <div className="font-bold flex items-center gap-1.5 mb-1">
+                        <AlertTriangle className="w-4 h-4" /> Dual-Draft Cross-Check Disagreements:
+                      </div>
+                      <ul className="list-disc list-inside space-y-0.5 text-[11px]">
+                        {disagreements.map((d, dIdx) => (
+                          <li key={dIdx}>{d}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  <div className="space-y-3">
+                    {references.map((ref, rIdx) => {
+                      const q = editableQuestions.find((item) => item.key === ref.key) || editableQuestions[rIdx];
+                      return (
+                        <div key={ref.key || rIdx} className="rounded-lg border border-[#d4e3ff] bg-white p-4 shadow-2xs">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              <span className="rounded bg-[#005dac] px-2 py-0.5 text-[11px] font-bold text-white">
+                                {q?.q_no || `Q.${rIdx + 1}`}
+                              </span>
+                              <span className="text-xs font-semibold text-[#1e293b]">
+                                {q?.question_text || ref.key}
+                              </span>
+                              <span className="rounded bg-[#f1f5f9] px-2 py-0.5 text-[10px] font-bold text-[#64748b]">
+                                {q?.max_marks} Marks · {q?.question_type?.toUpperCase()}
+                              </span>
+                            </div>
+                            {ref.correct_option && (
+                              <span className="text-xs font-bold text-[#005dac] bg-[#eff4ff] px-2 py-0.5 rounded">
+                                Correct Option: {ref.correct_option}
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="space-y-2 text-xs">
+                            <div>
+                              <label className="block text-[11px] font-semibold text-[#64748b] mb-1">Model Answer:</label>
+                              <textarea
+                                disabled={isLocked}
+                                rows={2}
+                                value={ref.model_answer}
+                                onChange={(e) => {
+                                  const copy = [...references];
+                                  copy[rIdx].model_answer = e.target.value;
+                                  setReferences(copy);
+                                }}
+                                className="w-full rounded border border-[#c1c6d4] p-2 text-xs disabled:bg-[#f8fafc]"
+                              />
+                            </div>
+
+                            {ref.key_points && ref.key_points.length > 0 && (
+                              <div>
+                                <label className="block text-[11px] font-semibold text-[#64748b] mb-1">
+                                  Rubric Key Points ({ref.key_points.reduce((s, p) => s + (Number(p.marks) || 0), 0)} / {q?.max_marks} M):
+                                </label>
+                                <div className="space-y-1.5">
+                                  {ref.key_points.map((kp, kpIdx) => (
+                                    <div key={kpIdx} className="flex items-center gap-2">
+                                      <input
+                                        disabled={isLocked}
+                                        value={kp.text}
+                                        onChange={(e) => {
+                                          const copy = [...references];
+                                          copy[rIdx].key_points[kpIdx].text = e.target.value;
+                                          setReferences(copy);
+                                        }}
+                                        className="flex-1 rounded border border-[#c1c6d4] px-2 py-1 text-xs disabled:bg-transparent"
+                                      />
+                                      <input
+                                        disabled={isLocked}
+                                        type="number"
+                                        step={0.5}
+                                        min={0.5}
+                                        value={kp.marks}
+                                        onChange={(e) => {
+                                          const copy = [...references];
+                                          copy[rIdx].key_points[kpIdx].marks = Number(e.target.value) || 0.5;
+                                          setReferences(copy);
+                                        }}
+                                        className="w-16 rounded border border-[#c1c6d4] px-2 py-1 text-xs font-bold text-[#005dac] disabled:bg-transparent"
+                                      />
+                                      <span className="text-[11px] text-[#64748b]">M</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           </section>
         )}
