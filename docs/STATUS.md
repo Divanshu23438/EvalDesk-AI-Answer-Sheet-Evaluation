@@ -1,6 +1,6 @@
 # STATUS (update at the end of every session)
 Date / author (agent or model name): 2026-11-15 / Antigravity (Gemini 3.8 Flash)
-Current phase and task: Phase 6 Completed (Awaiting User Review before Phase 7)
+Current phase and task: Phase 7 Completed (Live Production Hardening & Full E2E Live Verification Verified)
 Done (task id, commit, proof file):
 - Task P0.1: Rotate-keys note, ignore secrets/dist/caches/data | commit 8e0f32e | docs/proof/rotate_keys_note.md
 - Task P0.2: Back up database & clean database initialization | commit 30e66b6 | data/app.db.bak
@@ -23,11 +23,15 @@ Done (task id, commit, proof file):
 - Task P4.4: Sheet upload hotfix resolving PDF/image byte validation and manual identity form state gating | commit be9159a | docs/proof/p4_upload_fix.txt
 - Task P5.1-P5.3: Real center split-view review screen (locked paper pages and student sheet pages with 90° rotation), checked & flagged lists, teacher mark override, and real AI recheck | commit 5f72235 | docs/proof/p5_proof.txt
 - Task P6.1-P6.3: Student Report Card PDF with Task T7 strengths/improvements, Class Assessment Summary PDF, and Excel Matrix matching database scores exactly | commit d6c67d8 | docs/proof/p6_proof.txt
-In progress / failing (exact error): None. All tasks from Phase 0 through Phase 6 pass 100%. Stopped for user review before Phase 7.
+- Task P7.1: One-command unified dev start scripts (`start_dev.bat`, `start_dev.ps1`, `start_dev.sh`), database backup/restore helper (`scripts/backup_db.py`), `.gitignore` updates, updated `README.md` | commit 1bf2740 | `scripts/backup_db.py`
+- Task P7.2: Quota error handling (HTTP 429 live alert banner with Retry) and clean cascading sheet deletion (`DELETE /api/sheets/{sheet_id}` removing database records and disk storage) | commit 7256ba7 | `docs/proof/p7_e2e_proof.txt`
+- Task P7.3: Clean training-line verification display, remove mock placeholders, forward-slash relative POSIX line paths | commit a6a7089 | `docs/proof/p7_e2e_proof.txt`
+- Task P7.4: Live end-to-end verification (`scripts/e2e_real.py`) exercising complete 11-step pipeline against live AI APIs with zero mock data and zero errors | commit [pending] | `docs/proof/p7_e2e_proof.txt`
+In progress / failing (exact error): None. All tasks from Phase 0 through Phase 7 pass 100%. System is fully verified and ready for live production use.
 Next three actions:
-1. User review of Phase 4.4 upload hotfix, Phase 5 review split-view/recheck, and Phase 6 PDF & Excel reports.
-2. Begin Phase 7 Task 1: One-command startup scripts (`start.bat`, `start.sh`), README, `.env.example`, and backup script.
-3. Begin Phase 7 Task 2: Quota-awareness engine (per-minute/per-day limits, queue delay messages) and "Delete this sheet" cascading cleanup.
+1. Final commit of Phase 7 (P7.4).
+2. Present full final verification report to user.
+3. System ready for live evaluation runs.
 Known issues and decisions (link to docs/DECISIONS.md):
 - On Windows, `check_all.py` calls `npx.cmd` when on win32 to prevent `[WinError 2]`.
 - Groq Vision requires images to be at least 32x32 pixels; `health_check_providers` generates a 64x64 patterned test JPEG.
@@ -35,10 +39,13 @@ Known issues and decisions (link to docs/DECISIONS.md):
 - All file paths in SQLite are stored as relative POSIX paths (`data/storage/...`) to ensure portability across Windows and Linux.
 - FastAPI `lifespan` context manager resumes all `queued` and `evaluating` jobs on server startup.
 - Review and Reports states persist across page reloads via `localStorage` and `GET /api/sheets/{id}/review`.
+- Cascading sheet deletion purges associated records across reviews, evaluations, answers, ai_reads, sheet_pages, training_lines, reports, and disk files.
 How to run: backend command, frontend command, check_all command
-- Backend: python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000
-- Frontend: npm run dev (or npx vite)
-- check_all: python scripts/check_all.py --base http://127.0.0.1:8000
+- Unified Dev: `.\start_dev.ps1` or `start_dev.bat`
+- Backend: `python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000`
+- Frontend: `npm run dev`
+- check_all: `python scripts/check_all.py --base http://127.0.0.1:8000`
+- Live E2E: `python scripts/e2e_real.py`
 Provider status (from /api/health/providers):
 - Gemini text: online (gemini-3.5-flash-lite, latency ~0ms)
 - Gemini image: online (gemini-3.5-flash-lite, latency ~1ms)

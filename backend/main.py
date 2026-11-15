@@ -36,7 +36,7 @@ from backend.storage import (
     to_relative_posix,
     from_relative_posix,
 )
-from backend.pdf_tools import process_pdf_bytes, normalize_image_bytes
+from backend.pdf_tools import process_pdf_bytes, normalize_image_bytes, process_pdf
 from backend.line_tools import segment_text_lines
 from backend.ai_gateway import (
     ai_gateway,
