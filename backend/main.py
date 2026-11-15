@@ -67,9 +67,14 @@ async def lifespan(app: FastAPI):
     try:
         with get_db() as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT id FROM sheets WHERE status IN ('queued', 'evaluating')")
+            cursor.execute("SELECT id FROM sheets WHERE status IN ('queued', 'evaluating', 'marking')")
             rows = cursor.fetchall()
             for r in rows:
+                cursor.execute(
+                    "UPDATE sheets SET status = 'queued', current_stage = 'Queued for evaluation (resumed on startup)', updated_at = datetime('now') WHERE id = ?",
+                    (r["id"],)
+                )
+                conn.commit()
                 asyncio.create_task(run_sheet_evaluation_pipeline(r["id"]))
     except Exception as e:
         print(f"[Startup Resume] Error resuming pending jobs: {e}")
@@ -1379,70 +1384,80 @@ async def run_sheet_evaluation_pipeline(sheet_id: str):
 
         # Stage 4: Marking & Flagging (Task T6)
         current_stage = "marking"
-        with get_db() as conn:
-            conn.execute("UPDATE sheets SET current_stage = 'Marking answers against rubric', updated_at = datetime('now') WHERE id = ?", (sheet_id,))
+        try:
+            with get_db() as conn:
+                conn.execute(
+                    "UPDATE sheets SET current_stage = ?, updated_at = datetime('now') WHERE id = ?",
+                    (f"Marking answers against rubric (0/{len(questions)})", sheet_id),
+                )
 
-        evaluated_questions = []
+            marking_sem = asyncio.Semaphore(3)
+            completed_marking = 0
+            total_q_count = len(questions)
 
-        for q in questions:
-            k = q.get("key", q["id"])
-            q_id = q["id"]
-            max_m = float(q["max_marks"])
-            q_type = q.get("question_type", "short")
-            ref_data = ref_map.get(q_id) or ref_map.get(k) or {}
+            async def grade_single_question(q: Dict[str, Any]) -> Dict[str, Any]:
+                nonlocal completed_marking
+                k = q.get("key", q["id"])
+                q_id = q["id"]
+                max_m = float(q["max_marks"])
+                q_type = q.get("question_type", "short")
+                ref_data = ref_map.get(q_id) or ref_map.get(k) or {}
 
-            entry = transcriptions_by_key.get(k, {})
-            texts = entry.get("texts", [])
-            final_text = " ".join(texts).strip()
-            pages_answered = entry.get("pages", [])
-            legibility_scores = entry.get("legibility_scores", [])
-            avg_legibility = (sum(legibility_scores) / len(legibility_scores)) if legibility_scores else (1.0 if final_text else 0.0)
-            is_attempted = bool(final_text)
+                entry = transcriptions_by_key.get(k, {})
+                texts = entry.get("texts", [])
+                final_text = " ".join(texts).strip()
+                pages_answered = entry.get("pages", [])
+                legibility_scores = entry.get("legibility_scores", [])
+                avg_legibility = (sum(legibility_scores) / len(legibility_scores)) if legibility_scores else (1.0 if final_text else 0.0)
 
-            flags = []
+                # Skip AI grading calls immediately when answer is empty or not_attempted
+                is_attempted = bool(final_text) and final_text.lower() not in [
+                    "not attempted", "unattempted", "nil", "n/a", "none", "not answered", "skipped", "blank"
+                ]
 
-            # Legibility Check
-            if is_attempted and avg_legibility < 0.70:
-                flags.append("Low legibility in handwriting")
+                flags = []
 
-            # Suspicious prompt injection check
-            if is_attempted and check_suspicious_text(final_text):
-                flags.append("Suspicious text in the answer (possible prompt injection)")
+                if is_attempted and avg_legibility < 0.70:
+                    flags.append("Low legibility in handwriting")
 
-            awarded_marks = 0.0
-            reason = ""
-            evidence_quote = ""
+                if is_attempted and check_suspicious_text(final_text):
+                    flags.append("Suspicious text in the answer (possible prompt injection)")
 
-            if not is_attempted:
                 awarded_marks = 0.0
-                reason = "Question not attempted."
-                flags.append("not_attempted")
-            elif q_type in ["mcq", "one_word"]:
-                # Exact match against approved reference correct_option (no AI call)
-                ref_option = ref_data.get("correct_option") or ref_data.get("model_answer", "")
-                if not ref_option:
-                    flags.append("Missing approved reference answer for objective question")
-                mcq_res = evaluate_mcq_or_one_word(final_text, ref_option, max_m)
-                awarded_marks = mcq_res["marks"]
-                reason = mcq_res["reason"]
-                evidence_quote = mcq_res["evidence"]
-                for f in mcq_res.get("flags", []):
-                    if f not in flags:
-                        flags.append(f)
-            else:
-                # Short / Long / Maths: Grade against key points
-                key_points = []
-                if ref_data:
-                    try:
-                        key_points = json.loads(ref_data.get("key_points_json") or "[]")
-                    except Exception:
-                        key_points = []
-                if not key_points:
-                    model_ans = ref_data.get("model_answer") or q["question_text"]
-                    key_points = [{"text": model_ans, "marks": max_m}]
+                reason = ""
+                evidence_quote = ""
 
-                formatted_points = "\n".join([f"- Point {idx+1} ({kp.get('marks', 1.0)}M): {kp.get('text', '')}" for idx, kp in enumerate(key_points)])
-                prompt_grade = f"""
+                if not is_attempted:
+                    # Assign 0.0 marks with flag not_attempted in Python without calling Gemini/Groq
+                    awarded_marks = 0.0
+                    reason = "Question not attempted."
+                    flags.append("not_attempted")
+                elif q_type in ["mcq", "one_word"]:
+                    # Exact match against approved reference correct_option (pure Python, zero AI calls)
+                    ref_option = ref_data.get("correct_option") or ref_data.get("model_answer", "")
+                    if not ref_option:
+                        flags.append("Missing approved reference answer for objective question")
+                    mcq_res = evaluate_mcq_or_one_word(final_text, ref_option, max_m)
+                    awarded_marks = mcq_res["marks"]
+                    reason = mcq_res["reason"]
+                    evidence_quote = mcq_res["evidence"]
+                    for f in mcq_res.get("flags", []):
+                        if f not in flags:
+                            flags.append(f)
+                else:
+                    # Subjective question: Grade with AI against rubric key points with concurrency and timeout
+                    key_points = []
+                    if ref_data:
+                        try:
+                            key_points = json.loads(ref_data.get("key_points_json") or "[]")
+                        except Exception:
+                            key_points = []
+                    if not key_points:
+                        model_ans = ref_data.get("model_answer") or q["question_text"]
+                        key_points = [{"text": model_ans, "marks": max_m}]
+
+                    formatted_points = "\n".join([f"- Point {idx+1} ({kp.get('marks', 1.0)}M): {kp.get('text', '')}" for idx, kp in enumerate(key_points)])
+                    prompt_grade = f"""
 Grade the student's answer ONLY against the key points below.
 Question: {q['question_text']} (Max: {max_m} marks)
 Rubric Key Points:
@@ -1470,84 +1485,114 @@ Return JSON strictly matching schema:
 }}
 Do not award marks for anything not in the key points.
 """
-                try:
-                    g_grade = await ai_gateway.call_gemini(prompt_grade, task="grade_primary")
-                    eval_list = g_grade.get("data", {}).get("evaluations", [])
-                    if not eval_list and isinstance(g_grade.get("data"), list):
-                        eval_list = g_grade.get("data")
+                    async with marking_sem:
+                        try:
+                            g_grade = await asyncio.wait_for(
+                                ai_gateway.call_gemini(prompt_grade, task="grade_primary"),
+                                timeout=25.0,
+                            )
+                            eval_list = g_grade.get("data", {}).get("evaluations", [])
+                            if not eval_list and isinstance(g_grade.get("data"), list):
+                                eval_list = g_grade.get("data")
 
-                    total_awarded = 0.0
-                    pt_reasons = []
-                    quotes = []
+                            total_awarded = 0.0
+                            pt_reasons = []
+                            quotes = []
 
-                    for idx, kp in enumerate(key_points):
-                        pt_alloc = float(kp.get("marks", max_m / len(key_points)))
-                        match_ev = next((ev for ev in eval_list if ev.get("point_index") == idx + 1), None)
-                        if not match_ev and idx < len(eval_list):
-                            match_ev = eval_list[idx]
+                            for idx, kp in enumerate(key_points):
+                                pt_alloc = float(kp.get("marks", max_m / len(key_points)))
+                                match_ev = next((ev for ev in eval_list if ev.get("point_index") == idx + 1), None)
+                                if not match_ev and idx < len(eval_list):
+                                    match_ev = eval_list[idx]
 
-                        if match_ev:
-                            verdict = str(match_ev.get("verdict", "none")).lower()
-                            quote = str(match_ev.get("quote", "")).strip()
-                            r_text = str(match_ev.get("reason", "")).strip()
+                                if match_ev:
+                                    verdict = str(match_ev.get("verdict", "none")).lower()
+                                    quote = str(match_ev.get("quote", "")).strip()
+                                    r_text = str(match_ev.get("reason", "")).strip()
 
-                            # Strict Python quote verification
-                            if quote:
-                                if not verify_evidence_quote(quote, final_text):
-                                    verdict = "none"
-                                    if "Evidence quote not found in student text" not in flags:
-                                        flags.append("Evidence quote not found in student text")
-                                    r_text = f"Rejected: Quoted evidence '{quote[:40]}' not found in student text."
-                                    quote = ""
+                                    # Strict Python quote verification
+                                    if quote:
+                                        if not verify_evidence_quote(quote, final_text):
+                                            verdict = "none"
+                                            if "Evidence quote not found in student text" not in flags:
+                                                flags.append("Evidence quote not found in student text")
+                                            r_text = f"Rejected: Quoted evidence '{quote[:40]}' not found in student text."
+                                            quote = ""
 
-                            if verdict == "full":
-                                pt_score = pt_alloc
-                            elif verdict == "partial":
-                                pt_score = round_to_half_step(pt_alloc * 0.5)
+                                    if verdict == "full":
+                                        pt_score = pt_alloc
+                                    elif verdict == "partial":
+                                        pt_score = round_to_half_step(pt_alloc * 0.5)
+                                    else:
+                                        pt_score = 0.0
+
+                                    total_awarded += pt_score
+                                    if r_text:
+                                        pt_reasons.append(f"Pt {idx+1}: {r_text} ({pt_score}/{pt_alloc}M)")
+                                    if quote:
+                                        quotes.append(quote)
+                                else:
+                                    pt_reasons.append(f"Pt {idx+1}: not addressed (0/{pt_alloc}M)")
+
+                            awarded_marks = min(max_m, max(0.0, total_awarded))
+                            awarded_marks = round_to_half_step(awarded_marks)
+                            reason = " | ".join(pt_reasons) if pt_reasons else "Graded against rubric."
+                            evidence_quote = " ; ".join(quotes)
+                        except (asyncio.TimeoutError, TimeoutError):
+                            awarded_marks = 0.0
+                            reason = "Grading call timed out after 25s."
+                            evidence_quote = ""
+                            flags.append("call_timeout")
+                        except AIError as ae:
+                            # NEVER default marks! Mark question failed!
+                            awarded_marks = 0.0
+                            evidence_quote = ""
+                            if ae.kind == "rate_limited" or ae.status_code == 429:
+                                flags.append("quota_exceeded")
+                                reason = f"AI Quota Exceeded (HTTP 429): {ae.message}"
                             else:
-                                pt_score = 0.0
+                                flags.append("call_failed")
+                                reason = f"Grading call failed: {ae.message}"
 
-                            total_awarded += pt_score
-                            if r_text:
-                                pt_reasons.append(f"Pt {idx+1}: {r_text} ({pt_score}/{pt_alloc}M)")
-                            if quote:
-                                quotes.append(quote)
-                        else:
-                            pt_reasons.append(f"Pt {idx+1}: not addressed (0/{pt_alloc}M)")
+                completed_marking += 1
+                try:
+                    with get_db() as conn:
+                        conn.execute(
+                            "UPDATE sheets SET current_stage = ?, updated_at = datetime('now') WHERE id = ?",
+                            (f"Marking answers against rubric ({completed_marking}/{total_q_count})", sheet_id),
+                        )
+                except Exception:
+                    pass
 
-                    awarded_marks = min(max_m, max(0.0, total_awarded))
-                    awarded_marks = round_to_half_step(awarded_marks)
-                    reason = " | ".join(pt_reasons) if pt_reasons else "Graded against rubric."
-                    evidence_quote = " ; ".join(quotes)
-                except AIError as ae:
-                    # NEVER default marks! Mark question failed!
-                    awarded_marks = 0.0
-                    evidence_quote = ""
-                    if ae.kind == "rate_limited" or ae.status_code == 429:
-                        flags.append("quota_exceeded")
-                        reason = f"AI Quota Exceeded (HTTP 429): {ae.message}"
-                    else:
-                        flags.append("call_failed")
-                        reason = f"Grading call failed: {ae.message}"
+                return {
+                    "question_id": q_id,
+                    "key": k,
+                    "q_no": q["q_no"],
+                    "max_marks": max_m,
+                    "ai_marks": awarded_marks,
+                    "final_marks": awarded_marks,
+                    "reason": reason,
+                    "evidence_quote": evidence_quote,
+                    "flags": flags,
+                    "resolved": len(flags) == 0,
+                    "attempted": is_attempted,
+                    "extracted_text": final_text,
+                    "legibility_score": avg_legibility,
+                    "page_numbers": pages_answered,
+                    "bbox_json": json.dumps(entry.get("boxes", [])),
+                    "section_name": q.get("section_name", "General"),
+                }
 
-            evaluated_questions.append({
-                "question_id": q_id,
-                "key": k,
-                "q_no": q["q_no"],
-                "max_marks": max_m,
-                "ai_marks": awarded_marks,
-                "final_marks": awarded_marks,
-                "reason": reason,
-                "evidence_quote": evidence_quote,
-                "flags": flags,
-                "resolved": len(flags) == 0,
-                "attempted": is_attempted,
-                "extracted_text": final_text,
-                "legibility_score": avg_legibility,
-                "page_numbers": pages_answered,
-                "bbox_json": json.dumps(entry.get("boxes", [])),
-                "section_name": q.get("section_name", "General"),
-            })
+            evaluated_questions = await asyncio.gather(*[grade_single_question(q) for q in questions])
+
+        except Exception as exc:
+            print(f"[Evaluation Pipeline] Marking stage failed on sheet {sheet_id}: {exc}")
+            with get_db() as conn:
+                conn.execute(
+                    "UPDATE sheets SET status = 'failed', failed_stage = 'marking', error_message = ?, updated_at = datetime('now') WHERE id = ?",
+                    (str(exc), sheet_id),
+                )
+            raise exc
 
         # Stage 5: Flagging & Section Totals
         current_stage = "flagging"
@@ -1673,6 +1718,15 @@ def get_sheet_status(sheet_id: str):
         cursor.execute("SELECT COUNT(*) as page_count FROM sheet_pages WHERE sheet_id = ?", (sheet_id,))
         pc = cursor.fetchone()
         data["pages_count"] = pc["page_count"] if pc else 0
+
+        if data.get("paper_id"):
+            cursor.execute("SELECT COUNT(*) FROM questions WHERE paper_id = ?", (data["paper_id"],))
+            tq = cursor.fetchone()
+            data["total_questions"] = tq[0] if tq else 0
+
+        cursor.execute("SELECT COUNT(*) FROM evaluations WHERE sheet_id = ?", (sheet_id,))
+        eq = cursor.fetchone()
+        data["evaluated_questions_count"] = eq[0] if eq else 0
         return data
 
 @app.post("/api/sheets/{sheet_id}/retry")

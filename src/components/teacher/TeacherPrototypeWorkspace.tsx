@@ -141,6 +141,8 @@ export function TeacherPrototypeWorkspace() {
   const [evalStage, setEvalStage] = useState<'idle' | 'reading' | 'matching' | 'marking' | 'checking' | 'done' | 'error'>('idle');
   const [stageProgress, setStageProgress] = useState(0);
   const [errorMessage, setErrorMessage] = useState('');
+  const [liveStageText, setLiveStageText] = useState('');
+  const [sheetStatus, setSheetStatus] = useState('');
   const [retryAction, setRetryAction] = useState<(() => void) | null>(null);
 
   // Review & Split View State
@@ -527,18 +529,27 @@ export function TeacherPrototypeWorkspace() {
     }
   }, []);
 
-  const pollSheetStatus = async (sheetId: string) => {
-    let isDone = false;
-    let pollCount = 0;
-    while (!isDone && pollCount < 60) {
-      pollCount++;
-      await new Promise((r) => setTimeout(r, 1000));
+  // Continuous 2-second polling on Screen 3 without premature timeouts
+  useEffect(() => {
+    if (step !== 'status' || !currentSheetId) return;
+
+    let isMounted = true;
+    let inFlight = false;
+
+    const poll = async () => {
+      if (inFlight || !isMounted) return;
+      inFlight = true;
       try {
-        const stRes = await fetch(`/api/sheets/${sheetId}`);
-        if (!stRes.ok) continue;
+        const stRes = await fetch(`/api/sheets/${currentSheetId}`);
+        if (!stRes.ok || !isMounted) return;
         const stData = await stRes.json();
+        setSheetStatus(stData.status || '');
+
+        if (stData.student_name && !studentName) setStudentName(stData.student_name);
+        if (stData.roll_number && !rollNo) setRollNo(stData.roll_number);
 
         if (stData.current_stage) {
+          setLiveStageText(stData.current_stage);
           const stLower = String(stData.current_stage).toLowerCase();
           if (stLower.includes('queued')) {
             setEvalStage('reading');
@@ -548,10 +559,10 @@ export function TeacherPrototypeWorkspace() {
             setStageProgress(35);
           } else if (stLower.includes('match')) {
             setEvalStage('matching');
-            setStageProgress(60);
+            setStageProgress(55);
           } else if (stLower.includes('mark')) {
             setEvalStage('marking');
-            setStageProgress(80);
+            setStageProgress(75);
           } else if (stLower.includes('flag') || stLower.includes('check') || stLower.includes('total')) {
             setEvalStage('checking');
             setStageProgress(90);
@@ -559,28 +570,42 @@ export function TeacherPrototypeWorkspace() {
         }
 
         if (stData.status === 'evaluated' || stData.status === 'needs_review') {
-          isDone = true;
           setEvalStage('done');
           setStageProgress(100);
-          await loadSheetReview(sheetId);
-          setTimeout(() => setStep('review'), 500);
-          return;
+          await loadSheetReview(currentSheetId);
+          if (isMounted) {
+            setStep('review');
+          }
         } else if (stData.status === 'failed' || stData.status === 'error') {
           setEvalStage('error');
-          setErrorMessage(stData.error_message || 'Evaluation pipeline encountered an unexpected error.');
-          setRetryAction(() => () => handleRetryEvaluation(sheetId));
-          return;
+          setErrorMessage(stData.error_message || 'Evaluation pipeline encountered an error.');
+          setRetryAction(() => () => handleRetryEvaluation(currentSheetId));
         }
       } catch (err) {
         console.error('Status poll error:', err);
+      } finally {
+        inFlight = false;
       }
-    }
+    };
+
+    poll();
+    const interval = setInterval(poll, 2000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [step, currentSheetId]);
+
+  const pollSheetStatus = async (_sheetId: string) => {
+    // Kept for backward compatibility; continuous polling useEffect handles polling without timeout
   };
 
   const handleRetryEvaluation = async (sheetId: string) => {
     setError('');
     setErrorMessage('');
+    setSheetStatus('queued');
     setEvalStage('reading');
+    setLiveStageText('Queuing evaluation retry...');
     setStageProgress(20);
     try {
       const res = await fetch(`/api/sheets/${sheetId}/retry`, { method: 'POST' });
@@ -588,9 +613,9 @@ export function TeacherPrototypeWorkspace() {
         const errData = await res.json().catch(() => ({}));
         throw new Error(errData.detail || 'Failed to retry evaluation.');
       }
-      pollSheetStatus(sheetId);
     } catch (err) {
       setEvalStage('error');
+      setSheetStatus('failed');
       setErrorMessage(err instanceof Error ? err.message : 'Failed to retry evaluation.');
     }
   };
@@ -1702,7 +1727,7 @@ export function TeacherPrototypeWorkspace() {
               ))}
             </div>
 
-            {evalStage === 'error' ? (
+            {evalStage === 'error' || sheetStatus === 'failed' ? (
               <div
                 className={`rounded-lg border p-4 text-xs space-y-3 ${
                   errorMessage.toLowerCase().includes('429') ||
@@ -1729,9 +1754,9 @@ export function TeacherPrototypeWorkspace() {
                   <button
                     type="button"
                     onClick={() => currentSheetId && handleRetryEvaluation(currentSheetId)}
-                    className="rounded bg-[#005dac] px-4 py-2 font-bold text-white hover:bg-[#004786] flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
+                    className="rounded bg-[#005dac] px-5 py-2 font-bold text-white hover:bg-[#004786] flex items-center gap-2 transition-all cursor-pointer shadow-md text-xs"
                   >
-                    <RefreshCw className="w-3.5 h-3.5" /> Retry Evaluation
+                    <RefreshCw className="w-4 h-4" /> Retry Evaluation
                   </button>
                   <button
                     type="button"
@@ -1747,8 +1772,14 @@ export function TeacherPrototypeWorkspace() {
                 <CheckCircle2 className="w-4 h-4" /> Evaluation complete! Redirecting to review...
               </div>
             ) : (
-              <div className="text-xs text-[#64748b] animate-pulse">
-                Processing in background · Zero frozen screen
+              <div className="space-y-2">
+                <div className="text-xs font-semibold text-[#005dac] animate-pulse flex items-center justify-center gap-1.5">
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  <span>{liveStageText || 'Processing in background · Zero frozen screen'}</span>
+                </div>
+                <div className="text-[11px] text-[#64748b]">
+                  Continuous live polling active · Evaluates questions in parallel
+                </div>
               </div>
             )}
           </section>
