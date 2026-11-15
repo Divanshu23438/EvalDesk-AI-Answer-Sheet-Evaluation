@@ -1,41 +1,42 @@
-# EvalDesk AI — Teacher Evaluation System Prototype
+# EvalDesk AI — Teacher Evaluation System
 
-An AI-assisted handwritten answer sheet evaluation tool built for manager demonstration. 
-The system is designed strictly for a **Teacher** (no Admin or Student portals) to evaluate handwritten student exams quickly, accurately, and with full transparency.
+An AI-assisted handwritten answer sheet evaluation platform. EvalDesk evaluates handwritten student exams with speed, objective rubric accuracy, and full transparency.
+
+Every extraction, OCR transcription, rubric evaluation, and report is executed live against real backend and AI APIs.
 
 ---
 
-## 🌟 Key Capabilities
+## Key Capabilities
 
 1. **Dual-Reader Verification (Gemini + Groq)**:
    - **Gemini (`gemini-3.5-flash-lite`)** serves as the primary reader, extractor, and grader.
    - **Groq (`qwen/qwen3.8-27b`)** runs in parallel as a secondary vision reader and judge.
-   - Dual-reader text similarity agreement check automatically flags discrepancies below the configurable threshold (default 70%).
+   - Discrepancy checks flag disagreements for human teacher inspection.
 
 2. **Grounded Key-Point Rubric Grading & Evidence Verification**:
    - Short and long answers are evaluated one rubric point at a time.
-   - The AI must quote verbatim student text as evidence. The marking engine programmatically validates that the quoted string exists in the student's handwritten transcription. If the quote is missing or hallucinated, the question is rejected and flagged for teacher review.
+   - The AI must quote verbatim student text as evidence. The marking engine programmatically validates that the quoted string exists in the student's handwritten transcription. If the quote is missing, the verdict is flagged for teacher review.
 
-3. **Section Choice Rules ("Attempt Any $N$ Questions")**:
-   - Automatically supports multi-tier Indian exam papers (e.g., Part I compulsory, Part II attempt any 4 of 6, Part III attempt any 2 of 3).
-   - Counts the top $N$ highest-scoring attempted questions toward the true paper maximum marks (e.g., 60 marks).
+3. **Section Choice Rules ("Attempt Any N Questions")**:
+   - Automatically supports multi-tier exam papers (e.g. Part I compulsory, Part II attempt any 4 of 6, Part III attempt any 2 of 3).
+   - Dynamically counts the top $N$ highest-scoring attempted questions toward the true paper maximum marks.
 
 4. **Persistent SQLite Database & Disk Storage**:
-   - Stores papers, questions, rubric points, references, sheets, page images, segmented line crops, and evaluation records in `data/app.db` and `data/storage/`.
-   - All data survives app restarts.
+   - Stores papers, questions, rubric points, references, sheets, page images, and evaluation records in `data/app.db` and `data/storage/`.
+   - Data persists across app restarts and browser reloads.
 
-5. **Handwriting Training-Data Capture & Export**:
-   - Segments handwritten answer sheets into lines using OpenCV contour analysis (`backend/line_tools.py`).
-   - Screen 7 (**Verify Mode**) lets the teacher confirm or correct transcription (`provenance = human_verified`), including a 10% random unflagged sample.
-   - One-click export to a machine-learning-ready ZIP dataset containing `labels.csv` + `images/` partitioned by sheet with a frozen test set.
+5. **Split-View Review & Live AI Re-check**:
+   - Center split-view displays real question paper pages alongside handwritten student sheet pages with independent 90° rotation.
+   - Interactive review modal allows editing student text, reviewing quotes, overriding marks (0.5 steps), and triggering live AI re-evaluations.
 
-6. **Offline Demo Mode**:
-   - Caches all AI calls via SHA256 input hashes in `data/cache/`.
-   - Replays previous evaluations instantly offline without internet or paid API calls.
+6. **Academic Reports & Analytics (PDF & Excel)**:
+   - **Student Report Card (PDF)**: Student marks, question breakdown, and Task T7 strengths and areas to improve derived strictly from database rubric results.
+   - **Paper Summary Report (PDF)**: Class statistics, question drop-off analysis, most-missed key points, and override counts.
+   - **Class Results Matrix (Excel `.xlsx`)**: Multi-sheet workbook (`Class Results`, `Question Breakdown`, and `Summary Analytics`) matching database numbers exactly.
 
 ---
 
-## 🚀 Quick Start Guide
+## Quick Start Guide
 
 ### 1. Prerequisites
 - Python 3.10+
@@ -46,7 +47,7 @@ Copy the example environment file and add your API keys:
 ```bash
 cp .env.example .env
 ```
-Edit `.env`:
+Ensure your `.env` contains:
 ```env
 GEMINI_API_KEY=your_gemini_api_key_here
 GEMINI_MODEL=gemini-3.5-flash-lite
@@ -60,83 +61,62 @@ BACKEND_PORT=8000
 
 ### 3. Install Dependencies
 ```bash
-# Install Python dependencies
+# Python backend dependencies
 pip install -r requirements.txt
 
-# Install Frontend dependencies
+# Node frontend dependencies
 npm install
 ```
 
-### 4. Run the Prototype (2 Commands)
+### 4. Run with One Command
 
-**Terminal 1 — Backend (FastAPI on Port 8000):**
-```bash
-npm run backend
-# or: python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
+**Windows (PowerShell):**
+```powershell
+.\start_dev.ps1
 ```
 
-**Terminal 2 — Frontend (Vite on Port 3000):**
-```bash
-npm run dev
+**Windows (Command Prompt):**
+```cmd
+start_dev.bat
 ```
+
+**Linux / macOS:**
+```bash
+chmod +x start_dev.sh
+./start_dev.sh
+```
+
+Or run manually in separate terminals:
+- **Terminal 1 (Backend):** `python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000`
+- **Terminal 2 (Frontend):** `npm run dev`
 
 Open your browser to: **`http://localhost:3000`**
 
 ---
 
-## 🖥️ Teacher Flow (7 Screens)
+## Database Backup & Restore
 
-1. **Screen 1: Paper Setup**:
-   - Upload question paper (PDF/image) and optional answer key.
-   - Questions extract into an editable table: number, question text, max marks, question type, and section rules.
-   - Set paper strictness (Strict, Lenient, Maths).
-   - If no answer key is provided, the AI drafts a reference answer rubric labeled *"No answer key used (AI Reference)"*.
-   - Lock paper setup to prevent accidental rubric changes.
+EvalDesk includes a backup and restore utility that performs online SQLite snapshots and verifies file integrity using `PRAGMA integrity_check`:
 
-2. **Screen 2: Upload Answer Sheets**:
-   - Batch-queue student answer sheets (1 upload = 1 student).
-   - Confirm processing consent checkbox.
-   - AI extracts student name and roll number; flags manual input if confidence is low, blocking evaluation until provided.
+```bash
+# Create a verified backup in backups/backup_YYYYMMDD_HHMMSS/
+python scripts/backup_db.py
 
-3. **Screen 3: Evaluation Status Tracker**:
-   - Center 5-stage progress bar:
-     *Reading Pages → Matching Answers → Marking Rubric → Checking Flags → Done*
-   - Includes automatic error handling and a **Retry Evaluation** button.
-
-4. **Screen 4: Center Split-View & Review**:
-   - Question paper on the left, student answer sheet on the right, with **Rotate 90°** buttons for mobile photos.
-   - Right panel separates **Checked** from **Flagged for Review**.
-   - Review popup displays: extracted text (editable), AI marks, quoted evidence, flag reason, teacher marks box (0 to max, 0.5 steps), *Accept AI Marks*, and *Save My Marks*.
-
-5. **Screen 5: Reports**:
-   - Student Report Card with question breakdown, percentage, grade, and AI-grounded strengths/improvements.
-   - Evaluation report with score distributions.
-   - **Download as PDF** (`reportlab`) and **Excel Class Matrix** (`openpyxl`).
-
-6. **Screen 6: Library**:
-   - Browse, inspect, and reopen saved papers and evaluation records directly from SQLite.
-
-7. **Screen 7: Verify Mode**:
-   - Line-by-line transcription verification interface.
-   - Download Training Export ZIP (`/api/training/export.zip`).
+# Restore from a previous backup
+python scripts/backup_db.py --restore backups/backup_20261115_165523/
+```
 
 ---
 
-## 🧪 Running Automated Tests
+## Verification & Master Gate Check
 
-Run the full Python test suite (offline mock responses):
+Run the comprehensive master gate check to verify banned strings, git clean state, pytest test suite, TypeScript compilation, and live AI provider health:
+
 ```bash
-npm test
-# or: python -m pytest backend/tests/test_backend.py -v
+python scripts/check_all.py --base http://127.0.0.1:8000
 ```
 
-Run the TypeScript grading and section choice test suite:
+To run the full end-to-end live pipeline verification:
 ```bash
-npm run test:ts
+python scripts/e2e_real.py
 ```
-
-Check frontend bundle security:
-```bash
-npm run build
-```
-*(Confirms 0 API keys exist in the built client bundle)*
