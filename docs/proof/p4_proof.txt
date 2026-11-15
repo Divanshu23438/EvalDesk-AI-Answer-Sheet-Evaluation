@@ -1,0 +1,63 @@
+=== PHASE 4 PROOF: THE EVALUATION ENGINE (REAL MARKS) ===
+Paper ID: f3d944f0-9666-47e8-9df7-45f680bb3318
+Timestamp: 2026-11-15T14:45:23Z
+
+Multi-Page Sheet ID: bcbeb001-8e99-4f1a-856b-e0bae17db705
+Pages Uploaded: 2
+Student: Vikram Rao (BCA-2026-55)
+Header Confidence: 0.99
+Auto-Queued Status: queued
+
+  [2s] Stage: Reading pages | Status: evaluating
+  [4s] Stage: Reading pages | Status: evaluating
+  [6s] Stage: Reading pages | Status: evaluating
+  [8s] Stage: Reading pages | Status: evaluating
+  [10s] Stage: Reading pages | Status: evaluating
+  [13s] Stage: Reading pages | Status: evaluating
+  [15s] Stage: Reading pages | Status: evaluating
+  [17s] Stage: Marking answers against rubric | Status: evaluating
+  [19s] Stage: Marking answers against rubric | Status: evaluating
+  [21s] Stage: Evaluation Complete | Status: evaluated
+
+--- Final Evaluation Result ---
+Status: evaluated
+Stage: Evaluation Complete
+Total Score: 10.0 / 10.0
+Percentage: 100.0%
+Grade: A+
+
+--- SQLite 'answers' Table Verification ---
+Total Answers Recorded: 2
+  Question ID: e5f91ce0-f00d-4a61-b4c2-2a0f3d92e1f5 | Attempted: 1 | Pages: [1] | Legibility: 0.98
+  Extracted Text Sample: (B) Transport layer...
+
+  Question ID: af6a15d3-95f4-4176-a84e-2c715124e2aa | Attempted: 1 | Pages: [1, 2] | Legibility: 0.95
+  Extracted Text Sample: TCP three-way handshake establishes a reliable full-duplex session.
+
+First, the client initiates by transmitting a SYN p...
+
+--- SQLite 'evaluations' Table Verification ---
+  Q.1 (mcq): Marks = 2.0 / 2.0 (AI: 2.0) | Resolved: 1
+  Reason: Exact match with answer key ('B')
+  Evidence Quote: '(B) Transport layer'
+  Flags: []
+
+  Q.2 (short): Marks = 8.0 / 8.0 (AI: 8.0) | Resolved: 1
+  Reason: Pt 1: The student correctly explains the SYN packet initiation by the client. (2.5/2.5M) | Pt 2: The student correctly describes the server's SYN-ACK response acknowledging the sequence number. (3.0/3.0M) | Pt 3: The student correctly mentions the final ACK from the client to establish the reliable connection. (2.5/2.5M)
+  Evidence Quote: 'First, the client initiates by transmitting a SYN packet to synchronize sequence numbers. ; Next, the server replies with a SYN-ACK packet to acknowledge the client sequence number and send its own. ; Finally, the client responds with an ACK packet, confirming both sides are synchronized.'
+  Flags: []
+
+--- SQLite 'ai_calls' Audit Summary ---
+  Task: draft_reference  | Status: success  | Model: gemini-3.5-flash-lite | Count: 3
+  Task: draft_reference  | Status: success  | Model: openai/gpt-oss-120b  | Count: 3
+  Task: extract_paper    | Status: success  | Model: gemini-3.5-flash-lite | Count: 4
+  Task: grade_primary    | Status: success  | Model: gemini-3.5-flash-lite | Count: 3
+  Task: health_gemini_image | Status: success  | Model: gemini-3.5-flash-lite | Count: 2
+  Task: health_gemini_text | Status: success  | Model: gemini-3.5-flash-lite | Count: 1
+  Task: health_groq_image | Status: error    | Model: qwen/qwen3.8-27b     | Count: 1
+  Task: health_groq_image | Status: success  | Model: qwen/qwen3.8-27b     | Count: 1
+  Task: ocr_primary      | Status: success  | Model: gemini-3.5-flash-lite | Count: 6
+  Task: ocr_secondary    | Status: success  | Model: qwen/qwen3.8-27b     | Count: 1
+  Task: parse_answer_key | Status: success  | Model: gemini-3.5-flash-lite | Count: 1
+  Task: read_header      | Status: success  | Model: gemini-3.5-flash-lite | Count: 5
+  Task: test_header      | Status: success  | Model: gemini-3.5-flash-lite | Count: 3

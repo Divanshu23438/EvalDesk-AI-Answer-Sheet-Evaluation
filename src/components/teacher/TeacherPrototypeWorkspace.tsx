@@ -133,6 +133,9 @@ export function TeacherPrototypeWorkspace() {
   const [studentName, setStudentName] = useState('');
   const [rollNo, setRollNo] = useState('');
   const [nameConfidenceLow, setNameConfidenceLow] = useState(false);
+  const [isUploadingSheet, setIsUploadingSheet] = useState(false);
+  const [needsIdentityPrompt, setNeedsIdentityPrompt] = useState(false);
+  const [headerConfidence, setHeaderConfidence] = useState<number | null>(null);
 
   // Status Screen State
   const [evalStage, setEvalStage] = useState<'idle' | 'reading' | 'matching' | 'marking' | 'checking' | 'done' | 'error'>('idle');
@@ -445,14 +448,108 @@ export function TeacherPrototypeWorkspace() {
     }
   };
 
-  const startEvaluationPipeline = async () => {
-    if (!studentFiles.length && !currentSheetId) {
-      setError('Please upload at least one student answer sheet.');
+  const pollSheetStatus = async (sheetId: string) => {
+    let isDone = false;
+    let pollCount = 0;
+    while (!isDone && pollCount < 60) {
+      pollCount++;
+      await new Promise((r) => setTimeout(r, 1000));
+      try {
+        const stRes = await fetch(`/api/sheets/${sheetId}`);
+        if (!stRes.ok) continue;
+        const stData = await stRes.json();
+
+        if (stData.current_stage) {
+          const stLower = String(stData.current_stage).toLowerCase();
+          if (stLower.includes('queued')) {
+            setEvalStage('reading');
+            setStageProgress(15);
+          } else if (stLower.includes('read')) {
+            setEvalStage('reading');
+            setStageProgress(35);
+          } else if (stLower.includes('match')) {
+            setEvalStage('matching');
+            setStageProgress(60);
+          } else if (stLower.includes('mark')) {
+            setEvalStage('marking');
+            setStageProgress(80);
+          } else if (stLower.includes('flag') || stLower.includes('check') || stLower.includes('total')) {
+            setEvalStage('checking');
+            setStageProgress(90);
+          }
+        }
+
+        if (stData.status === 'evaluated' || stData.status === 'needs_review') {
+          isDone = true;
+          setEvalStage('done');
+          setStageProgress(100);
+
+          // Fetch real review data from DB
+          const revRes = await fetch(`/api/sheets/${sheetId}/review`);
+          if (revRes.ok) {
+            const revData = await revRes.json();
+            const allEvals = [...(revData.checked_questions || []), ...(revData.flagged_questions || [])];
+            if (allEvals.length > 0) {
+              const mapped: EvaluatedReviewItem[] = allEvals.map((e: any) => ({
+                eval_id: e.eval_id || e.id,
+                question_id: e.question_id,
+                q_no: String(e.q_no),
+                section_name: e.section_name || 'General',
+                transcribed_text: e.extracted_text || '',
+                diagram_notes: '',
+                confidence: (e.flags && e.flags.length > 0) ? 'low' : 'high',
+                suggested_marks: e.ai_marks !== undefined ? e.ai_marks : e.final_marks,
+                finalMarks: e.final_marks !== undefined ? e.final_marks : (e.ai_marks || 0),
+                max_marks: e.max_marks || 5,
+                feedback: e.reason || 'Graded by rubric standard.',
+                reason: Array.isArray(e.flags) && e.flags.length > 0 ? e.flags.join('; ') : (e.reason || ''),
+                resolved: Boolean(e.resolved),
+                attempted: Boolean(e.attempted ?? true),
+                isCounted: true,
+                statusLabel: e.resolved ? 'Checked' : 'Flagged',
+              }));
+              setReviewItems(mapped);
+            }
+          }
+          setTimeout(() => setStep('review'), 500);
+          return;
+        } else if (stData.status === 'failed' || stData.status === 'error') {
+          setEvalStage('error');
+          setErrorMessage(stData.error_message || 'Evaluation pipeline encountered an unexpected error.');
+          setRetryAction(() => () => handleRetryEvaluation(sheetId));
+          return;
+        }
+      } catch (err) {
+        console.error('Status poll error:', err);
+      }
+    }
+  };
+
+  const handleRetryEvaluation = async (sheetId: string) => {
+    setError('');
+    setErrorMessage('');
+    setEvalStage('reading');
+    setStageProgress(20);
+    try {
+      const res = await fetch(`/api/sheets/${sheetId}/retry`, { method: 'POST' });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || 'Failed to retry evaluation.');
+      }
+      pollSheetStatus(sheetId);
+    } catch (err) {
+      setEvalStage('error');
+      setErrorMessage(err instanceof Error ? err.message : 'Failed to retry evaluation.');
+    }
+  };
+
+  const handleStudentSheetUpload = async (files: File[]) => {
+    if (!currentPaperId) {
+      setError('Please create and lock a question paper first.');
       return;
     }
-    if (!studentName.trim() || !rollNo.trim()) {
-      setError('Student Name and Roll Number must be provided before evaluation can proceed.');
-      setNameConfidenceLow(true);
+    if (!isLocked) {
+      setError('Question paper must be approved and locked before uploading student answer sheets.');
       return;
     }
     if (!hasConsent) {
@@ -460,112 +557,106 @@ export function TeacherPrototypeWorkspace() {
       return;
     }
 
+    setStudentFiles(files);
     setError('');
-    setStep('status');
-    setEvalStage('reading');
-    setStageProgress(25);
+    setIsUploadingSheet(true);
+    setStatus(`Uploading and processing ${files.length} answer sheet file(s)...`);
 
     try {
-      let sheetId = currentSheetId;
-
-      // 1. Upload sheet if file is provided
-      if (studentFiles.length > 0 && currentPaperId) {
-        const form = new FormData();
-        form.append('consent_flag', hasConsent ? '1' : '0');
-        for (const file of studentFiles) {
-          form.append('files', file);
-        }
-        const uploadRes = await fetch(`/api/papers/${currentPaperId}/sheets/upload`, {
-          method: 'POST',
-          body: form,
-        });
-        if (uploadRes.ok) {
-          const uploadData = await uploadRes.json();
-          sheetId = uploadData.sheet_id;
-          setCurrentSheetId(sheetId);
-          if (uploadData.student_name) setStudentName(uploadData.student_name);
-          if (uploadData.roll_number) setRollNo(uploadData.roll_number);
-
-          if (studentName || rollNo) {
-            const idForm = new FormData();
-            idForm.append('name', studentName);
-            idForm.append('roll', rollNo);
-            await fetch(`/api/sheets/${sheetId}/set-identity`, { method: 'POST', body: idForm });
-          }
-        }
+      const form = new FormData();
+      form.append('consent_flag', hasConsent ? '1' : '0');
+      for (const f of files) {
+        form.append('files', f);
       }
 
-      // 2. Trigger real background evaluation
-      if (sheetId) {
-        const evalRes = await fetch(`/api/sheets/${sheetId}/evaluate`, { method: 'POST' });
-        if (!evalRes.ok) throw new Error('Evaluation request failed on server.');
+      const res = await fetch(`/api/papers/${currentPaperId}/sheets`, {
+        method: 'POST',
+        body: form,
+      });
 
-        // 3. Poll real background evaluation status
-        let isDone = false;
-        let pollCount = 0;
-        while (!isDone && pollCount < 40) {
-          pollCount++;
-          await new Promise((r) => setTimeout(r, 1200));
-          const stRes = await fetch(`/api/sheets/${sheetId}/status`);
-          if (!stRes.ok) continue;
-          const stData = await stRes.json();
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || `Server error (HTTP ${res.status}) uploading sheet.`);
+      }
 
-          if (stData.current_stage) {
-            const stLower = String(stData.current_stage).toLowerCase();
-            if (stLower.includes('read')) {
-              setEvalStage('reading');
-              setStageProgress(35);
-            } else if (stLower.includes('match')) {
-              setEvalStage('matching');
-              setStageProgress(65);
-            } else if (stLower.includes('mark') || stLower.includes('verif') || stLower.includes('check')) {
-              setEvalStage('marking');
-              setStageProgress(85);
-            }
-          }
+      const data = await res.json();
+      const sheetId = data.sheet_id;
+      setCurrentSheetId(sheetId);
+      setHeaderConfidence(data.confidence ?? null);
 
-          if (stData.status === 'evaluated') {
-            isDone = true;
-            setEvalStage('done');
-            setStageProgress(100);
+      if (data.student_name) setStudentName(data.student_name);
+      if (data.roll_number) setRollNo(data.roll_number);
 
-            // 4. Fetch real review data from DB
-            const revRes = await fetch(`/api/sheets/${sheetId}/review`);
-            if (revRes.ok) {
-              const revData = await revRes.json();
-              const allEvals = [...(revData.checked_questions || []), ...(revData.flagged_questions || [])];
-              if (allEvals.length > 0) {
-                const mapped: EvaluatedReviewItem[] = allEvals.map((e: any) => ({
-                  eval_id: e.eval_id || e.id,
-                  question_id: e.question_id,
-                  q_no: String(e.q_no),
-                  section_name: e.section_name || 'General',
-                  transcribed_text: e.extracted_text || e.transcribed_text || '',
-                  diagram_notes: '',
-                  confidence: (e.flags && e.flags.length > 0) ? 'low' : 'high',
-                  suggested_marks: e.ai_marks !== undefined ? e.ai_marks : e.final_marks,
-                  finalMarks: e.final_marks !== undefined ? e.final_marks : (e.ai_marks || 0),
-                  max_marks: e.max_marks || 5,
-                  feedback: e.reason || 'Graded by rubric standard.',
-                  reason: Array.isArray(e.flags) && e.flags.length > 0 ? e.flags.join('; ') : (e.reason || ''),
-                  resolved: Boolean(e.resolved),
-                  attempted: Boolean(e.attempted ?? true),
-                  isCounted: true,
-                  statusLabel: e.resolved ? 'Checked' : 'Flagged',
-                }));
-                setReviewItems(mapped);
-              }
-            }
-            setTimeout(() => setStep('review'), 500);
-            return;
-          } else if (stData.status === 'error') {
-            throw new Error(stData.error_message || 'Evaluation pipeline encountered an unexpected error.');
-          }
-        }
+      if (!data.needs_manual_name && data.status === 'queued') {
+        // High confidence header! Evaluation auto-queued!
+        setNeedsIdentityPrompt(false);
+        setStatus(`Header read successfully (${data.student_name}, ${data.roll_number}). Evaluation auto-queued!`);
+        setStep('status');
+        setEvalStage('reading');
+        setStageProgress(20);
+        pollSheetStatus(sheetId);
+      } else {
+        // Low confidence or missing header
+        setNeedsIdentityPrompt(true);
+        setStatus('Header requires manual confirmation or entry before evaluation can start.');
       }
     } catch (err) {
-      setEvalStage('error');
-      setErrorMessage(err instanceof Error ? err.message : 'Evaluation pipeline encountered an unexpected error.');
+      setStatus('');
+      const msg = err instanceof Error ? err.message : 'Failed to upload answer sheet.';
+      setError(msg);
+      setRetryAction(() => () => handleStudentSheetUpload(files));
+    } finally {
+      setIsUploadingSheet(false);
+    }
+  };
+
+  const handleSaveIdentityAndStart = async () => {
+    if (!currentSheetId) {
+      setError('No active student sheet found.');
+      return;
+    }
+    if (!studentName.trim() || !rollNo.trim()) {
+      setError('Both Student Name and Roll Number are required.');
+      return;
+    }
+
+    setError('');
+    setStatus('Saving student identity and starting evaluation...');
+    try {
+      const idRes = await fetch(`/api/sheets/${currentSheetId}/identity`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          student_name: studentName.trim(),
+          roll_number: rollNo.trim(),
+        }),
+      });
+
+      if (!idRes.ok) {
+        const errData = await idRes.json().catch(() => ({}));
+        throw new Error(errData.detail || 'Failed to set student identity.');
+      }
+
+      setNeedsIdentityPrompt(false);
+      setStatus('Identity saved. Evaluation automatically queued!');
+      setStep('status');
+      setEvalStage('reading');
+      setStageProgress(20);
+      pollSheetStatus(currentSheetId);
+    } catch (err) {
+      setStatus('');
+      const msg = err instanceof Error ? err.message : 'Failed to save student identity.';
+      setError(msg);
+    }
+  };
+
+  const startEvaluationPipeline = async () => {
+    if (studentFiles.length > 0) {
+      await handleStudentSheetUpload(studentFiles);
+    } else if (currentSheetId && studentName.trim() && rollNo.trim()) {
+      await handleSaveIdentityAndStart();
+    } else {
+      setError('Please choose a student answer sheet file.');
     }
   };
 
@@ -1306,7 +1397,10 @@ export function TeacherPrototypeWorkspace() {
                       className="hidden"
                       onChange={(e) => {
                         const fl = Array.from(e.target.files || []);
-                        setStudentFiles(fl);
+                        if (fl.length > 0) {
+                          setStudentFiles(fl);
+                          handleStudentSheetUpload(fl);
+                        }
                       }}
                     />
                   </label>
@@ -1329,7 +1423,7 @@ export function TeacherPrototypeWorkspace() {
                   {studentFiles.length > 0 && (
                     <div className="rounded-lg border border-[#e2e8f0] p-3">
                       <div className="text-xs font-bold text-[#414752] mb-2">
-                        Queued Students ({studentFiles.length})
+                        Uploaded Sheets ({studentFiles.length})
                       </div>
                       <div className="space-y-1.5">
                         {studentFiles.map((file, idx) => (
@@ -1340,7 +1434,7 @@ export function TeacherPrototypeWorkspace() {
                               activeStudentIdx === idx ? 'bg-[#d4e3ff] font-bold text-[#005dac]' : 'hover:bg-[#f1f5f9]'
                             }`}
                           >
-                            <span>Student #{idx + 1} · {file.name}</span>
+                            <span>Sheet #{idx + 1} · {file.name}</span>
                             <span className="text-[11px] text-[#64748b]">{formatBytes(file.size)}</span>
                           </div>
                         ))}
@@ -1355,10 +1449,28 @@ export function TeacherPrototypeWorkspace() {
                     Student Header Verification
                   </h2>
                   <p className="text-[11px] text-[#64748b]">
-                    Evaluation is blocked until student name and roll number are verified.
+                    Evaluation starts automatically when header confidence is &gt;= 70%.
                   </p>
 
-                  <div className={`p-3 rounded-lg border ${nameConfidenceLow || !studentName ? 'border-[#ba1a1a] bg-[#ffdad6]' : 'border-[#c1c6d4] bg-white'}`}>
+                  {isUploadingSheet && (
+                    <div className="flex items-center justify-center gap-2 py-3 rounded-lg bg-[#eff4ff] border border-[#b9d3ff] text-xs font-bold text-[#005dac]">
+                      <RotateCw className="w-4 h-4 animate-spin" />
+                      <span>Scanning header with AI (Task T4)...</span>
+                    </div>
+                  )}
+
+                  {needsIdentityPrompt && (
+                    <div className="rounded-lg border border-[#f57c00] bg-[#fff3e0] p-2.5 text-xs text-[#b26a00]">
+                      <div className="font-bold flex items-center gap-1.5 mb-1">
+                        <AlertTriangle className="w-4 h-4" /> Header Verification Required
+                      </div>
+                      <p className="text-[11px]">
+                        Header confidence was {headerConfidence !== null ? `${Math.round(headerConfidence * 100)}%` : 'unreadable'}. Please verify or enter student name and roll number below to proceed.
+                      </p>
+                    </div>
+                  )}
+
+                  <div className={`p-3 rounded-lg border ${(!studentName || !rollNo) && needsIdentityPrompt ? 'border-[#ba1a1a] bg-[#ffdad6]' : 'border-[#c1c6d4] bg-white'}`}>
                     <label className="text-[11px] font-bold block mb-1">Student Name *</label>
                     <input
                       value={studentName}
@@ -1382,11 +1494,12 @@ export function TeacherPrototypeWorkspace() {
 
                   <button
                     type="button"
-                    disabled={!studentFiles.length || !studentName.trim() || !rollNo.trim() || !hasConsent}
-                    onClick={startEvaluationPipeline}
+                    disabled={isUploadingSheet || !studentFiles.length || !studentName.trim() || !rollNo.trim() || !hasConsent}
+                    onClick={handleSaveIdentityAndStart}
                     className="w-full rounded-lg bg-[#005dac] px-4 py-3 text-xs font-bold text-white hover:bg-[#004786] disabled:opacity-40 shadow-xs flex items-center justify-center gap-1.5"
                   >
-                    <Sparkles className="w-4 h-4" /> Start AI Evaluation Pipeline
+                    <Sparkles className="w-4 h-4" />
+                    <span>{needsIdentityPrompt ? 'Save Identity & Start Evaluation' : 'Start AI Evaluation Pipeline'}</span>
                   </button>
                 </div>
               </div>
@@ -1440,7 +1553,7 @@ export function TeacherPrototypeWorkspace() {
                 <div>{errorMessage || 'External provider timed out or rate limit reached.'}</div>
                 <button
                   type="button"
-                  onClick={startEvaluationPipeline}
+                  onClick={() => currentSheetId && handleRetryEvaluation(currentSheetId)}
                   className="rounded bg-[#005dac] px-4 py-2 font-bold text-white hover:bg-[#004786] flex items-center gap-1 mx-auto"
                 >
                   <RefreshCw className="w-3.5 h-3.5" /> Retry Evaluation
