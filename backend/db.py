@@ -36,10 +36,21 @@ def init_db():
                 checking_medium TEXT NOT NULL DEFAULT 'ai_reference', -- 'answer_key', 'ai_reference'
                 has_answer_key INTEGER NOT NULL DEFAULT 0,
                 is_locked INTEGER NOT NULL DEFAULT 0,
+                instructions TEXT DEFAULT '',
                 paper_path TEXT,
                 answer_key_path TEXT,
                 created_at TEXT NOT NULL DEFAULT (datetime('now')),
                 updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+            )
+        """)
+
+        # 1b. paper_drafts (for extracted question papers awaiting confirmation)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS paper_drafts (
+                id TEXT PRIMARY KEY,
+                paper_path TEXT,
+                extracted_data_json TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT (datetime('now'))
             )
         """)
 
@@ -48,11 +59,13 @@ def init_db():
             CREATE TABLE IF NOT EXISTS questions (
                 id TEXT PRIMARY KEY,
                 paper_id TEXT NOT NULL REFERENCES papers(id) ON DELETE CASCADE,
+                key TEXT,
                 q_no TEXT NOT NULL,
                 question_text TEXT NOT NULL,
                 max_marks REAL NOT NULL,
                 question_type TEXT NOT NULL DEFAULT 'short', -- 'mcq', 'one_word', 'short', 'long', 'maths'
                 section_name TEXT DEFAULT 'General',
+                options_json TEXT DEFAULT '[]',
                 strictness_override TEXT, -- NULL or 'strict', 'lenient', 'maths'
                 checking_medium_override TEXT, -- NULL or 'answer_key', 'ai_reference'
                 order_idx INTEGER NOT NULL DEFAULT 0
@@ -70,7 +83,24 @@ def init_db():
             )
         """)
 
-        # 4. references (AI drafts)
+        # 4. references (AI drafts & parsed answer keys)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS "references" (
+                id TEXT PRIMARY KEY,
+                paper_id TEXT NOT NULL REFERENCES papers(id) ON DELETE CASCADE,
+                question_id TEXT REFERENCES questions(id) ON DELETE CASCADE,
+                key TEXT,
+                source TEXT NOT NULL DEFAULT 'ai_draft', -- 'teacher_key', 'ai_draft'
+                model_answer TEXT NOT NULL DEFAULT '',
+                key_points_json TEXT DEFAULT '[]',
+                correct_option TEXT,
+                is_approved INTEGER NOT NULL DEFAULT 1,
+                approved_by TEXT DEFAULT 'teacher',
+                approved_at TEXT DEFAULT (datetime('now'))
+            )
+        """)
+
+        # Backward compatibility view/table for references_ai
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS references_ai (
                 id TEXT PRIMARY KEY,
@@ -220,3 +250,15 @@ def init_db():
                 value TEXT NOT NULL
             )
         """)
+
+        # Column migrations for existing tables
+        def add_column_if_missing(table: str, column_def: str, col_name: str):
+            cursor.execute(f"PRAGMA table_info({table})")
+            cols = [r["name"] for r in cursor.fetchall()]
+            if col_name not in cols:
+                cursor.execute(f"ALTER TABLE {table} ADD COLUMN {column_def}")
+
+        add_column_if_missing("papers", "instructions TEXT DEFAULT ''", "instructions")
+        add_column_if_missing("questions", "key TEXT", "key")
+        add_column_if_missing("questions", "options_json TEXT DEFAULT '[]'", "options_json")
+        add_column_if_missing("sheets", "failed_stage TEXT", "failed_stage")

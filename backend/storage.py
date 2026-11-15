@@ -16,6 +16,11 @@ def get_paper_dir(paper_id: str) -> Path:
     p.mkdir(parents=True, exist_ok=True)
     return p
 
+def get_paper_draft_dir(draft_id: str) -> Path:
+    p = PAPERS_STORAGE_DIR / "drafts" / draft_id
+    p.mkdir(parents=True, exist_ok=True)
+    return p
+
 def get_sheet_dir(sheet_id: str) -> Path:
     s = SHEETS_STORAGE_DIR / sheet_id
     (s / "original").mkdir(parents=True, exist_ok=True)
