@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 from reportlab.lib.pagesizes import letter
@@ -6,6 +7,16 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Tabl
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+
+def format_q_number(q_no: Any) -> str:
+    """
+    Strips any existing leading 'Q.', 'Q', 'q.', or repeated 'Q.Q.' prefixes
+    before prepending clean 'Q.' so question numbers always render cleanly
+    (e.g., 'Q.1 (A) (i)' rather than 'Q.Q.1 (A) (i)').
+    """
+    s = str(q_no or "").strip()
+    s_clean = re.sub(r"^(?:[Qq]\.?\s*)+", "", s).strip()
+    return f"Q.{s_clean}" if s_clean else ""
 
 def generate_student_report_card_pdf(
     output_path: Path,
@@ -94,12 +105,29 @@ def generate_student_report_card_pdf(
     story.append(Paragraph("Question-by-Question Rubric Evaluation", section_heading))
     q_table_data = [["Q #", "Marks Awarded", "Max Marks", "Status / Remarks", "Evidence Quote"]]
     for q in questions:
+        is_unattempted = (
+            q.get("attempted") is False
+            or not q.get("is_attempted", True)
+            or "not_attempted" in q.get("flags", [])
+            or any("unattempted" in str(f).lower() or "not attempted" in str(f).lower() for f in q.get("flags", []))
+            or str(q.get("reason", "")).lower() in ["question not attempted.", "not attempted", "unattempted"]
+            or "not attempted" in str(q.get("status_label", "")).lower()
+            or "unattempted" in str(q.get("status_label", "")).lower()
+        )
+
+        if is_unattempted:
+            evidence_cell = Paragraph("— (Not attempted)", body_style)
+        elif q.get("evidence_quote"):
+            evidence_cell = Paragraph(f'"{q.get("evidence_quote")}"', body_style)
+        else:
+            evidence_cell = Paragraph("—", body_style)
+
         q_table_data.append([
-            Paragraph(f"Q.{q.get('q_no', '')}", bold_body),
+            Paragraph(format_q_number(q.get("q_no", "")), bold_body),
             Paragraph(f"{q.get('final_marks', 0.0):g}", body_style),
             Paragraph(f"{q.get('max_marks', 0.0):g}", body_style),
             Paragraph(q.get("reason") or q.get("status_label", "Checked"), body_style),
-            Paragraph(f'"{q.get("evidence_quote", "")}"' if q.get("evidence_quote") else "—", body_style),
+            evidence_cell,
         ])
 
     q_table = Table(q_table_data, colWidths=[40, 80, 65, 185, 170])
@@ -222,7 +250,7 @@ def generate_paper_summary_pdf(
     q_table_data = [["Q #", "Max Marks", "Class Avg", "Accuracy %", "Students Missed / Overridden"]]
     for q in question_stats:
         q_table_data.append([
-            Paragraph(f"Q.{q.get('q_no', '')}", bold_body),
+            Paragraph(format_q_number(q.get('q_no', '')), bold_body),
             Paragraph(f"{q.get('max_marks', 0.0):g}M", body_style),
             Paragraph(f"{q.get('avg_marks', 0.0):g}M", body_style),
             Paragraph(f"{q.get('accuracy_pct', 0.0):g}%", body_style),
@@ -283,7 +311,7 @@ def generate_paper_report_excel(
 
     headers1 = ["Roll No", "Student Name", "Total Score", "Max Marks", "Percentage", "Grade"]
     for q in questions:
-        headers1.append(f"Q.{q.get('q_no', '')} ({q.get('max_marks', 0)}M)")
+        headers1.append(f"{format_q_number(q.get('q_no', ''))} ({q.get('max_marks', 0)}M)")
 
     ws1.append(headers1)
     for col_idx in range(1, len(headers1) + 1):
@@ -321,7 +349,7 @@ def generate_paper_report_excel(
         q_no = str(q.get("q_no", ""))
         stat = q_stats_map.get(q_no, {})
         ws2.append([
-            f"Q.{q_no}",
+            format_q_number(q_no),
             q.get("question_text", ""),
             q.get("max_marks", 0.0),
             stat.get("avg_marks", 0.0),

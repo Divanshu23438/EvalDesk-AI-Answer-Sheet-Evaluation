@@ -43,6 +43,13 @@ function formatBytes(bytes: number) {
   return `${Math.max(1, Math.round(bytes / 1024))} KB`;
 }
 
+const formatQNo = (qNo?: string | number): string => {
+  if (!qNo) return '';
+  const s = String(qNo).trim();
+  const cleaned = s.replace(/^(?:Q\.?)+/i, '').trim();
+  return `Q.${cleaned}`;
+};
+
 interface SavedPaper {
   id: string;
   title: string;
@@ -1866,7 +1873,7 @@ export function TeacherPrototypeWorkspace() {
                         {editableQuestions.map((q) => (
                           <div key={q.q_no} className="rounded border border-[#e2e8f0] p-2 text-xs">
                             <div className="font-bold flex justify-between">
-                              <span>Q.{q.q_no}</span>
+                              <span>{formatQNo(q.q_no)}</span>
                               <span>{q.max_marks} Marks</span>
                             </div>
                             <p className="text-[#414752] mt-1">{q.question_text}</p>
@@ -1957,7 +1964,7 @@ export function TeacherPrototypeWorkspace() {
                       >
                         <div className="font-bold flex items-center justify-between">
                           <span className="flex items-center gap-1">
-                            <Flag className="w-3.5 h-3.5 text-[#ba1a1a]" /> Q.{item.q_no}
+                            <Flag className="w-3.5 h-3.5 text-[#ba1a1a]" /> {formatQNo(item.q_no)}
                           </span>
                           <span className="text-[#93000a]">{item.suggested_marks ?? 0} / {item.max_marks}M</span>
                         </div>
@@ -1982,7 +1989,7 @@ export function TeacherPrototypeWorkspace() {
                       onClick={() => setActiveReview(item)}
                       className="p-2 rounded border border-[#c8e6c9] bg-[#e8f5e9] text-xs flex items-center justify-between cursor-pointer hover:bg-[#dcedc8]"
                     >
-                      <span className="font-semibold">Q.{item.q_no}</span>
+                      <span className="font-semibold">{formatQNo(item.q_no)}</span>
                       <span className="font-bold text-[#196b22]">{item.finalMarks} / {item.max_marks}M</span>
                     </div>
                   ))}
@@ -2105,7 +2112,7 @@ export function TeacherPrototypeWorkspace() {
                 <tbody className="divide-y divide-[#e2e8f0]">
                   {reviewItems.map((item) => (
                     <tr key={item.q_no} className="hover:bg-[#f8f9ff]">
-                      <td className="p-2.5 font-bold">Q.{item.q_no}</td>
+                      <td className="p-2.5 font-bold">{formatQNo(item.q_no)}</td>
                       <td className="p-2.5 font-semibold">
                         {item.finalMarks} / {item.max_marks}M
                       </td>
@@ -2129,7 +2136,7 @@ export function TeacherPrototypeWorkspace() {
                 <h3 className="font-bold text-[#2e7d32] mb-1">Key Strengths (Task T7 Rubric Analysis)</h3>
                 <ul className="list-disc list-inside space-y-1 text-[#33691e]">
                   {reviewItems.filter((r) => r.finalMarks >= r.max_marks * 0.75).map((r, i) => (
-                    <li key={i}>Demonstrated mastery on Question {r.q_no} ({r.finalMarks}/{r.max_marks} marks).</li>
+                    <li key={i}>Demonstrated mastery on {formatQNo(r.q_no)} ({r.finalMarks}/{r.max_marks} marks).</li>
                   ))}
                   {reviewItems.filter((r) => r.finalMarks >= r.max_marks * 0.75).length === 0 && (
                     <li>Consistent effort across attempted questions.</li>
@@ -2140,7 +2147,7 @@ export function TeacherPrototypeWorkspace() {
                 <h3 className="font-bold text-[#f57f17] mb-1">Areas for Improvement (Missed Rubric Criteria)</h3>
                 <ul className="list-disc list-inside space-y-1 text-[#e65100]">
                   {reviewItems.filter((r) => r.finalMarks < r.max_marks * 0.75).map((r, i) => (
-                    <li key={i}>Review Question {r.q_no}: {r.reason || 'Deductions against key points'}</li>
+                    <li key={i}>Review {formatQNo(r.q_no)}: {r.reason || 'Deductions against key points'}</li>
                   ))}
                   {reviewItems.filter((r) => r.finalMarks < r.max_marks * 0.75).length === 0 && (
                     <li>No major rubric deficiencies identified.</li>
@@ -2296,7 +2303,7 @@ export function TeacherPrototypeWorkspace() {
           <div className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between border-b border-[#f1f5f9] pb-3">
               <h2 className="text-base font-bold text-[#005dac]">
-                Teacher Review · Question {activeReview.q_no}
+                Teacher Review · {formatQNo(activeReview.q_no)}
               </h2>
               <button
                 type="button"
