@@ -170,6 +170,22 @@ export function TeacherPrototypeWorkspace() {
   const [demoMode, setDemoMode] = useState(false);
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
+  const [paperPages, setPaperPages] = useState<string[]>([]);
+  const [sheetPages, setSheetPages] = useState<string[]>([]);
+  const [activePaperPage, setActivePaperPage] = useState<number>(0);
+  const [activeSheetPage, setActiveSheetPage] = useState<number>(0);
+
+  useEffect(() => {
+    if (currentPaperId) localStorage.setItem('evaldesk_paper_id', currentPaperId);
+  }, [currentPaperId]);
+
+  useEffect(() => {
+    if (currentSheetId) localStorage.setItem('evaldesk_sheet_id', currentSheetId);
+  }, [currentSheetId]);
+
+  useEffect(() => {
+    localStorage.setItem('evaldesk_step', step);
+  }, [step]);
 
   const paperPreview = paperFile ? URL.createObjectURL(paperFile) : '';
   const currentStudentFile = studentFiles[activeStudentIdx] || null;
@@ -448,6 +464,68 @@ export function TeacherPrototypeWorkspace() {
     }
   };
 
+  const loadSheetReview = async (sheetId: string) => {
+    try {
+      const revRes = await fetch(`/api/sheets/${sheetId}/review`);
+      if (!revRes.ok) return;
+      const revData = await revRes.json();
+
+      if (revData.sheet) {
+        setStudentName(revData.sheet.student_name || '');
+        setRollNo(revData.sheet.roll_number || '');
+      }
+
+      if (revData.sheet_pages && Array.isArray(revData.sheet_pages) && revData.sheet_pages.length > 0) {
+        setSheetPages(revData.sheet_pages.map((p: any) => p.url));
+      }
+      if (revData.paper_pages && Array.isArray(revData.paper_pages) && revData.paper_pages.length > 0) {
+        setPaperPages(revData.paper_pages);
+      }
+
+      const allEvals = [...(revData.checked_questions || []), ...(revData.flagged_questions || [])];
+      if (allEvals.length > 0) {
+        const mapped: EvaluatedReviewItem[] = allEvals.map((e: any) => ({
+          eval_id: e.eval_id || e.id,
+          question_id: e.question_id,
+          q_no: String(e.q_no),
+          section_name: e.section_name || 'General',
+          transcribed_text: e.extracted_text || '',
+          diagram_notes: '',
+          confidence: (e.flags && e.flags.length > 0) ? 'low' : 'high',
+          suggested_marks: e.ai_marks !== undefined ? e.ai_marks : e.final_marks,
+          finalMarks: e.final_marks !== undefined ? e.final_marks : (e.ai_marks || 0),
+          max_marks: e.max_marks || 5,
+          feedback: e.reason || 'Graded by rubric standard.',
+          reason: Array.isArray(e.flags) && e.flags.length > 0 ? e.flags.join('; ') : (e.reason || ''),
+          resolved: Boolean(e.resolved),
+          attempted: Boolean(e.attempted ?? true),
+          isCounted: true,
+          statusLabel: e.resolved ? 'Checked' : 'Flagged',
+          evidence_quote: e.evidence_quote || '',
+        }));
+        setReviewItems(mapped);
+      }
+    } catch (err) {
+      console.error('Error loading sheet review:', err);
+    }
+  };
+
+  useEffect(() => {
+    const savedPaperId = localStorage.getItem('evaldesk_paper_id');
+    const savedSheetId = localStorage.getItem('evaldesk_sheet_id');
+    const savedStep = localStorage.getItem('evaldesk_step');
+    if (savedPaperId) {
+      setCurrentPaperId(savedPaperId);
+    }
+    if (savedSheetId) {
+      setCurrentSheetId(savedSheetId);
+      if (savedStep === 'review' || savedStep === 'report') {
+        setStep(savedStep as any);
+        loadSheetReview(savedSheetId);
+      }
+    }
+  }, []);
+
   const pollSheetStatus = async (sheetId: string) => {
     let isDone = false;
     let pollCount = 0;
@@ -483,34 +561,7 @@ export function TeacherPrototypeWorkspace() {
           isDone = true;
           setEvalStage('done');
           setStageProgress(100);
-
-          // Fetch real review data from DB
-          const revRes = await fetch(`/api/sheets/${sheetId}/review`);
-          if (revRes.ok) {
-            const revData = await revRes.json();
-            const allEvals = [...(revData.checked_questions || []), ...(revData.flagged_questions || [])];
-            if (allEvals.length > 0) {
-              const mapped: EvaluatedReviewItem[] = allEvals.map((e: any) => ({
-                eval_id: e.eval_id || e.id,
-                question_id: e.question_id,
-                q_no: String(e.q_no),
-                section_name: e.section_name || 'General',
-                transcribed_text: e.extracted_text || '',
-                diagram_notes: '',
-                confidence: (e.flags && e.flags.length > 0) ? 'low' : 'high',
-                suggested_marks: e.ai_marks !== undefined ? e.ai_marks : e.final_marks,
-                finalMarks: e.final_marks !== undefined ? e.final_marks : (e.ai_marks || 0),
-                max_marks: e.max_marks || 5,
-                feedback: e.reason || 'Graded by rubric standard.',
-                reason: Array.isArray(e.flags) && e.flags.length > 0 ? e.flags.join('; ') : (e.reason || ''),
-                resolved: Boolean(e.resolved),
-                attempted: Boolean(e.attempted ?? true),
-                isCounted: true,
-                statusLabel: e.resolved ? 'Checked' : 'Flagged',
-              }));
-              setReviewItems(mapped);
-            }
-          }
+          await loadSheetReview(sheetId);
           setTimeout(() => setStep('review'), 500);
           return;
         } else if (stData.status === 'failed' || stData.status === 'error') {
@@ -704,6 +755,9 @@ export function TeacherPrototypeWorkspace() {
           const errData = await res.json().catch(() => ({}));
           throw new Error(errData.detail || 'Failed to submit review override');
         }
+        if (currentSheetId) {
+          await loadSheetReview(currentSheetId);
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to submit review override');
       }
@@ -732,9 +786,13 @@ export function TeacherPrototypeWorkspace() {
           resolved: Boolean(data.resolved),
           statusLabel: data.resolved ? 'Checked' : 'Flagged',
           feedback: data.reason,
+          evidence_quote: data.evidence_quote || '',
         };
         setActiveReview(updatedItem);
         setReviewItems((items) => items.map((it) => (it.q_no === activeReview.q_no ? updatedItem : it)));
+        if (currentSheetId) {
+          await loadSheetReview(currentSheetId);
+        }
         setStatus('Re-check completed successfully!');
         setTimeout(() => setStatus(''), 2000);
       } else {
@@ -1624,39 +1682,101 @@ export function TeacherPrototypeWorkspace() {
               <div className="grid gap-3 lg:grid-cols-2">
                 {/* Left: Question Paper / Rubric */}
                 <div className="rounded-lg border border-[#e2e8f0] p-2 bg-[#f8f9ff]">
-                  <div className="text-xs font-bold mb-1 text-[#005dac]">Question Paper & Model Answers</div>
-                  <div className="h-[460px] overflow-auto rounded bg-white p-3 border border-[#e2e8f0] space-y-3">
-                    {paperPreview ? (
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-xs font-bold text-[#005dac]">Question Paper & Model Answers</span>
+                    {paperPages.length > 1 && (
+                      <div className="flex items-center gap-1.5 text-xs text-[#64748b]">
+                        <button
+                          type="button"
+                          disabled={activePaperPage <= 0}
+                          onClick={() => setActivePaperPage((p) => Math.max(0, p - 1))}
+                          className="px-1.5 py-0.5 rounded border border-[#c1c6d4] bg-white disabled:opacity-40"
+                        >
+                          Prev
+                        </button>
+                        <span>{activePaperPage + 1} / {paperPages.length}</span>
+                        <button
+                          type="button"
+                          disabled={activePaperPage >= paperPages.length - 1}
+                          onClick={() => setActivePaperPage((p) => Math.min(paperPages.length - 1, p + 1))}
+                          className="px-1.5 py-0.5 rounded border border-[#c1c6d4] bg-white disabled:opacity-40"
+                        >
+                          Next
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  <div className="h-[460px] overflow-auto rounded bg-white p-3 border border-[#e2e8f0] flex items-center justify-center">
+                    {paperPages.length > 0 ? (
+                      <img
+                        src={paperPages[activePaperPage]}
+                        alt="Question paper"
+                        style={{ transform: `rotate(${paperRotation}deg)` }}
+                        className="max-h-full max-w-full object-contain mx-auto transition-transform"
+                      />
+                    ) : paperPreview ? (
                       <img
                         src={paperPreview}
                         alt="Question paper"
                         style={{ transform: `rotate(${paperRotation}deg)` }}
-                        className="max-h-full max-w-full object-contain mx-auto"
+                        className="max-h-full max-w-full object-contain mx-auto transition-transform"
                       />
                     ) : (
-                      editableQuestions.map((q) => (
-                        <div key={q.q_no} className="rounded border border-[#e2e8f0] p-2 text-xs">
-                          <div className="font-bold flex justify-between">
-                            <span>Q.{q.q_no}</span>
-                            <span>{q.max_marks} Marks</span>
+                      <div className="space-y-3 w-full">
+                        {editableQuestions.map((q) => (
+                          <div key={q.q_no} className="rounded border border-[#e2e8f0] p-2 text-xs">
+                            <div className="font-bold flex justify-between">
+                              <span>Q.{q.q_no}</span>
+                              <span>{q.max_marks} Marks</span>
+                            </div>
+                            <p className="text-[#414752] mt-1">{q.question_text}</p>
                           </div>
-                          <p className="text-[#414752] mt-1">{q.question_text}</p>
-                        </div>
-                      ))
+                        ))}
+                      </div>
                     )}
                   </div>
                 </div>
 
                 {/* Right: Student Answer Sheet */}
                 <div className="rounded-lg border border-[#e2e8f0] p-2 bg-[#f8f9ff]">
-                  <div className="text-xs font-bold mb-1 text-[#005dac]">Student Answer Sheet (Handwritten)</div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-xs font-bold text-[#005dac]">Student Answer Sheet (Handwritten)</span>
+                    {sheetPages.length > 1 && (
+                      <div className="flex items-center gap-1.5 text-xs text-[#64748b]">
+                        <button
+                          type="button"
+                          disabled={activeSheetPage <= 0}
+                          onClick={() => setActiveSheetPage((p) => Math.max(0, p - 1))}
+                          className="px-1.5 py-0.5 rounded border border-[#c1c6d4] bg-white disabled:opacity-40"
+                        >
+                          Prev
+                        </button>
+                        <span>{activeSheetPage + 1} / {sheetPages.length}</span>
+                        <button
+                          type="button"
+                          disabled={activeSheetPage >= sheetPages.length - 1}
+                          onClick={() => setActiveSheetPage((p) => Math.min(sheetPages.length - 1, p + 1))}
+                          className="px-1.5 py-0.5 rounded border border-[#c1c6d4] bg-white disabled:opacity-40"
+                        >
+                          Next
+                        </button>
+                      </div>
+                    )}
+                  </div>
                   <div className="h-[460px] overflow-auto rounded bg-white p-3 border border-[#e2e8f0] flex items-center justify-center">
-                    {studentPreview ? (
+                    {sheetPages.length > 0 ? (
+                      <img
+                        src={sheetPages[activeSheetPage]}
+                        alt={`Student sheet page ${activeSheetPage + 1}`}
+                        style={{ transform: `rotate(${studentRotation}deg)` }}
+                        className="max-h-full max-w-full object-contain mx-auto transition-transform"
+                      />
+                    ) : studentPreview ? (
                       <img
                         src={studentPreview}
                         alt="Student sheet"
                         style={{ transform: `rotate(${studentRotation}deg)` }}
-                        className="max-h-full max-w-full object-contain mx-auto"
+                        className="max-h-full max-w-full object-contain mx-auto transition-transform"
                       />
                     ) : (
                       <div className="text-xs text-[#64748b]">Answer sheet image preview unavailable</div>
@@ -2012,6 +2132,14 @@ export function TeacherPrototypeWorkspace() {
               <div className="rounded-lg border border-[#ba1a1a] bg-[#ffdad6] p-3 text-xs text-[#93000a] flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 shrink-0" />
                 <span><strong>Flag Reason:</strong> {activeReview.reason}</span>
+              </div>
+            )}
+
+            {/* Verified Quote Alert */}
+            {activeReview.evidence_quote && (
+              <div className="rounded-lg border border-[#c8e6c9] bg-[#e8f5e9] p-3 text-xs text-[#196b22] flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-[#196b22]" />
+                <span><strong>Verified Evidence Quote:</strong> "{activeReview.evidence_quote}"</span>
               </div>
             )}
 

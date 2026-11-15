@@ -39,6 +39,7 @@ export interface EvaluatedReviewItem {
   attempted: boolean;
   isCounted: boolean;
   statusLabel: string;
+  evidence_quote?: string;
 }
 
 export interface SectionRuleSummary {

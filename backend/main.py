@@ -1700,7 +1700,28 @@ def get_sheet_review(sheet_id: str):
         paper = cursor.fetchone()
 
         cursor.execute("SELECT * FROM sheet_pages WHERE sheet_id = ? ORDER BY page_number ASC", (sheet_id,))
-        pages = [dict(r) for r in cursor.fetchall()]
+        pages_raw = [dict(r) for r in cursor.fetchall()]
+        sheet_pages = []
+        for p in pages_raw:
+            p_dict = dict(p)
+            fp = Path(p["file_path"])
+            p_dict["url"] = f"/storage/sheets/{sheet_id}/original/{fp.name}"
+            sheet_pages.append(p_dict)
+
+        paper_pages = []
+        paper_path_str = paper["paper_path"] if paper else None
+        if paper_path_str:
+            pp = Path(paper_path_str)
+            if pp.exists():
+                if pp.suffix.lower() == ".pdf":
+                    paper_dir = get_paper_dir(paper_id)
+                    pages_dir = paper_dir / "pages"
+                    if not pages_dir.exists() or len(list(pages_dir.glob("page_*.jpg"))) == 0:
+                        process_pdf(pp, output_image_dir=pages_dir)
+                    for pg in sorted(pages_dir.glob("page_*.jpg")):
+                        paper_pages.append(f"/storage/papers/{paper_id}/pages/{pg.name}")
+                else:
+                    paper_pages.append(f"/storage/papers/{paper_id}/{pp.name}")
 
         cursor.execute(
             """
@@ -1727,7 +1748,9 @@ def get_sheet_review(sheet_id: str):
         return {
             "sheet": dict(sheet),
             "paper": dict(paper),
-            "pages": pages,
+            "pages": sheet_pages,
+            "sheet_pages": sheet_pages,
+            "paper_pages": paper_pages,
             "checked_questions": checked,
             "flagged_questions": flagged,
             "all_resolved": len(flagged) == 0,
@@ -1843,7 +1866,31 @@ async def recheck_evaluation(eval_id: str, payload: RecheckRequest):
             (marks, marks, data.get("reason", "Re-checked by AI"), data.get("evidence", ""), eval_id),
         )
 
-    return {"status": "rechecked", "marks": marks}
+        cursor.execute("SELECT SUM(final_marks) as total FROM evaluations WHERE sheet_id = ?", (ev["sheet_id"],))
+        new_total = cursor.fetchone()["total"] or 0.0
+
+        cursor.execute("SELECT max_marks FROM sheets WHERE id = ?", (ev["sheet_id"],))
+        sheet_max = cursor.fetchone()["max_marks"] or 1.0
+
+        pct = min(100.0, round((new_total / sheet_max) * 100.0, 1))
+        grade = "A+" if pct >= 90 else "A" if pct >= 80 else "B" if pct >= 70 else "C" if pct >= 60 else "Needs Support"
+
+        cursor.execute(
+            "UPDATE sheets SET total_score = ?, percentage = ?, grade = ? WHERE id = ?",
+            (new_total, pct, grade, ev["sheet_id"]),
+        )
+
+    return {
+        "status": "rechecked",
+        "marks": marks,
+        "ai_marks": marks,
+        "final_marks": marks,
+        "reason": data.get("reason", "Re-checked by AI"),
+        "evidence_quote": data.get("evidence", ""),
+        "flags": [],
+        "resolved": 1,
+        "new_total": new_total,
+    }
 
 @app.delete("/api/sheets/{sheet_id}")
 def delete_sheet(sheet_id: str):
