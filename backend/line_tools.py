@@ -76,7 +76,7 @@ def segment_text_lines(image_path: Path, output_dir: Path) -> List[Dict[str, Any
             "y": y1,
             "width": x2 - x1,
             "height": y2 - y1,
-            "image_path": str(line_path.relative_to(output_dir.parent.parent.parent)),
+            "image_path": line_path.relative_to(output_dir.parent.parent.parent).as_posix(),
             "full_path": str(line_path),
         })
 

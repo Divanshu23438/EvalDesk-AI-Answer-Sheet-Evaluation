@@ -69,6 +69,10 @@ def build_training_export_zip(
                 # Image relative path and content
                 rel_img_path = r["image_path"]
                 full_img_path = BASE_DIR / rel_img_path
+                if not full_img_path.exists():
+                    full_img_path = BASE_DIR / "data" / "storage" / rel_img_path
+                if not full_img_path.exists():
+                    full_img_path = Path(rel_img_path)
                 archive_img_name = f"images/{Path(rel_img_path).name}"
 
                 if full_img_path.exists():
