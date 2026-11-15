@@ -1,0 +1,5 @@
+health_gemini_image|success||2
+health_gemini_text|success||1
+health_groq_image|error|HTTP 400: {"error":{"message":"Image must have at least 32 pixels in each dimension","type":"invalid_request_error"}}
+|1
+health_groq_image|success||1

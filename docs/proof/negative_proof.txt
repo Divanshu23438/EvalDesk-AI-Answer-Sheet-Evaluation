@@ -1,0 +1,13 @@
+=== NEGATIVE PROOF 1: BLANK IMAGE TO GATEWAY ===
+SUCCESS: Raised typed AIError:
+  error_type: AIError
+  kind: bad_input
+  provider: gateway
+  message: Input image is completely blank or contains no legible content.
+
+=== NEGATIVE PROOF 2: CORRUPT PDF TO GATEWAY ===
+SUCCESS: Raised typed AIError:
+  error_type: AIError
+  kind: bad_input
+  provider: gateway
+  message: Invalid or corrupt PDF document: Corrupt or invalid PDF document: Failed to open stream

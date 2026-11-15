@@ -1,31 +1,54 @@
+import io
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 import pymupdf
-from PIL import Image
+from PIL import Image, ImageOps
 
-def process_pdf(pdf_path: Path, output_image_dir: Optional[Path] = None, dpi: int = 200) -> Dict[str, Any]:
+def process_pdf_bytes(
+    pdf_bytes: bytes,
+    output_image_dir: Optional[Path] = None,
+    dpi: int = 200
+) -> Dict[str, Any]:
     """
-    Processes a PDF file:
-    - Extracts typed text if present.
-    - If output_image_dir is provided or PDF is scanned, renders pages to JPG.
+    Processes PDF bytes:
+    - Verifies document integrity.
+    - Extracts typed text layer if present.
+    - Renders pages to standard JPEG images if output_image_dir is provided or text is absent.
     """
-    doc = pymupdf.open(str(pdf_path))
+    if not pdf_bytes or len(pdf_bytes) < 10:
+        raise ValueError("Corrupt or empty PDF data: file size too small.")
+
+    try:
+        doc = pymupdf.open(stream=pdf_bytes, filetype="pdf")
+    except Exception as e:
+        raise ValueError(f"Corrupt or invalid PDF document: {e}") from e
+
     page_count = len(doc)
-    all_text = []
-    page_images = []
+    if page_count == 0:
+        raise ValueError("Corrupt PDF document contains 0 pages.")
+
+    all_text: List[str] = []
+    page_images_bytes: List[bytes] = []
+    page_image_paths: List[Path] = []
 
     for page_num in range(page_count):
-        page = doc[page_num]
-        txt = page.get_text("text").strip()
-        if txt:
-            all_text.append(txt)
+        try:
+            page = doc[page_num]
+            txt = page.get_text("text").strip()
+            if txt:
+                all_text.append(txt)
 
-        if output_image_dir:
-            output_image_dir.mkdir(parents=True, exist_ok=True)
             pix = page.get_pixmap(dpi=dpi)
-            out_file = output_image_dir / f"page_{page_num + 1:02d}.jpg"
-            pix.save(str(out_file))
-            page_images.append(out_file)
+            jpg_bytes = pix.tobytes(output="jpeg")
+            page_images_bytes.append(jpg_bytes)
+
+            if output_image_dir:
+                output_image_dir.mkdir(parents=True, exist_ok=True)
+                out_file = output_image_dir / f"page_{page_num + 1:02d}.jpg"
+                out_file.write_bytes(jpg_bytes)
+                page_image_paths.append(out_file)
+        except Exception as e:
+            raise ValueError(f"Failed to process page {page_num + 1} of PDF: {e}") from e
 
     combined_text = "\n\n".join(all_text).strip()
     is_typed = len(combined_text) > 80  # Substantial text layer detected
@@ -34,25 +57,74 @@ def process_pdf(pdf_path: Path, output_image_dir: Optional[Path] = None, dpi: in
         "is_typed": is_typed,
         "text": combined_text,
         "page_count": page_count,
-        "page_images": page_images,
+        "page_images_bytes": page_images_bytes,
+        "page_images": page_image_paths,
     }
 
-def convert_single_image_to_standard_jpeg(image_path: Path, output_path: Path, max_dimension: int = 2000) -> Path:
+def process_pdf(pdf_path: Path, output_image_dir: Optional[Path] = None, dpi: int = 200) -> Dict[str, Any]:
     """
-    Converts and normalizes an image (PNG, WebP, rotated camera JPG) to an upright standard JPEG.
+    Reads a PDF from disk and processes it.
     """
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    img = Image.open(image_path)
-    
-    # Auto-orient based on EXIF
-    from PIL import ImageOps
-    img = ImageOps.exif_transpose(img)
-    img = img.convert("RGB")
+    if not pdf_path.exists():
+        raise FileNotFoundError(f"PDF file does not exist: {pdf_path}")
+    data = pdf_path.read_bytes()
+    return process_pdf_bytes(data, output_image_dir=output_image_dir, dpi=dpi)
 
-    w, h = img.size
+def normalize_image_bytes(
+    image_bytes: bytes,
+    max_dimension: int = 2000
+) -> Tuple[bytes, str]:
+    """
+    Takes raw image bytes (JPEG, PNG, WebP, etc.):
+    - Validates integrity.
+    - Rejects blank / solid color images with clear error.
+    - Applies EXIF orientation.
+    - Converts to RGB standard JPEG.
+    - Resizes to at most max_dimension on longest edge.
+    Returns: (standard_jpeg_bytes, "image/jpeg")
+    """
+    if not image_bytes or len(image_bytes) < 10:
+        raise ValueError("Corrupt or empty image data: file size too small.")
+
+    try:
+        img = Image.open(io.BytesIO(image_bytes))
+        img.load()
+    except Exception as e:
+        raise ValueError(f"Corrupt or invalid image file: {e}") from e
+
+    # Check for blank / solid color image
+    rgb_img = img.convert("RGB")
+    extrema = rgb_img.getextrema()  # [ (r_min, r_max), (g_min, g_max), (b_min, b_max) ]
+    is_blank = all((b_max - b_min) <= 2 for b_min, b_max in extrema)
+    if is_blank:
+        raise ValueError("Input image is completely blank or contains no legible content.")
+
+    # Auto-orient based on EXIF
+    rgb_img = ImageOps.exif_transpose(rgb_img)
+
+    w, h = rgb_img.size
     if max(w, h) > max_dimension:
         scale = max_dimension / float(max(w, h))
-        img = img.resize((int(w * scale), int(h * scale)), Image.Resampling.LANCZOS)
+        new_w = max(1, int(w * scale))
+        new_h = max(1, int(h * scale))
+        rgb_img = rgb_img.resize((new_w, new_h), Image.Resampling.LANCZOS)
 
-    img.save(output_path, "JPEG", quality=90)
+    out_buf = io.BytesIO()
+    rgb_img.save(out_buf, format="JPEG", quality=90)
+    return out_buf.getvalue(), "image/jpeg"
+
+def convert_single_image_to_standard_jpeg(
+    image_path: Path,
+    output_path: Path,
+    max_dimension: int = 2000
+) -> Path:
+    """
+    Reads an image from disk, normalizes it, and saves to output_path.
+    """
+    if not image_path.exists():
+        raise FileNotFoundError(f"Image file does not exist: {image_path}")
+    raw_bytes = image_path.read_bytes()
+    norm_bytes, _ = normalize_image_bytes(raw_bytes, max_dimension=max_dimension)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_bytes(norm_bytes)
     return output_path

@@ -14,7 +14,11 @@ from backend.marking_engine import (
 from backend.ai_gateway import (
     calculate_text_similarity,
     check_suspicious_text,
+    ai_gateway,
+    AIError,
+    get_content_cache_key,
 )
+from backend.pdf_tools import normalize_image_bytes, process_pdf_bytes
 from backend.reports_generator import (
     generate_student_report_card_pdf,
     generate_paper_report_excel,
@@ -178,3 +182,56 @@ def test_training_export_zip_structure():
         csv_content = zf.read("labels.csv").decode("utf-8")
         reader = list(csv.reader(csv_content.splitlines()))
         assert reader[0] == ["filename", "text", "page", "sheet_id", "provenance", "split", "dataset_version"]
+
+def test_gateway_blank_image_rejected_with_typed_error():
+    import io
+    import asyncio
+    from PIL import Image
+    # Create pure white blank image
+    img = Image.new("RGB", (100, 100), color=(255, 255, 255))
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG")
+    blank_bytes = buf.getvalue()
+
+    with pytest.raises(AIError) as exc_info:
+        asyncio.run(ai_gateway.call_gemini("Evaluate question", image_bytes=blank_bytes))
+    assert exc_info.value.kind == "bad_input"
+    assert "blank" in exc_info.value.message.lower()
+
+def test_gateway_corrupt_pdf_rejected_with_typed_error():
+    import asyncio
+    corrupt_pdf = b"%PDF-1.4 corrupt junk random non-pdf bytes without trailer %%EOF"
+    with pytest.raises(AIError) as exc_info:
+        asyncio.run(ai_gateway.call_gemini("Evaluate question", image_bytes=corrupt_pdf, mime_type="application/pdf"))
+    assert exc_info.value.kind == "bad_input"
+    assert "pdf" in exc_info.value.message.lower() or "corrupt" in exc_info.value.message.lower()
+
+def test_gateway_sha256_content_cache_key():
+    prompt = "Grade question 1"
+    img1 = b"image content alpha 12345"
+    img2 = b"image content beta  12345"  # Same length, different content!
+    assert len(img1) == len(img2)
+
+    key1 = get_content_cache_key("gemini", "grading", prompt, img1)
+    key2 = get_content_cache_key("gemini", "grading", prompt, img2)
+    assert key1 != key2, "Cache key must use SHA-256 of content, not length!"
+
+def test_gateway_image_resize_and_normalization():
+    import io
+    from PIL import Image
+    # Create 3000x1500 patterned image
+    img = Image.new("RGB", (3000, 1500), color=(100, 150, 200))
+    for x in range(0, 3000, 50):
+        for y in range(0, 1500, 50):
+            img.putpixel((x, y), (x % 255, y % 255, (x + y) % 255))
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    raw_png = buf.getvalue()
+
+    norm_bytes, mime = normalize_image_bytes(raw_png, max_dimension=2000)
+    assert mime == "image/jpeg"
+    res_img = Image.open(io.BytesIO(norm_bytes))
+    w, h = res_img.size
+    assert max(w, h) == 2000
+    assert w == 2000 and h == 1000
+
