@@ -27,7 +27,7 @@ Done (task id, commit, proof file):
 - Task P7.2: Quota error handling (HTTP 429 live alert banner with Retry) and clean cascading sheet deletion (`DELETE /api/sheets/{sheet_id}` removing database records and disk storage) | commit 7256ba7 | `docs/proof/p7_e2e_proof.txt`
 - Task P7.3: Clean training-line verification display, remove mock placeholders, forward-slash relative POSIX line paths | commit a6a7089 | `docs/proof/p7_e2e_proof.txt`
 - Task P7.4: Live end-to-end verification (`scripts/e2e_real.py`) exercising complete 11-step pipeline against live AI APIs with zero mock data and zero errors | commit 4d6bebf | `docs/proof/p7_e2e_proof.txt`
-- Task P7.5: Marking Concurrency & Screen 3 Polling Fix (instant skip for unattempted answers, asyncio.Semaphore(3) concurrent grading with 25s timeout, startup resume for marking sheets, continuous 2s frontend polling with auto-advance and Retry button) | commit [pending] | `docs/proof/p3_marking_concurrency_fix.txt`
+- Task P7.5: Marking Concurrency & Screen 3 Polling Fix (instant skip for unattempted answers, asyncio.Semaphore(3) concurrent grading with 25s timeout, startup resume for marking sheets, continuous 2s frontend polling with auto-advance and Retry button) | commit 7f8c34a | `docs/proof/p3_marking_concurrency_fix.txt`
 In progress / failing (exact error): None. All tasks from Phase 0 through Phase 7 pass 100%. System is fully verified and ready for live production use.
 Next three actions:
 1. Final commit of Phase 7 (P7.4).
