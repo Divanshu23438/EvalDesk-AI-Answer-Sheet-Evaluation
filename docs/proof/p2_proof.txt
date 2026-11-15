@@ -1,0 +1,50 @@
+=================================================================
+EVALDESK PHASE 2 VERIFICATION & PROOF
+=================================================================
+
+--- TEST 1: Negative Proof (Blank Image to POST /api/papers/extract) ---
+Status Code: 400
+Response: {'detail': 'Question extraction failed: Input image is completely blank or contains no legible content.'}
+[PASS] Blank image rejected with typed error, no template fallback.
+
+--- TEST 2: Negative Proof (Corrupt PDF to POST /api/papers/extract) ---
+Status Code: 400
+Response: {'detail': 'Invalid or corrupt PDF document: Corrupt or invalid PDF document: Failed to open stream'}
+[PASS] Corrupt PDF rejected with typed error, no template fallback.
+
+--- TEST 3: Real Bilingual Linux JPEG Paper (No Key -> AI Reference Generation) ---
+Extraction Status Code: 200
+Draft ID: 8ac076d1-533e-4b8b-bfc1-1b4781dad1c1
+Source: vision | Provider: gemini
+Total Marks: 60.0
+Warnings: ['Sum of question marks (76) does not equal printed total (60).']
+Extracted Questions Count: 19
+  Q: [q_1] Q.1 (A) (i): What is UNIX? / UNIX क्या है?... (1.0M, mcq)
+  Q: [q_2] Q.1 (A) (ii): Which command shows current directory? / कौन सा कमांड वर्तमा... (1.0M, mcq)
+  Q: [q_3] Q.1 (A) (iii): Which of the following is a relative path? / निम्न में से कौ... (1.0M, mcq)
+Create Paper Status: 200 | {'status': 'created', 'paper_id': '4bc20d9f-70fb-4124-911a-449017e2cada', 'questions_count': 19, 'total_marks': 60.0}
+Generating AI Reference for Paper 4bc20d9f-70fb-4124-911a-449017e2cada...
+Reference Generate Status: 200
+Generated References Count: 19
+Dual-Draft Disagreements: ["MCQ q_1: Draft 1 suggests '1', Draft 2 suggests 'B'", "MCQ q_2: Draft 1 suggests '2', Draft 2 suggests 'C'", "MCQ q_3: Draft 1 suggests '2', Draft 2 suggests 'C'", "MCQ q_4: Draft 1 suggests '2', Draft 2 suggests 'C'", 'Question q_4: Drafts diverge on model answer formulation (similarity 0.36)', "MCQ q_5: Draft 1 suggests '1', Draft 2 suggests 'B'", 'Question q_11: Drafts diverge on model answer formulation (similarity 0.19)', 'Question q_12: Drafts diverge on model answer formulation (similarity 0.06)', 'Question q_13: Drafts diverge on model answer formulation (similarity 0.43)', 'Question q_14: Drafts diverge on model answer formulation (similarity 0.21)', 'Question q_15: Drafts diverge on model answer formulation (similarity 0.03)', 'Question q_16: Drafts diverge on model answer formulation (similarity 0.14)', 'Question q_17: Drafts diverge on model answer formulation (similarity 0.11)', 'Question q_18: Drafts diverge on model answer formulation (similarity 0.04)', 'Question q_19: Drafts diverge on model answer formulation (similarity 0.10)']
+Lock Paper Status: 200 | {'status': 'locked', 'paper_id': '4bc20d9f-70fb-4124-911a-449017e2cada', 'questions_count': 19}
+[PASS] Bilingual JPEG paper extracted, AI reference drafted, approved and locked.
+
+--- TEST 4: Typed PDF Paper with Answer Key ---
+PDF Extraction Status: 200
+PDF Source: pdf_text (must be 'pdf_text')
+Extracted Questions Count: 4
+  Q: [q_1] Q1: Explain the ACID properties of a transaction in a database management system. (5.0M)
+  Q: [q_2] Q2: What is the difference between primary key, candidate key, and super key? (5.0M)
+  Q: [q_3] Q3: Explain 1NF, 2NF, and 3NF database normalization with clear examples. (10.0M)
+  Q: [q_4] Q4: Describe the architecture of DBMS with a neat explanation of 3-schema architecture. (10.0M)
+Parsing Answer Key for Paper 5b51ee9f-f344-41ba-b1e6-f45801ce0ee8...
+Answer Key Status: 200
+Parsed References Count: 4
+Missing Questions: []
+Lock Paper 2 Status: 200 | {'status': 'locked', 'paper_id': '5b51ee9f-f344-41ba-b1e6-f45801ce0ee8', 'questions_count': 4}
+[PASS] Typed PDF paper extracted via pdf_text, Answer Key parsed, approved and locked.
+
+=================================================================
+ALL PHASE 2 VERIFICATION TESTS PASSED SUCCESSFULLY!
+=================================================================

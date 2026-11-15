@@ -1,0 +1,39 @@
+[PASS] banned strings
+[PASS] no .env/dist/data/cache tracked
+[PASS] pytest
+[PASS] tsc --noEmit
+{
+  "gemini_text": {
+    "status": "online",
+    "model": "gemini-3.5-flash-lite",
+    "latency_ms": 0,
+    "error": null,
+    "response": {
+      "ping": "pong"
+    }
+  },
+  "gemini_image": {
+    "status": "online",
+    "model": "gemini-3.5-flash-lite",
+    "latency_ms": 1,
+    "error": null,
+    "response": [
+      {
+        "visual_check": "pass"
+      }
+    ]
+  },
+  "groq_image": {
+    "status": "online",
+    "model": "qwen/qwen3.8-27b",
+    "latency_ms": 1,
+    "accepts_images": true,
+    "error": null,
+    "response": {
+      "visual_check": "pass"
+    }
+  }
+}
+[PASS] live provider health (endpoint reachable)
+
+RESULT: ALL PASS
