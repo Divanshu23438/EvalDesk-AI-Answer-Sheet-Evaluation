@@ -1,6 +1,6 @@
 # STATUS (update at the end of every session)
 Date / author (agent or model name): 2026-11-15 / Antigravity (Gemini 3.8 Flash)
-Current phase and task: Phase 4 Completed (Awaiting User Review before Phase 5)
+Current phase and task: Phase 6 Completed (Awaiting User Review before Phase 7)
 Done (task id, commit, proof file):
 - Task P0.1: Rotate-keys note, ignore secrets/dist/caches/data | commit 8e0f32e | docs/proof/rotate_keys_note.md
 - Task P0.2: Back up database & clean database initialization | commit 30e66b6 | data/app.db.bak
@@ -20,17 +20,21 @@ Done (task id, commit, proof file):
 - Task P4.1: All-pages reading with Task T5 prompt, mapping answers strictly to question.key, merging multi-page answers, and detecting unattempted questions with Gemini primary + Groq vision secondary | commit 639f340 | docs/proof/p4_proof.txt
 - Task P4.2: Verified grading engine (Task T6) with exact match for MCQ/one-word, key-point rubric grading, strict Python quote verification, half-step rounding, section attempt-any-N choice rules, and plain-English flags | commit 639f340 | docs/proof/p4_proof.txt
 - Task P4.3: Phase 4 proof evaluating real multi-page sheet end-to-end, proving in SQLite that marks come strictly from reference with zero default scores | commit 639f340 | docs/proof/p4_proof.txt
-In progress / failing (exact error): None. All Phase 0, Phase 1, Phase 2, Phase 3, and Phase 4 tasks pass 100%. Stopped for user review before Phase 5.
+- Task P4.4: Sheet upload hotfix resolving PDF/image byte validation and manual identity form state gating | commit be9159a | docs/proof/p4_upload_fix.txt
+- Task P5.1-P5.3: Real center split-view review screen (locked paper pages and student sheet pages with 90° rotation), checked & flagged lists, teacher mark override, and real AI recheck | commit 5f72235 | docs/proof/p5_proof.txt
+- Task P6.1-P6.3: Student Report Card PDF with Task T7 strengths/improvements, Class Assessment Summary PDF, and Excel Matrix matching database scores exactly | commit d6c67d8 | docs/proof/p6_proof.txt
+In progress / failing (exact error): None. All tasks from Phase 0 through Phase 6 pass 100%. Stopped for user review before Phase 7.
 Next three actions:
-1. User review of Phase 3 & Phase 4 deliverables, real multi-page evaluation proof, and quote verification.
-2. Begin Phase 5 Task 1: Split-view review screen wired to real paper and sheet pages from SQLite.
-3. Begin Phase 5 Task 2: Checked and Flagged lists, review modal with real quote evidence, teacher override, and recheck endpoint.
+1. User review of Phase 4.4 upload hotfix, Phase 5 review split-view/recheck, and Phase 6 PDF & Excel reports.
+2. Begin Phase 7 Task 1: One-command startup scripts (`start.bat`, `start.sh`), README, `.env.example`, and backup script.
+3. Begin Phase 7 Task 2: Quota-awareness engine (per-minute/per-day limits, queue delay messages) and "Delete this sheet" cascading cleanup.
 Known issues and decisions (link to docs/DECISIONS.md):
 - On Windows, `check_all.py` calls `npx.cmd` when on win32 to prevent `[WinError 2]`.
 - Groq Vision requires images to be at least 32x32 pixels; `health_check_providers` generates a 64x64 patterned test JPEG.
 - Step 2 (Upload Student Sheets) is strictly disabled in UI navigation until `POST /api/papers/{id}/lock` returns HTTP 200.
 - All file paths in SQLite are stored as relative POSIX paths (`data/storage/...`) to ensure portability across Windows and Linux.
 - FastAPI `lifespan` context manager resumes all `queued` and `evaluating` jobs on server startup.
+- Review and Reports states persist across page reloads via `localStorage` and `GET /api/sheets/{id}/review`.
 How to run: backend command, frontend command, check_all command
 - Backend: python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000
 - Frontend: npm run dev (or npx vite)
