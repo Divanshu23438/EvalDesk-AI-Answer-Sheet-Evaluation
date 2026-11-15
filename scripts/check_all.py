@@ -58,7 +58,8 @@ def check_pytest():
     record("pytest", code == 0, out)
 
 def check_tsc():
-    code, out = run(["npx", "tsc", "--noEmit"])
+    cmd = ["npx.cmd" if sys.platform == "win32" else "npx", "tsc", "--noEmit"]
+    code, out = run(cmd)
     record("tsc --noEmit", code == 0, out)
 
 def check_health(base):

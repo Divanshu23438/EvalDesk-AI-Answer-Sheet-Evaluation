@@ -1,0 +1,64 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+  --font-sans: "DM Sans", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --color-surface: #f8f9ff;
+  --color-surface-card: #ffffff;
+  --color-surface-low: #eff4ff;
+  --color-surface-container: #e5eeff;
+  --color-surface-high: #dce9ff;
+
+  --color-ink: #0b1c30;
+  --color-ink-secondary: #414752;
+  --color-ink-muted: #64748b;
+  --color-outline: #c1c6d4;
+  --color-border-hairline: #e2e8f0;
+
+  --color-primary: #005dac;
+  --color-primary-hover: #004786;
+  --color-primary-tint: #d4e3ff;
+
+  --color-amber-accent: #875200;
+  --color-amber-surface: #ffddba;
+
+  --color-success: #196b22;
+  --color-success-surface: #e8f5e9;
+
+  --color-danger: #ba1a1a;
+  --color-danger-surface: #ffdad6;
+}
+
+@layer base {
+  body {
+    font-family: var(--font-sans);
+    background-color: var(--color-surface);
+    color: var(--color-ink);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+  }
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Custom subtle scrollbars for dense multi-pane grading workspace */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #c1c6d4;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}

@@ -1,0 +1,6 @@
+[PASS] banned strings
+[PASS] no .env/dist/data/cache tracked
+[PASS] pytest
+[PASS] tsc --noEmit
+
+RESULT: ALL PASS
