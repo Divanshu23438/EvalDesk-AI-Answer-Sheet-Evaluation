@@ -722,6 +722,45 @@ export function TeacherPrototypeWorkspace() {
     }
   };
 
+  const handleDeleteSheet = async (sheetId: string) => {
+    if (!sheetId) return;
+    const confirmDelete = window.confirm(
+      'Are you sure you want to permanently delete this student answer sheet and all associated evaluation data? This action cannot be undone.'
+    );
+    if (!confirmDelete) return;
+
+    try {
+      const res = await fetch(`/api/sheets/${sheetId}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || `Server error (HTTP ${res.status}) deleting sheet.`);
+      }
+
+      // Reset all sheet state
+      setCurrentSheetId('');
+      localStorage.removeItem('evaldesk_sheet_id');
+      setStudentFiles([]);
+      setStudentName('');
+      setRollNo('');
+      setHeaderConfidence(null);
+      setNeedsIdentityPrompt(false);
+      setEvalStage('idle');
+      setErrorMessage('');
+      setReviewItems([]);
+      setActiveReview(null);
+      setPaperSummary(null);
+      setResult(null);
+      setSheetPages([]);
+      setActiveSheetPage(0);
+      setStep('upload');
+      setStatus('Answer sheet permanently deleted.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete sheet.');
+    }
+  };
+
   const handleConfirmReview = async (item: EvaluatedReviewItem, overrideMarks?: number) => {
     const finalVal = overrideMarks !== undefined ? overrideMarks : item.finalMarks;
     const updated = reviewItems.map((cur) =>
@@ -870,6 +909,16 @@ export function TeacherPrototypeWorkspace() {
     }
   };
 
+  useEffect(() => {
+    if (step === 'library') {
+      loadSavedPapers();
+    } else if (step === 'verify') {
+      loadTrainingLines();
+    } else if (step === 'report' && currentPaperId) {
+      loadReports();
+    }
+  }, [step, currentPaperId]);
+
   const checked = reviewItems.filter((i) => i.resolved && i.isCounted);
   const flagged = reviewItems.filter((i) => !i.resolved);
   const uncounted = reviewItems.filter((i) => !i.isCounted);
@@ -948,10 +997,35 @@ export function TeacherPrototypeWorkspace() {
 
       <main className="max-w-[1520px] mx-auto p-5 space-y-5">
         {error && (
-          <div className="rounded-lg border border-[#ba1a1a] bg-[#ffdad6] px-4 py-3 text-xs text-[#93000a] flex items-center justify-between shadow-xs">
+          <div
+            className={`rounded-lg border px-4 py-3 text-xs flex items-center justify-between shadow-xs ${
+              error.toLowerCase().includes('429') ||
+              error.toLowerCase().includes('quota') ||
+              error.toLowerCase().includes('rate limit')
+                ? 'border-[#f59e0b] bg-[#fffbeb] text-[#b45309]'
+                : 'border-[#ba1a1a] bg-[#ffdad6] text-[#93000a]'
+            }`}
+          >
             <div className="flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 shrink-0 text-[#ba1a1a]" />
-              <span className="font-semibold">{error}</span>
+              <AlertTriangle
+                className={`w-4 h-4 shrink-0 ${
+                  error.toLowerCase().includes('429') ||
+                  error.toLowerCase().includes('quota') ||
+                  error.toLowerCase().includes('rate limit')
+                    ? 'text-[#f59e0b]'
+                    : 'text-[#ba1a1a]'
+                }`}
+              />
+              <div>
+                {(error.toLowerCase().includes('429') ||
+                  error.toLowerCase().includes('quota') ||
+                  error.toLowerCase().includes('rate limit')) && (
+                  <span className="mr-2 inline-block rounded bg-[#f59e0b] px-1.5 py-0.5 text-[10px] font-bold text-white uppercase tracking-wider">
+                    AI Quota / Rate Limit (HTTP 429)
+                  </span>
+                )}
+                <span className="font-semibold">{error}</span>
+              </div>
             </div>
             <div className="flex items-center gap-2">
               {retryAction && (
@@ -963,9 +1037,15 @@ export function TeacherPrototypeWorkspace() {
                     setRetryAction(null);
                     fn();
                   }}
-                  className="px-2.5 py-1 bg-[#ba1a1a] text-white rounded font-semibold hover:bg-[#93000a] transition-all cursor-pointer"
+                  className={`px-3 py-1 text-white rounded font-semibold transition-all cursor-pointer flex items-center gap-1 shadow-xs ${
+                    error.toLowerCase().includes('429') ||
+                    error.toLowerCase().includes('quota') ||
+                    error.toLowerCase().includes('rate limit')
+                      ? 'bg-[#d97706] hover:bg-[#b45309]'
+                      : 'bg-[#ba1a1a] hover:bg-[#93000a]'
+                  }`}
                 >
-                  Retry
+                  <RefreshCw className="w-3 h-3" /> Retry
                 </button>
               )}
               <button
@@ -1623,16 +1703,44 @@ export function TeacherPrototypeWorkspace() {
             </div>
 
             {evalStage === 'error' ? (
-              <div className="rounded-lg border border-[#ba1a1a] bg-[#ffdad6] p-4 text-xs text-[#93000a] space-y-2">
-                <div className="font-bold">Evaluation Encountered an Error</div>
-                <div>{errorMessage || 'External provider timed out or rate limit reached.'}</div>
-                <button
-                  type="button"
-                  onClick={() => currentSheetId && handleRetryEvaluation(currentSheetId)}
-                  className="rounded bg-[#005dac] px-4 py-2 font-bold text-white hover:bg-[#004786] flex items-center gap-1 mx-auto"
-                >
-                  <RefreshCw className="w-3.5 h-3.5" /> Retry Evaluation
-                </button>
+              <div
+                className={`rounded-lg border p-4 text-xs space-y-3 ${
+                  errorMessage.toLowerCase().includes('429') ||
+                  errorMessage.toLowerCase().includes('quota') ||
+                  errorMessage.toLowerCase().includes('rate limit')
+                    ? 'border-[#f59e0b] bg-[#fffbeb] text-[#b45309]'
+                    : 'border-[#ba1a1a] bg-[#ffdad6] text-[#93000a]'
+                }`}
+              >
+                <div className="flex items-center justify-center gap-2 font-bold text-sm">
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  <span>
+                    {errorMessage.toLowerCase().includes('429') ||
+                    errorMessage.toLowerCase().includes('quota') ||
+                    errorMessage.toLowerCase().includes('rate limit')
+                      ? 'AI Provider Quota / Rate Limit Reached (HTTP 429)'
+                      : 'Evaluation Encountered an Error'}
+                  </span>
+                </div>
+                <div className="bg-white/80 p-2.5 rounded border border-current/20 font-mono text-[11px] text-left break-words">
+                  {errorMessage || 'External provider timed out or rate limit reached.'}
+                </div>
+                <div className="flex items-center justify-center gap-3 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => currentSheetId && handleRetryEvaluation(currentSheetId)}
+                    className="rounded bg-[#005dac] px-4 py-2 font-bold text-white hover:bg-[#004786] flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" /> Retry Evaluation
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => currentSheetId && handleDeleteSheet(currentSheetId)}
+                    className="rounded border border-[#ba1a1a] bg-white px-3 py-2 font-bold text-[#ba1a1a] hover:bg-[#ffdad6] flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" /> Discard Sheet
+                  </button>
+                </div>
               </div>
             ) : evalStage === 'done' ? (
               <div className="text-xs font-bold text-[#196b22] flex items-center justify-center gap-1">
@@ -1858,9 +1966,18 @@ export function TeacherPrototypeWorkspace() {
                   setStep('report');
                   loadReports();
                 }}
-                className="w-full rounded-lg bg-[#005dac] py-2.5 text-xs font-bold text-white hover:bg-[#004786] disabled:opacity-40 shadow-xs"
+                className="w-full rounded-lg bg-[#005dac] py-2.5 text-xs font-bold text-white hover:bg-[#004786] disabled:opacity-40 shadow-xs cursor-pointer"
               >
                 Proceed to Reports
+              </button>
+
+              {/* Delete Current Sheet Button */}
+              <button
+                type="button"
+                onClick={() => currentSheetId && handleDeleteSheet(currentSheetId)}
+                className="w-full rounded-lg border border-[#ba1a1a] bg-white py-2 text-xs font-bold text-[#ba1a1a] hover:bg-[#ffdad6] transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+              >
+                <Trash2 className="w-3.5 h-3.5" /> Delete this sheet
               </button>
             </aside>
           </section>
@@ -2078,45 +2195,66 @@ export function TeacherPrototypeWorkspace() {
             </div>
 
             {/* Line Verification Workspace */}
-            <div className="grid gap-5 lg:grid-cols-2">
-              <div className="rounded-lg border border-[#e2e8f0] p-4 bg-[#f8f9ff] space-y-3">
-                <div className="text-xs font-bold text-[#005dac] flex justify-between">
-                  <span>Handwritten Line Crop</span>
-                  <span className="text-[#64748b]">
-                    {activeLine?.is_sample ? '10% Random Sample' : 'Review Candidate'}
-                  </span>
-                </div>
-                <div className="h-36 rounded bg-white border border-[#e2e8f0] flex items-center justify-center p-2 overflow-hidden">
-                  {activeLine?.image_path ? (
-                    <img
-                      src={`/${activeLine.image_path}`}
-                      alt="Line crop"
-                      className="max-h-full max-w-full object-contain"
-                    />
-                  ) : (
-                    <div className="text-xs text-[#64748b]">Sample line crop preview</div>
-                  )}
-                </div>
+            {trainingLines.length === 0 ? (
+              <div className="rounded-lg border border-[#e2e8f0] bg-[#f8fafc] p-8 text-center space-y-2">
+                <Archive className="w-8 h-8 text-[#94a3b8] mx-auto" />
+                <div className="text-sm font-bold text-[#334155]">No Segmented Lines Pending Verification</div>
+                <p className="text-xs text-[#64748b] max-w-md mx-auto">
+                  Line crops are automatically segmented when student answer sheets are processed with consent enabled.
+                  Process an answer sheet with student consent to capture handwriting lines.
+                </p>
               </div>
+            ) : (
+              <div className="grid gap-5 lg:grid-cols-2">
+                <div className="rounded-lg border border-[#e2e8f0] p-4 bg-[#f8f9ff] space-y-3">
+                  <div className="text-xs font-bold text-[#005dac] flex justify-between">
+                    <span>
+                      Handwritten Line Crop ({trainingLines.findIndex((l) => l.id === activeLine?.id) + 1} of {trainingLines.length})
+                    </span>
+                    <span className="text-[#64748b]">
+                      {activeLine?.is_sample ? '10% Random Sample' : 'Review Candidate'}
+                    </span>
+                  </div>
+                  <div className="h-36 rounded bg-white border border-[#e2e8f0] flex items-center justify-center p-2 overflow-hidden">
+                    {activeLine?.image_path ? (
+                      <img
+                        src={
+                          activeLine.image_path.startsWith('/storage/')
+                            ? activeLine.image_path
+                            : activeLine.image_path.startsWith('storage/')
+                            ? `/${activeLine.image_path.replace(/\\/g, '/')}`
+                            : `/storage/${activeLine.image_path.replace(/\\/g, '/')}`
+                        }
+                        alt="Line crop"
+                        className="max-h-full max-w-full object-contain"
+                      />
+                    ) : (
+                      <div className="text-xs text-[#64748b]">No active line crop selected.</div>
+                    )}
+                  </div>
+                </div>
 
-              <div className="rounded-lg border border-[#e2e8f0] p-4 bg-white space-y-3">
-                <div className="text-xs font-bold text-[#005dac]">Human-Verified Transcription</div>
-                <textarea
-                  value={verifiedText}
-                  onChange={(e) => setVerifiedText(e.target.value)}
-                  rows={4}
-                  className="w-full rounded border border-[#c1c6d4] p-2 text-xs font-mono"
-                  placeholder="Type or correct student handwriting text here..."
-                />
-                <button
-                  type="button"
-                  onClick={handleVerifyLine}
-                  className="w-full rounded-lg bg-[#196b22] py-2 text-xs font-bold text-white hover:bg-[#145a1c] shadow-xs"
-                >
-                  Confirm & Mark Human-Verified (Provenance: human_verified)
-                </button>
+                <div className="rounded-lg border border-[#e2e8f0] p-4 bg-white space-y-3">
+                  <div className="text-xs font-bold text-[#005dac]">Human-Verified Transcription</div>
+                  <textarea
+                    value={verifiedText}
+                    onChange={(e) => setVerifiedText(e.target.value)}
+                    rows={4}
+                    disabled={!activeLine}
+                    className="w-full rounded border border-[#c1c6d4] p-2 text-xs font-mono disabled:bg-[#f8fafc]"
+                    placeholder="Type or correct student handwriting text here..."
+                  />
+                  <button
+                    type="button"
+                    disabled={!activeLine}
+                    onClick={handleVerifyLine}
+                    className="w-full rounded-lg bg-[#196b22] py-2 text-xs font-bold text-white hover:bg-[#145a1c] shadow-xs disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  >
+                    Confirm & Mark Human-Verified (Provenance: human_verified)
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
           </section>
         )}
       </main>

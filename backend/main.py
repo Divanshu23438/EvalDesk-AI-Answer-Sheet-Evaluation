@@ -94,6 +94,20 @@ app.add_middleware(
 # Serve storage files (images and PDFs)
 app.mount("/storage", StaticFiles(directory=str(STORAGE_DIR)), name="storage")
 
+def map_ai_error_to_http(ae: AIError, prefix: str = "") -> HTTPException:
+    if ae.kind == "rate_limited" or ae.status_code == 429:
+        status_code = 429
+    elif ae.kind == "auth":
+        status_code = 401
+    elif ae.kind == "timeout":
+        status_code = 504
+    elif ae.kind == "unavailable":
+        status_code = 502
+    else:
+        status_code = 400
+    msg = f"{prefix}: {ae.message}" if prefix else ae.message
+    return HTTPException(status_code=status_code, detail=msg)
+
 # Pydantic Request & Response Models
 class ExtractedQuestion(BaseModel):
     key: str
@@ -354,10 +368,7 @@ async def extract_paper_questions(paper_file: UploadFile = File(...)):
                 res = await ai_gateway.call_gemini(prompt, task="extract_paper")
                 data = res.get("data", {})
             except AIError as ae:
-                raise HTTPException(
-                    status_code=502 if ae.kind == "unavailable" else 400,
-                    detail=f"Question extraction failed: {ae.message}"
-                )
+                raise map_ai_error_to_http(ae, "Question extraction failed")
         else:
             source = "vision"
             if not pdf_info["page_images_bytes"]:
@@ -367,10 +378,7 @@ async def extract_paper_questions(paper_file: UploadFile = File(...)):
                 res = await ai_gateway.call_gemini(T1_PROMPT, image_bytes=page_img, mime_type="image/jpeg", task="extract_paper")
                 data = res.get("data", {})
             except AIError as ae:
-                raise HTTPException(
-                    status_code=502 if ae.kind == "unavailable" else 400,
-                    detail=f"Question extraction failed: {ae.message}"
-                )
+                raise map_ai_error_to_http(ae, "Question extraction failed")
     else:
         # Standard image (JPEG, PNG, etc.)
         source = "vision"
@@ -378,10 +386,7 @@ async def extract_paper_questions(paper_file: UploadFile = File(...)):
             res = await ai_gateway.call_gemini(T1_PROMPT, image_bytes=content, mime_type=paper_file.content_type, task="extract_paper")
             data = res.get("data", {})
         except AIError as ae:
-            raise HTTPException(
-                status_code=502 if ae.kind == "unavailable" else 400,
-                detail=f"Question extraction failed: {ae.message}"
-            )
+            raise map_ai_error_to_http(ae, "Question extraction failed")
 
     raw_questions = data.get("questions", [])
     if not isinstance(raw_questions, list) or len(raw_questions) == 0:
@@ -674,10 +679,7 @@ QUESTIONS:
         else:
             res = await ai_gateway.call_gemini(t2_prompt, image_bytes=content, mime_type=answer_key_file.content_type, task="parse_answer_key")
     except AIError as ae:
-        raise HTTPException(
-            status_code=502 if ae.kind == "unavailable" else 400,
-            detail=f"Answer key parsing failed: {ae.message}"
-        )
+        raise map_ai_error_to_http(ae, "Answer key parsing failed")
 
     res_data = res.get("data", {})
     raw_refs = res_data.get("references", [])
@@ -787,7 +789,7 @@ Questions:
         res1 = await ai_gateway.call_gemini(t3_prompt, task="draft_reference")
         draft1_refs = res1.get("data", {}).get("references", [])
     except AIError as ae:
-        raise HTTPException(status_code=502 if ae.kind == "unavailable" else 400, detail=f"Reference generation failed: {ae.message}")
+        raise map_ai_error_to_http(ae, "Reference generation failed")
 
     # Draft 2 cross-check
     draft2_refs = []
@@ -1520,9 +1522,13 @@ Do not award marks for anything not in the key points.
                 except AIError as ae:
                     # NEVER default marks! Mark question failed!
                     awarded_marks = 0.0
-                    reason = f"Grading call failed: {ae.message}"
                     evidence_quote = ""
-                    flags.append("call_failed")
+                    if ae.kind == "rate_limited" or ae.status_code == 429:
+                        flags.append("quota_exceeded")
+                        reason = f"AI Quota Exceeded (HTTP 429): {ae.message}"
+                    else:
+                        flags.append("call_failed")
+                        reason = f"Grading call failed: {ae.message}"
 
             evaluated_questions.append({
                 "question_id": q_id,
@@ -1624,6 +1630,9 @@ Do not award marks for anything not in the key points.
 
     except Exception as exc:
         print(f"[Evaluation Pipeline] Error on sheet {sheet_id} at stage {current_stage}: {exc}")
+        err_msg = str(exc)
+        if isinstance(exc, AIError) and (exc.kind == "rate_limited" or exc.status_code == 429 or "429" in str(exc)):
+            err_msg = f"AI Quota Exceeded (HTTP 429): Rate limit reached on external provider. Please wait and click Retry."
         with get_db() as conn:
             conn.execute(
                 """
@@ -1631,7 +1640,7 @@ Do not award marks for anything not in the key points.
                 SET status = 'failed', failed_stage = ?, error_message = ?, updated_at = datetime('now')
                 WHERE id = ?
                 """,
-                (current_stage, str(exc), sheet_id),
+                (current_stage, err_msg, sheet_id),
             )
 
 @app.post("/api/sheets/{sheet_id}/evaluate")
@@ -1851,10 +1860,7 @@ async def recheck_evaluation(eval_id: str, payload: RecheckRequest):
         data = res.get("data", {}) if isinstance(res, dict) else {}
         marks = round_to_half_step(min(q["max_marks"], max(0.0, float(data.get("awarded_marks", 0.0)))))
     except AIError as ae:
-        raise HTTPException(
-            status_code=502 if ae.kind == "unavailable" else 400,
-            detail=f"Re-check failed: {ae.message}"
-        )
+        raise map_ai_error_to_http(ae, "Re-check failed")
 
     with get_db() as conn:
         cursor = conn.cursor()
@@ -1895,10 +1901,37 @@ async def recheck_evaluation(eval_id: str, payload: RecheckRequest):
 
 @app.delete("/api/sheets/{sheet_id}")
 def delete_sheet(sheet_id: str):
-    delete_sheet_files(sheet_id)
     with get_db() as conn:
         cursor = conn.cursor()
+        cursor.execute("SELECT id, paper_id, student_name, roll_number FROM sheets WHERE id = ?", (sheet_id,))
+        sheet = cursor.fetchone()
+        if not sheet:
+            raise HTTPException(status_code=404, detail="Sheet not found")
+
+        # Clean up related records across all tables (cascading)
+        cursor.execute("DELETE FROM reviews WHERE evaluation_id IN (SELECT id FROM evaluations WHERE sheet_id = ?)", (sheet_id,))
+        cursor.execute("DELETE FROM evaluations WHERE sheet_id = ?", (sheet_id,))
+        cursor.execute("DELETE FROM ai_reads WHERE answer_id IN (SELECT id FROM answers WHERE sheet_id = ?)", (sheet_id,))
+        cursor.execute("DELETE FROM answers WHERE sheet_id = ?", (sheet_id,))
+        cursor.execute("DELETE FROM sheet_pages WHERE sheet_id = ?", (sheet_id,))
+        cursor.execute("DELETE FROM training_lines WHERE sheet_id = ?", (sheet_id,))
+        cursor.execute("DELETE FROM reports WHERE sheet_id = ?", (sheet_id,))
         cursor.execute("DELETE FROM sheets WHERE id = ?", (sheet_id,))
+
+    # Disk cleanup: sheet pages and segmented lines
+    delete_sheet_files(sheet_id)
+
+    # Disk cleanup: student report card PDF if generated
+    if sheet["paper_id"]:
+        try:
+            reports_dir = get_reports_dir(sheet["paper_id"])
+            card_name = f"report_card_{sheet['roll_number'] or sheet['student_name'] or sheet_id[:8]}.pdf"
+            card_path = reports_dir / card_name
+            if card_path.exists():
+                card_path.unlink()
+        except Exception:
+            pass
+
     return {"status": "deleted", "sheet_id": sheet_id}
 
 # ----------------- SCREEN 5: REPORTS (PDF & EXCEL) -----------------
