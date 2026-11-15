@@ -79,24 +79,51 @@ def generate_student_report_card_pdf(
         textColor=colors.HexColor("#1A1C1E"),
     )
 
+    center_body = ParagraphStyle(
+        "CenterBody",
+        parent=styles["Normal"],
+        fontName="Helvetica",
+        fontSize=9,
+        leading=13,
+        textColor=colors.HexColor("#1A1C1E"),
+        alignment=1,
+    )
+    center_bold = ParagraphStyle(
+        "CenterBold",
+        parent=styles["Normal"],
+        fontName="Helvetica-Bold",
+        fontSize=9,
+        leading=13,
+        textColor=colors.HexColor("#1A1C1E"),
+        alignment=1,
+    )
+
     story = []
     story.append(Paragraph("EvalDesk AI — Academic Report Card", title_style))
-    story.append(Spacer(1, 3))
+    story.append(Spacer(1, 4))
     story.append(Paragraph(f"<b>Assessment:</b> {paper_title}", subtitle_style))
     story.append(Spacer(1, 12))
 
-    # Student metadata table
+    # Student metadata table (Executive KPI Card)
     meta_data = [
-        [Paragraph(f"<b>Student Name:</b> {student_name or 'Anonymous'}", body_style), Paragraph(f"<b>Roll No:</b> {roll_number or 'N/A'}", body_style)],
-        [Paragraph(f"<b>Total Score:</b> {total_score:g} / {max_marks:g}", body_style), Paragraph(f"<b>Result:</b> {percentage:g}% ({grade})", body_style)],
+        [
+            Paragraph(f"<b>Student Name:</b> {student_name or 'Anonymous'}", body_style),
+            Paragraph(f"<b>Roll No:</b> {roll_number or 'N/A'}", body_style)
+        ],
+        [
+            Paragraph(f"<b>Total Score:</b> <font color='#005DAC'><b>{total_score:g} / {max_marks:g}</b></font>", body_style),
+            Paragraph(f"<b>Evaluation Result:</b> <b>{percentage:g}% ({grade})</b>", body_style)
+        ],
     ]
     meta_table = Table(meta_data, colWidths=[270, 270])
     meta_table.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor("#F0F4FA")),
-        ('BOX', (0,0), (-1,-1), 1, colors.HexColor("#D4E3FF")),
-        ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor("#D4E3FF")),
-        ('TOPPADDING', (0,0), (-1,-1), 5),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 5),
+        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor("#F8FAFC")),
+        ('BOX', (0,0), (-1,-1), 1, colors.HexColor("#CBD5E1")),
+        ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor("#E2E8F0")),
+        ('TOPPADDING', (0,0), (-1,-1), 6),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 6),
+        ('LEFTPADDING', (0,0), (-1,-1), 10),
+        ('RIGHTPADDING', (0,0), (-1,-1), 10),
     ]))
     story.append(meta_table)
     story.append(Spacer(1, 12))
@@ -115,49 +142,98 @@ def generate_student_report_card_pdf(
             or "unattempted" in str(q.get("status_label", "")).lower()
         )
 
+        score = float(q.get("final_marks", 0.0))
+        max_m = float(q.get("max_marks", 0.0))
+        raw_reason = q.get("reason") or q.get("status_label", "Checked")
+        clean_reason = re.sub(r"\$+", "", str(raw_reason)).strip()
+
         if is_unattempted:
             evidence_cell = Paragraph("— (Not attempted)", body_style)
-        elif q.get("evidence_quote"):
-            evidence_cell = Paragraph(f'"{q.get("evidence_quote")}"', body_style)
+            status_cell = Paragraph("<font color='#575E71'><b>[Unattempted]</b></font> Question not attempted.", body_style)
         else:
-            evidence_cell = Paragraph("—", body_style)
+            if q.get("evidence_quote") and str(q.get("evidence_quote")).strip() not in ["", "— (Not attempted)"]:
+                evidence_cell = Paragraph(f'"{q.get("evidence_quote")}"', body_style)
+            else:
+                evidence_cell = Paragraph("—", body_style)
+
+            if score >= max_m and max_m > 0:
+                badge = "<font color='#196B22'><b>[Full Marks]</b></font>"
+            elif score > 0:
+                badge = "<font color='#B26A00'><b>[Partial Marks]</b></font>"
+            else:
+                badge = "<font color='#BA1A1A'><b>[0 Marks]</b></font>"
+            status_cell = Paragraph(f"{badge} {clean_reason}", body_style)
 
         q_table_data.append([
             Paragraph(format_q_number(q.get("q_no", "")), bold_body),
-            Paragraph(f"{q.get('final_marks', 0.0):g}", body_style),
-            Paragraph(f"{q.get('max_marks', 0.0):g}", body_style),
-            Paragraph(q.get("reason") or q.get("status_label", "Checked"), body_style),
+            Paragraph(f"{score:g}", center_bold),
+            Paragraph(f"{max_m:g}", center_body),
+            status_cell,
             evidence_cell,
         ])
 
-    q_table = Table(q_table_data, colWidths=[40, 80, 65, 185, 170])
+    q_table = Table(q_table_data, colWidths=[75, 55, 50, 195, 165])
     q_table.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#005DAC")),
         ('TEXTCOLOR', (0,0), (-1,0), colors.white),
         ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-        ('BOTTOMPADDING', (0,0), (-1,0), 5),
-        ('TOPPADDING', (0,0), (-1,0), 5),
-        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor("#C3C7CF")),
+        ('BOTTOMPADDING', (0,0), (-1,0), 6),
+        ('TOPPADDING', (0,0), (-1,0), 6),
+        ('ALIGN', (1,0), (2,-1), 'CENTER'),
+        ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, colors.HexColor("#F8F9FF")]),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor("#CBD5E1")),
         ('VALIGN', (0,0), (-1,-1), 'TOP'),
+        ('LEFTPADDING', (0,0), (-1,-1), 5),
+        ('RIGHTPADDING', (0,0), (-1,-1), 5),
     ]))
     story.append(q_table)
-    story.append(Spacer(1, 12))
+    story.append(Spacer(1, 14))
 
     # Strengths and Improvements (Task T7)
-    story.append(Paragraph("Key Strengths (Task T7 Rubric Analysis)", section_heading))
+    strengths_content = [
+        Paragraph("<b>Key Strengths (Mastered Rubric Criteria)</b>", ParagraphStyle("StrHead", parent=section_heading, textColor=colors.HexColor("#1B5E20"))),
+        Spacer(1, 3),
+    ]
     if strengths:
         for s in strengths:
-            story.append(Paragraph(f"• {s}", body_style))
+            clean_s = re.sub(r"\$+", "", str(s)).strip()
+            strengths_content.append(Paragraph(f"• {clean_s}", body_style))
     else:
-        story.append(Paragraph("• Demonstrated clear conceptual understanding on attempted questions.", body_style))
+        strengths_content.append(Paragraph("• Demonstrated clear conceptual understanding on attempted questions.", body_style))
+
+    str_table = Table([[strengths_content]], colWidths=[540])
+    str_table.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor("#F1F8E9")),
+        ('BOX', (0,0), (-1,-1), 1, colors.HexColor("#C8E6C9")),
+        ('TOPPADDING', (0,0), (-1,-1), 8),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 8),
+        ('LEFTPADDING', (0,0), (-1,-1), 10),
+        ('RIGHTPADDING', (0,0), (-1,-1), 10),
+    ]))
+    story.append(str_table)
     story.append(Spacer(1, 10))
 
-    story.append(Paragraph("Areas for Improvement (Missed Rubric Criteria)", section_heading))
+    imp_content = [
+        Paragraph("<b>Areas for Improvement (Missed Rubric Criteria)</b>", ParagraphStyle("ImpHead", parent=section_heading, textColor=colors.HexColor("#B45309"))),
+        Spacer(1, 3),
+    ]
     if improvements:
         for imp in improvements:
-            story.append(Paragraph(f"• {imp}", body_style))
+            clean_imp = re.sub(r"\$+", "", str(imp)).strip()
+            imp_content.append(Paragraph(f"• {clean_imp}", body_style))
     else:
-        story.append(Paragraph("• Ensure all key technical definitions and step details are included.", body_style))
+        imp_content.append(Paragraph("• Strong performance across all attempted criteria; no major conceptual gaps identified.", body_style))
+
+    imp_table = Table([[imp_content]], colWidths=[540])
+    imp_table.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor("#FFFBEB")),
+        ('BOX', (0,0), (-1,-1), 1, colors.HexColor("#FDE68A")),
+        ('TOPPADDING', (0,0), (-1,-1), 8),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 8),
+        ('LEFTPADDING', (0,0), (-1,-1), 10),
+        ('RIGHTPADDING', (0,0), (-1,-1), 10),
+    ]))
+    story.append(imp_table)
 
     doc.build(story)
 
