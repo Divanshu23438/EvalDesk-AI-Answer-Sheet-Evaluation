@@ -1,0 +1,6 @@
+{
+  "name": "EvalDesk — AI Answer Sheet Evaluation",
+  "description": "AI-assisted handwritten answer sheet evaluation, rubric grading, and academic result publishing workspace for Teachers, and Students.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
