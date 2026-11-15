@@ -1,6 +1,6 @@
 # STATUS (update at the end of every session)
 Date / author (agent or model name): 2026-11-15 / Antigravity (Gemini 3.8 Flash)
-Current phase and task: Phase 1 Completed (Awaiting User Review before Phase 2)
+Current phase and task: Phase 2 Completed (Awaiting User Review before Phase 3)
 Done (task id, commit, proof file):
 - Task P0.1: Rotate-keys note, ignore secrets/dist/caches/data | commit 8e0f32e | docs/proof/rotate_keys_note.md
 - Task P0.2: Back up database & clean database initialization | commit 30e66b6 | data/app.db.bak
@@ -9,14 +9,19 @@ Done (task id, commit, proof file):
 - Task P0.5: scripts/check_all.py gate validation | commit 8e0f32e | scripts/check_all.py
 - Task P0.6: Error banner with Retry component in frontend | commit 30e66b6 | src/components/teacher/TeacherPrototypeWorkspace.tsx
 - Task P1.1: Rebuild AI gateway with typed AIError, EXIF/resize to 2000px, pdf_tools, SHA-256 content cache, backoff, 90s timeout, /api/health/providers | commit 388a738 | docs/proof/p1_health_providers.json, docs/proof/negative_proof.txt, docs/proof/p1_ai_calls.txt
-In progress / failing (exact error): None. All Phase 0 and Phase 1 tasks pass. Stopped for user review before Phase 2.
+- Task P2.1: Real question extraction endpoint (POST /api/papers/extract) using Task T1 prompt, PDF text layer extraction, image normalization, and typed AIError rejection | commit 1405dd8 | docs/proof/p2_proof.txt
+- Task P2.2: Editable detected questions table, paper settings, and paper creation (POST /api/papers, PUT /api/papers/{id}/questions) with MCQ options and marks mismatch warning | commit fec778d | docs/proof/p2_proof.txt
+- Task P2.3: Real answer key parsing (POST /api/papers/{id}/answer-key, Task T2) and key-less reference generation (POST /api/papers/{id}/reference/generate, Task T3 dual drafts) with disagreement reporting | commit 7c5256a | docs/proof/p2_proof.txt
+- Task P2.4: Strict step gate enforcing lock before Step 2, and verification on real bilingual Linux JPEG paper, typed PDF paper with key, and negative tests | commit 978e63a | docs/proof/p2_proof.txt, docs/proof/p2_check_all_after.txt
+In progress / failing (exact error): None. All Phase 0, Phase 1, and Phase 2 tasks pass. Stopped for user review before Phase 3.
 Next three actions:
-1. User review of Step 1 Audit, Phase 0, and Phase 1 deliverables.
-2. Begin Phase 2 Task 1: Implement `POST /api/papers/extract` with T1 prompt and PDF text layer extraction.
-3. Begin Phase 2 Task 2: Populate confirmed questions in UI from real extract response (no database template).
+1. User review of Phase 2 deliverables, real paper extraction proofs, and lock gate.
+2. Begin Phase 3 Task 1: Multi-page sheet intake and relative storage (`POST /api/papers/{id}/sheets`).
+3. Begin Phase 3 Task 2: Header reading (Task T4) with confidence threshold (>0.70 auto-queue, <=0.70 manual entry) and background worker state machine.
 Known issues and decisions (link to docs/DECISIONS.md):
 - On Windows, `check_all.py` calls `npx.cmd` when on win32 to prevent `[WinError 2]`.
 - Groq Vision requires images to be at least 32x32 pixels; `health_check_providers` generates a 64x64 patterned test JPEG.
+- Step 2 (Upload Student Sheets) is strictly disabled in UI navigation until `POST /api/papers/{id}/lock` returns HTTP 200.
 How to run: backend command, frontend command, check_all command
 - Backend: python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000
 - Frontend: npm run dev (or npx vite)
