@@ -1,0 +1,39 @@
+=== EvalDesk UI/UX Overhaul & Functional Bug Remediation Verification ===
+Timestamp: 2026-11-16 20:39:33
+Backend: http://127.0.0.1:8000 | Frontend: http://localhost:5173
+Active Paper ID: 8e76631a-f650-4d79-96e8-e576394fe339 | Sheet ID: 60040dd9-1594-4fc7-b50c-a031a46b3dba
+
+
+--- Testing Viewport: 1366x768 ---
+[PASS] 1366x768 Stepper: strictly 3 steps ('1
+Upload
+ACTIVE
+›
+2
+Evaluate
+›
+3
+Report')
+[PASS] 1366x768 #/upload: zero page scroll (scrollHeight=768 <= 768)
+[PASS] 1366x768 #/setup: loaded cleanly, zero page scroll (768 <= 768)
+[PASS] 1366x768 #/evaluate/60040dd9-1594-4fc7-b50c-a031a46b3dba: 3-pane layout, zero page scroll (768 <= 768)
+[PASS] 1366x768 #/report/60040dd9-1594-4fc7-b50c-a031a46b3dba: reports loaded, zero page scroll (768 <= 768)
+[PASS] 1366x768 Console errors: 0
+
+--- Testing Viewport: 1920x1080 ---
+[PASS] 1920x1080 Stepper: strictly 3 steps ('1
+Upload
+ACTIVE
+›
+2
+Evaluate
+›
+3
+Report')
+[PASS] 1920x1080 #/upload: zero page scroll (scrollHeight=1080 <= 1080)
+[PASS] 1920x1080 #/setup: loaded cleanly, zero page scroll (1080 <= 1080)
+[PASS] 1920x1080 #/evaluate/60040dd9-1594-4fc7-b50c-a031a46b3dba: 3-pane layout, zero page scroll (1080 <= 1080)
+[PASS] 1920x1080 #/report/60040dd9-1594-4fc7-b50c-a031a46b3dba: reports loaded, zero page scroll (1080 <= 1080)
+[PASS] 1920x1080 Console errors: 0
+
+=== All Remediation Acceptance Criteria PASSED! ===

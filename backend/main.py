@@ -1612,8 +1612,19 @@ def lock_paper(paper_id: str):
             )
 
         cursor.execute("UPDATE papers SET is_locked = 1, updated_at = datetime('now') WHERE id = ?", (paper_id,))
+        cursor.execute("SELECT total_marks, title FROM papers WHERE id = ?", (paper_id,))
+        p_row = cursor.fetchone()
+        tot = p_row["total_marks"] if p_row else 0
+        p_title = p_row["title"] if p_row else ""
 
-    return {"status": "locked", "paper_id": paper_id, "questions_count": len(questions)}
+    return {
+        "status": "locked",
+        "paper_id": paper_id,
+        "title": p_title,
+        "total_marks": tot,
+        "questions_count": len(questions),
+        "is_locked": True,
+    }
 
 @app.put("/api/papers/{paper_id}")
 def update_paper(paper_id: str, payload: PaperSetupUpdate):
@@ -3285,6 +3296,12 @@ def list_paper_sheets(paper_id: str):
             cursor.execute("SELECT COUNT(*) as pc FROM sheet_pages WHERE sheet_id = ?", (sid,))
             page_count = cursor.fetchone()["pc"] or 0
 
+            cursor.execute("SELECT COUNT(*) as qm FROM evaluations WHERE sheet_id = ? AND ai_marks IS NOT NULL", (sid,))
+            qm = cursor.fetchone()["qm"] or 0
+
+            cursor.execute("SELECT COUNT(*) as qt FROM questions WHERE paper_id = ?", (paper_id,))
+            qt = cursor.fetchone()["qt"] or 0
+
             s["unresolved_flags_count"] = unres_flags
             s["total_flags_count"] = total_flags
             s["flags_open"] = unres_flags
@@ -3292,6 +3309,10 @@ def list_paper_sheets(paper_id: str):
             s["filename"] = s.get("raw_filename") or s.get("file_name") or f"sheet_{sid[:8]}.pdf"
             s["stage"] = s.get("current_stage") or s.get("status") or "uploaded"
             s["page_count"] = page_count
+            s["pages_total"] = page_count
+            s["pages_read"] = page_count if s["status"] in ("marking", "flagging", "needs_review", "evaluated") else (1 if s["status"] == "reading" else 0)
+            s["questions_marked"] = qm
+            s["questions_total"] = qt
     return {"sheets": sheets}
 
 # ----------------- SCREEN 5: REPORTS (PDF & EXCEL) -----------------

@@ -89,14 +89,14 @@ export const sheetStore = {
     this.updateHashFromState();
   },
 
-  setPaper(paper: { id: string; title: string; totalMarks?: number; questionCount?: number; isLocked?: boolean }) {
+  setPaper(paper: { id: string; title?: string; totalMarks?: number; questionCount?: number; isLocked?: boolean }) {
     globalState = {
       ...globalState,
       paperId: paper.id,
-      paperTitle: paper.title || '',
-      paperTotalMarks: paper.totalMarks || 0,
-      paperQuestionCount: paper.questionCount || 0,
-      paperIsLocked: !!paper.isLocked,
+      paperTitle: paper.title !== undefined ? paper.title : globalState.paperTitle,
+      paperTotalMarks: paper.totalMarks !== undefined ? paper.totalMarks : globalState.paperTotalMarks,
+      paperQuestionCount: paper.questionCount !== undefined ? paper.questionCount : globalState.paperQuestionCount,
+      paperIsLocked: paper.isLocked !== undefined ? !!paper.isLocked : globalState.paperIsLocked,
     };
     emitChange();
   },
@@ -163,7 +163,7 @@ export const sheetStore = {
   updateHashFromState() {
     const { step, sheetId } = globalState;
     let targetHash = `#/${step}`;
-    if ((step === 'processing' || step === 'evaluate' || step === 'report') && sheetId) {
+    if ((step === 'evaluate' || step === 'report') && sheetId) {
       targetHash = `#/${step}/${sheetId}`;
     }
     if (window.location.hash !== targetHash) {
@@ -178,8 +178,19 @@ export const sheetStore = {
     const stepPart = (parts[0] || 'upload') as AppStep;
     const sheetIdPart = parts[1] || null;
 
-    const validSteps: AppStep[] = ['setup', 'upload', 'processing', 'evaluate', 'report'];
-    const resolvedStep: AppStep = validSteps.includes(stepPart) ? stepPart : 'upload';
+    let resolvedStep: AppStep = 'upload';
+    if (stepPart === 'setup') {
+      resolvedStep = 'setup';
+    } else if (stepPart === 'evaluate') {
+      resolvedStep = 'evaluate';
+    } else if (stepPart === 'report') {
+      resolvedStep = 'report';
+    } else if (stepPart === 'processing') {
+      // Legacy or redirected processing route maps to evaluate if sheet is known, or upload
+      resolvedStep = sheetIdPart ? 'evaluate' : 'upload';
+    } else {
+      resolvedStep = 'upload';
+    }
 
     globalState = {
       ...globalState,

@@ -8,6 +8,8 @@ import {
   Layers,
   Settings,
   RefreshCw,
+  Sparkles,
+  Zap,
 } from 'lucide-react';
 import { useSheetStore } from '../state/useSheetStore';
 import { apiClient } from '../api/client';
@@ -25,7 +27,6 @@ export const UploadScreen: React.FC = () => {
   const [state, store] = useSheetStore();
 
   // Local component state
-  const [papers, setPapers] = useState<PaperSummary[]>([]);
   const [sheets, setSheets] = useState<SheetQueueItem[]>([]);
   const [isLoadingSheets, setIsLoadingSheets] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -40,14 +41,14 @@ export const UploadScreen: React.FC = () => {
     try {
       const data = await apiClient.get<{ papers: PaperSummary[] }>('/api/papers');
       const paperList = data.papers || [];
-      setPapers(paperList);
 
       if (paperList.length > 0) {
-        // If no paper selected or current paperId not in list, pick the most recent locked paper (or first)
+        // If current paperId is valid, keep it; otherwise select most recent locked paper
         const currentSelected = paperList.find((p) => p.id === state.paperId);
-        const targetPaper = currentSelected || paperList.find((p) => Boolean(p.is_locked)) || paperList[0];
+        const targetPaper =
+          currentSelected || paperList.find((p) => Boolean(p.is_locked)) || paperList[0];
 
-        if (targetPaper && targetPaper.id !== state.paperId) {
+        if (targetPaper && (!state.paperId || targetPaper.id !== state.paperId)) {
           store.setPaper({
             id: targetPaper.id,
             title: targetPaper.title,
@@ -68,7 +69,7 @@ export const UploadScreen: React.FC = () => {
     loadPapers();
   }, [loadPapers]);
 
-  // 2. Fetch paper questions count if paper is selected
+  // 2. Fetch paper details and questions count
   useEffect(() => {
     if (!state.paperId) return;
 
@@ -77,16 +78,19 @@ export const UploadScreen: React.FC = () => {
       try {
         const details = await apiClient.get<any>(`/api/papers/${state.paperId}`);
         if (!isMounted) return;
-        const qCount = details.questions ? details.questions.length : 0;
+
+        const paperObj = details.paper || details;
+        const qCount = (details.questions || []).length;
+
         store.setPaper({
-          id: details.id,
-          title: details.title,
-          totalMarks: details.total_marks,
+          id: paperObj.id,
+          title: paperObj.title,
+          totalMarks: paperObj.total_marks,
           questionCount: qCount,
-          isLocked: Boolean(details.is_locked),
+          isLocked: Boolean(paperObj.is_locked),
         });
       } catch (err) {
-        // Fallback silently if paper details fetch fails
+        // Fallback silently if details fetch fails
       }
     };
 
@@ -136,7 +140,7 @@ export const UploadScreen: React.FC = () => {
 
     const interval = setInterval(() => {
       loadSheets();
-    }, 2000);
+    }, 1500);
 
     return () => clearInterval(interval);
   }, [state.paperId, sheets, loadSheets]);
@@ -175,13 +179,13 @@ export const UploadScreen: React.FC = () => {
     }
 
     if (!state.paperId) {
-      setUploadError('No question paper is selected.');
+      setUploadError('No question paper is selected. Please setup or select a paper first.');
       return;
     }
 
     if (!state.paperIsLocked) {
       setUploadError(
-        'The question paper must be locked before uploading student answer sheets.'
+        'The question paper must be locked before uploading student answer sheets. Click "Open Paper Setup" to lock.'
       );
       return;
     }
@@ -247,254 +251,293 @@ export const UploadScreen: React.FC = () => {
     }
   };
 
-  const handleSelectPaper = (paperId: string) => {
-    const p = papers.find((item) => item.id === paperId);
-    if (p) {
-      store.setPaper({
-        id: p.id,
-        title: p.title,
-        totalMarks: p.total_marks,
-        isLocked: Boolean(p.is_locked),
-      });
-      store.setSheet(null);
-    }
+  const handleStartProcessingOrOpen = () => {
+    if (sheets.length === 0) return;
+    const targetId = state.sheetId || sheets[0].id;
+    store.setStep('evaluate', targetId);
   };
 
-  const handleStartProcessing = () => {
-    if (sheets.length > 0) {
-      const firstSheetId = state.sheetId || sheets[0].id;
-      store.setStep('processing', firstSheetId);
-    }
-  };
+  const readyCount = sheets.filter((s) => ['evaluated', 'ready'].includes(s.status)).length;
+  const flaggedCount = sheets.filter((s) => ['needs_review', 'flagged', 'needs_identity'].includes(s.status)).length;
+  const failedCount = sheets.filter((s) => ['failed', 'error'].includes(s.status)).length;
 
   return (
-    <div className="panel grid grid-cols-1 md:grid-cols-2 gap-4 p-4 h-full min-h-0">
-      {/* LEFT COLUMN: Paper status & Drop zone */}
-      <section
-        aria-label="Upload Intake"
-        className="flex flex-col gap-3 min-h-0 h-full"
-      >
-        {/* Paper Selector & Lock State Banner */}
-        <div className="p-3 rounded-lg border border-[var(--surface-border)] bg-[var(--surface-card)] shrink-0 flex flex-col gap-2">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-xs font-semibold text-[var(--ink-secondary)] uppercase tracking-wider">
-              Target Question Paper
-            </span>
-            {state.paperIsLocked ? (
-              <span className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--status-approved)] bg-[var(--status-approved-bg)] border border-[var(--status-approved-border)] px-2 py-0.5 rounded-full">
-                <CheckCircle className="w-3.5 h-3.5" /> Locked ✓
-              </span>
-            ) : (
-              <a
-                href="#/setup"
-                className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--status-flagged)] bg-[var(--status-flagged-bg)] border border-[var(--status-flagged-border)] px-2 py-0.5 rounded-full hover:underline"
-              >
-                <AlertTriangle className="w-3.5 h-3.5" /> Unlocked (Click to Setup)
-              </a>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2">
-            <select
-              value={state.paperId || ''}
-              onChange={(e) => handleSelectPaper(e.target.value)}
-              className="flex-1 px-2.5 py-1.5 text-xs rounded-md border border-[var(--surface-border)] bg-[var(--surface-bg)] text-[var(--ink-primary)] font-medium focus:outline-none focus:border-[var(--accent-indigo)]"
-            >
-              {papers.length === 0 ? (
-                <option value="">No papers available</option>
-              ) : (
-                papers.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.title} ({p.total_marks}M) {p.is_locked ? '· Locked' : '· Draft'}
-                  </option>
-                ))
-              )}
-            </select>
-            <a
-              href="#/setup"
-              className="px-2 py-1.5 text-xs font-medium text-[var(--ink-secondary)] hover:text-[var(--accent-indigo)] border border-[var(--surface-border)] rounded-md hover:bg-[var(--surface-subtle)] transition flex items-center gap-1"
-              title="Configure Paper"
-            >
-              <Settings className="w-3.5 h-3.5" />
-            </a>
-          </div>
-
-          {state.paperQuestionCount > 0 && (
-            <p className="text-[11px] text-[var(--ink-muted)]">
-              {state.paperQuestionCount} questions detected · {state.paperTotalMarks} total marks
-            </p>
-          )}
-        </div>
-
-        {/* Large Drag and Drop Zone */}
-        <div
-          onDragOver={onDragOver}
-          onDragLeave={onDragLeave}
-          onDrop={onDrop}
-          onClick={() => fileInputRef.current?.click()}
-          className={`flex-1 flex flex-col items-center justify-center rounded-lg p-6 text-center select-none cursor-pointer transition-all min-h-[180px] ${
-            isDragOver
-              ? 'border-2 border-solid border-[var(--accent-indigo)] bg-[var(--accent-indigo-subtle)]/30 scale-[1.02]'
-              : 'border-2 border-dashed border-[var(--surface-border)] bg-[var(--surface-card)] hover:border-[var(--accent-indigo)] hover:bg-[var(--accent-indigo-subtle)]/10'
-          }`}
+    <div className="panel h-full min-h-0 bg-slate-50 p-4 md:p-6 overflow-hidden select-none">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-full max-w-7xl mx-auto w-full min-h-0">
+        {/* LEFT COLUMN: Student Answer Sheet Intake Card */}
+        <section
+          aria-label="Upload Intake"
+          className="bg-white rounded-xl border border-slate-200 shadow-xs p-5 flex flex-col justify-between h-full min-h-0"
         >
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={(e) => {
-              if (e.target.files && e.target.files.length > 0) {
-                handleUploadFiles(e.target.files);
-              }
-            }}
-            multiple
-            accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
-            className="hidden"
-          />
-
-          <div className="w-12 h-12 rounded-full bg-[var(--accent-indigo-subtle)] text-[var(--accent-indigo)] flex items-center justify-center mb-3">
-            <UploadCloud className="w-6 h-6" />
-          </div>
-
-          <h2 className="text-sm font-semibold text-[var(--ink-primary)] mb-1">
-            Drop student sheets here
-          </h2>
-          <p className="text-xs text-[var(--ink-muted)] mb-3 max-w-xs leading-normal">
-            or click to browse · Accepts PDF, JPG, PNG (multi-page)
-          </p>
-
-          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--accent-indigo)] bg-[var(--accent-indigo-subtle)] px-3 py-1 rounded-md">
-            <FileText className="w-3.5 h-3.5" />
-            Browse files
-          </span>
-
-          {/* Upload Progress Indicator */}
-          {uploadingProgress !== null && (
-            <div className="w-full max-w-xs mt-4 space-y-1">
-              <div className="flex justify-between text-xs text-[var(--ink-secondary)]">
-                <span>Uploading batch...</span>
-                <span className="tabular-nums font-semibold">{uploadingProgress}%</span>
+          <div className="flex flex-col gap-3 min-h-0 flex-1">
+            {/* Header and Non-blocking Paper Context Status Banner */}
+            <div className="flex items-start justify-between gap-2 shrink-0">
+              <div>
+                <h1 className="text-base font-bold text-slate-900 tracking-tight">
+                  Upload Student Answer Sheets
+                </h1>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Add scanned student scripts for AI bounding box matching and rubric evaluation
+                </p>
               </div>
-              <div className="w-full bg-[var(--surface-subtle)] rounded-full h-2 overflow-hidden">
-                <div
-                  className="bg-[var(--accent-indigo)] h-full transition-all duration-200"
-                  style={{ width: `${uploadingProgress}%` }}
-                />
-              </div>
+              <span className="text-xs bg-indigo-50 text-indigo-700 font-semibold px-2 py-1 rounded-md border border-indigo-100 flex items-center gap-1 shrink-0">
+                <Zap className="w-3.5 h-3.5 text-indigo-600" />
+                V2 Engine
+              </span>
             </div>
-          )}
-        </div>
 
-        {/* Validation or Upload Error Banner */}
-        {uploadError && (
-          <div className="p-2.5 rounded-lg bg-[var(--status-failed-bg)] border border-[var(--status-failed-border)] text-xs text-[var(--status-failed)] flex items-center justify-between gap-2 shrink-0">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 shrink-0" />
-              <span>{uploadError}</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setUploadError(null)}
-              className="text-[10px] font-bold uppercase underline"
+            {/* Decoupled Paper Status Pill / Warning Banner */}
+            {state.paperIsLocked ? (
+              <div className="p-2.5 rounded-lg border border-emerald-200 bg-emerald-50/60 flex items-center justify-between gap-2 shrink-0">
+                <div className="flex items-center gap-2 min-w-0">
+                  <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <div className="text-xs text-slate-700 truncate">
+                    <span className="font-bold text-emerald-900">Locked Paper Scheme:</span>{' '}
+                    <span className="font-medium text-slate-800">{state.paperTitle || 'Assessment Paper'}</span>{' '}
+                    <span className="text-slate-500 tabular-nums">
+                      · {state.paperQuestionCount} Questions · {state.paperTotalMarks} Marks
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => store.setStep('setup')}
+                  className="px-2 py-1 text-[11px] font-semibold text-indigo-700 hover:text-indigo-900 hover:underline shrink-0 flex items-center gap-1"
+                >
+                  <Settings className="w-3 h-3" />
+                  <span>Setup / Change</span>
+                </button>
+              </div>
+            ) : (
+              <div className="p-2.5 rounded-lg border border-amber-200 bg-amber-50/80 flex items-center justify-between gap-2 shrink-0">
+                <div className="flex items-center gap-2 min-w-0">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                  <p className="text-xs text-amber-900 leading-tight">
+                    <strong>No locked question paper.</strong> Configure and lock an assessment before evaluating sheets.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => store.setStep('setup')}
+                  className="px-2.5 py-1 text-xs font-semibold text-white bg-amber-600 hover:bg-amber-700 rounded-md transition shadow-2xs shrink-0 flex items-center gap-1"
+                >
+                  <Settings className="w-3 h-3" />
+                  <span>Open Paper Setup</span>
+                </button>
+              </div>
+            )}
+
+            {/* Large Drag and Drop Target Area */}
+            <div
+              onDragOver={onDragOver}
+              onDragLeave={onDragLeave}
+              onDrop={onDrop}
+              onClick={() => fileInputRef.current?.click()}
+              className={`flex-1 flex flex-col items-center justify-center rounded-xl p-6 text-center select-none cursor-pointer transition-all min-h-[160px] group ${
+                isDragOver
+                  ? 'border-2 border-solid border-indigo-600 bg-indigo-50/60 scale-[1.01]'
+                  : 'border-2 border-dashed border-indigo-300 hover:border-indigo-500 bg-indigo-50/30 hover:bg-indigo-50/50'
+              }`}
             >
-              Dismiss
-            </button>
-          </div>
-        )}
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={(e) => {
+                  if (e.target.files && e.target.files.length > 0) {
+                    handleUploadFiles(e.target.files);
+                  }
+                }}
+                multiple
+                accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+                className="hidden"
+              />
 
-        {/* Grouping Toggle Control */}
-        <div className="flex items-center justify-between p-3 rounded-lg border border-[var(--surface-border)] bg-[var(--surface-card)] shrink-0">
-          <div className="flex items-center gap-2">
-            <Layers className="w-4 h-4 text-[var(--ink-muted)]" />
-            <span className="text-xs text-[var(--ink-secondary)]">
-              Treat each file as a separate sheet
-            </span>
-          </div>
-          <label className="relative inline-flex items-center cursor-pointer">
-            <input
-              type="checkbox"
-              checked={splitFiles}
-              onChange={(e) => setSplitFiles(e.target.checked)}
-              className="sr-only peer"
-            />
-            <div className="w-9 h-5 bg-[var(--surface-border)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[var(--accent-indigo)]" />
-          </label>
-        </div>
-      </section>
+              <div className="w-14 h-14 rounded-full bg-indigo-100 group-hover:bg-indigo-200 group-hover:scale-105 text-indigo-600 flex items-center justify-center mb-3 transition shadow-xs">
+                <UploadCloud className="w-7 h-7" />
+              </div>
 
-      {/* RIGHT COLUMN: Live Batch Queue */}
-      <section
-        aria-label="Upload Queue"
-        className="flex flex-col border border-[var(--surface-border)] rounded-lg bg-[var(--surface-card)] p-4 min-h-0 h-full"
-      >
-        <div className="flex items-center justify-between pb-3 border-b border-[var(--surface-border)] mb-3 shrink-0">
-          <div className="flex items-center gap-2">
-            <h3 className="text-sm font-semibold text-[var(--ink-primary)]">
-              Upload Queue (This Batch)
-            </h3>
-            {isLoadingSheets && (
-              <RefreshCw className="w-3.5 h-3.5 text-[var(--ink-muted)] animate-spin" />
+              <h2 className="text-sm font-semibold text-slate-800 mb-1">
+                Drop handwritten student answer sheets here
+              </h2>
+              <p className="text-xs text-slate-500 mb-3 max-w-sm leading-normal">
+                or click to browse · Supports multi-page PDF, JPG, PNG (up to 50MB per sheet)
+              </p>
+
+              <button
+                type="button"
+                className="px-3.5 py-1.5 text-xs font-semibold text-indigo-700 bg-white hover:bg-indigo-50 border border-indigo-200 rounded-lg shadow-2xs transition flex items-center gap-1.5"
+              >
+                <FileText className="w-3.5 h-3.5 text-indigo-500" />
+                <span>Select Files from Computer</span>
+              </button>
+
+              {/* Upload Progress Indicator */}
+              {uploadingProgress !== null && (
+                <div className="w-full max-w-xs mt-3 space-y-1">
+                  <div className="flex justify-between text-xs text-slate-600">
+                    <span>Uploading batch...</span>
+                    <span className="tabular-nums font-semibold font-mono">{uploadingProgress}%</span>
+                  </div>
+                  <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
+                    <div
+                      className="bg-indigo-600 h-full transition-all duration-200"
+                      style={{ width: `${uploadingProgress}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Validation or Upload Error Banner */}
+            {uploadError && (
+              <div className="p-2.5 rounded-lg bg-rose-50 border border-rose-200 text-xs text-rose-800 flex items-center justify-between gap-2 shrink-0">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                  <span>{uploadError}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setUploadError(null)}
+                  className="text-[10px] font-bold uppercase underline"
+                >
+                  Dismiss
+                </button>
+              </div>
             )}
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-[var(--ink-muted)] tabular-nums">
-              {sheets.length} {sheets.length === 1 ? 'sheet' : 'sheets'}
-            </span>
+
+          {/* Intake Settings & Feature Chips */}
+          <div className="pt-3.5 border-t border-slate-200 space-y-2.5 shrink-0 mt-3">
+            {/* Multi-page Toggle Switch */}
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-xs font-semibold text-slate-700">
+                  Treat each file as a separate sheet
+                </span>
+                <p className="text-[11px] text-slate-400">
+                  When OFF, multiple selected images are compiled into 1 student booklet
+                </p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={splitFiles}
+                  onChange={(e) => setSplitFiles(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600" />
+              </label>
+            </div>
+
+            {/* Feature Chips Row */}
+            <div className="flex flex-wrap gap-2 text-[11px]">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200 font-medium">
+                <CheckCircle className="w-3 h-3 text-emerald-600" />
+                Auto-detect Roll No. & Name: <strong className="text-emerald-700">ON</strong>
+              </span>
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200 font-medium">
+                <Sparkles className="w-3 h-3 text-indigo-600" />
+                Bilingual OCR: <strong className="text-slate-800">Hindi + English</strong>
+              </span>
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200 font-medium">
+                <Layers className="w-3 h-3 text-slate-500" />
+                Skew Correction: <strong className="text-slate-800">Auto</strong>
+              </span>
+            </div>
+          </div>
+        </section>
+
+        {/* RIGHT COLUMN: Uploaded Batch Queue Card */}
+        <section
+          aria-label="Upload Queue"
+          className="bg-white rounded-xl border border-slate-200 shadow-xs flex flex-col h-full overflow-hidden min-h-0"
+        >
+          {/* Queue Header */}
+          <div className="p-3.5 border-b border-slate-200 flex items-center justify-between bg-slate-50/70 shrink-0">
+            <div className="flex items-center space-x-2">
+              <h2 className="text-sm font-bold text-slate-900">Uploaded Batch Queue</h2>
+              <span className="bg-indigo-100 text-indigo-800 text-xs font-semibold px-2 py-0.5 rounded-full font-mono">
+                {sheets.length} {sheets.length === 1 ? 'sheet' : 'sheets'}
+              </span>
+              {isLoadingSheets && (
+                <RefreshCw className="w-3 h-3 text-slate-400 animate-spin" />
+              )}
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                type="button"
+                onClick={loadSheets}
+                className="p-1 text-slate-500 hover:text-indigo-600 rounded hover:bg-slate-100 transition"
+                title="Refresh Queue"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+
+          {/* Scrollable Queue Cards Area */}
+          <div className="panel flex-1 overflow-y-auto p-3.5 space-y-2.5">
+            {sheets.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center text-center p-6 text-slate-400">
+                <UploadCloud className="w-10 h-10 mb-2 stroke-1 text-slate-300" />
+                <p className="text-xs font-semibold text-slate-700">No sheets in queue</p>
+                <p className="text-[11px] text-slate-400 mt-1 max-w-xs">
+                  Drop PDF or scanned answer sheets on the left to begin intake and automatic OCR evaluation.
+                </p>
+              </div>
+            ) : (
+              sheets.map((sheet) => (
+                <QueueRow
+                  key={sheet.id}
+                  sheet={sheet}
+                  isActive={sheet.id === state.sheetId}
+                  onSelect={() => {
+                    store.setSheet(sheet.id, sheet.student_name, sheet.roll);
+                    // Open in evaluation workspace immediately
+                    store.setStep('evaluate', sheet.id);
+                  }}
+                  onRefresh={loadSheets}
+                  onError={(err) => {
+                    store.setError(err);
+                  }}
+                />
+              ))
+            )}
+          </div>
+
+          {/* Bottom Summary & Start CTA */}
+          <div className="p-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between shrink-0">
+            <div className="flex items-center space-x-3 text-xs">
+              <span className="flex items-center gap-1 text-slate-600">
+                <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                <strong className="font-semibold text-slate-900">{readyCount}</strong> Ready
+              </span>
+              {flaggedCount > 0 && (
+                <span className="flex items-center gap-1 text-slate-600">
+                  <span className="w-2 h-2 rounded-full bg-amber-500" />
+                  <strong className="font-semibold text-slate-900">{flaggedCount}</strong> Attention
+                </span>
+              )}
+              {failedCount > 0 && (
+                <span className="flex items-center gap-1 text-slate-600">
+                  <span className="w-2 h-2 rounded-full bg-rose-500" />
+                  <strong className="font-semibold text-slate-900">{failedCount}</strong> Failed
+                </span>
+              )}
+            </div>
+
             <button
               type="button"
-              onClick={loadSheets}
-              className="p-1 text-[var(--ink-muted)] hover:text-[var(--accent-indigo)] rounded hover:bg-[var(--surface-subtle)]"
-              title="Refresh Queue"
+              onClick={handleStartProcessingOrOpen}
+              disabled={sheets.length === 0 || !state.paperIsLocked}
+              className="px-4 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center gap-1.5 shadow-sm"
             >
-              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Open Evaluation</span>
+              <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
-        </div>
-
-        {/* Scrollable list of queue rows */}
-        <div className="panel flex-1 space-y-2.5 overflow-y-auto pr-1">
-          {sheets.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-center p-6 text-[var(--ink-muted)]">
-              <UploadCloud className="w-8 h-8 mb-2 stroke-1 text-[var(--ink-faint)]" />
-              <p className="text-xs font-medium text-[var(--ink-secondary)]">No sheets in queue</p>
-              <p className="text-[11px] text-[var(--ink-muted)] mt-1">
-                Drop PDF or image files on the left to begin batch intake.
-              </p>
-            </div>
-          ) : (
-            sheets.map((sheet) => (
-              <QueueRow
-                key={sheet.id}
-                sheet={sheet}
-                isActive={sheet.id === state.sheetId}
-                onSelect={() => {
-                  store.setSheet(sheet.id, sheet.student_name, sheet.roll);
-                }}
-                onRefresh={loadSheets}
-                onError={(err) => {
-                  store.setError(err);
-                }}
-              />
-            ))
-          )}
-        </div>
-
-        {/* Bottom Start Action Button within Queue */}
-        <div className="pt-3 mt-3 border-t border-[var(--surface-border)] flex items-center justify-between shrink-0">
-          <div className="text-xs text-[var(--ink-muted)]">
-            {sheets.length > 0
-              ? `${sheets.length} sheets queued for evaluation`
-              : 'Upload sheets to enable processing'}
-          </div>
-          <button
-            type="button"
-            onClick={handleStartProcessing}
-            disabled={sheets.length === 0 || !state.paperIsLocked}
-            className="px-4 py-1.5 text-xs font-semibold rounded-md bg-[var(--accent-indigo)] text-white hover:bg-[var(--accent-indigo-hover)] disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center gap-1.5 shadow-sm"
-          >
-            Start Processing <ArrowRight className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      </section>
+        </section>
+      </div>
     </div>
   );
 };

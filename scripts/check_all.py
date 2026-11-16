@@ -14,7 +14,7 @@ BANNED = [
 ]
 SCAN_EXT = {".py", ".ts", ".tsx", ".js", ".jsx", ".json", ".html", ".css"}
 SKIP_DIRS = {".git", "node_modules", "dist", "__pycache__", ".reader_cache", "data",
-             "legacy", "docs", "tests", ".venv", "venv", "proof"}
+             "legacy", "docs", "tests", ".venv", "venv", "proof", "stitch_evaldesk_exam_evaluation_workspace"}
 SKIP_FILES = {"check_all.py", "check_ui.py", "verify_u1.py", "verify_u2.py", "verify_u3.py", "package-lock.json"}
 results = []
 
