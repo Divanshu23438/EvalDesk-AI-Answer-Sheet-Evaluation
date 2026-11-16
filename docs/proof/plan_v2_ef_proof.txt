@@ -14,3 +14,40 @@ Contains Devanagari text: True
 Section banners present: Part I: True, Part II: True, Part III: True
 
 ALL PHASE E REPORT CARD CRITERIA VERIFIED SUCCESSFULLY!
+
+=== EVALDESK PLAN V2: PHASE F VERIFICATION PROOF ===
+1. Legacy Cleanup:
+   - Deleted unused legacy stores: src/store/EvalContext.tsx
+   - Deleted unused legacy mock data: src/data/seedData.ts
+   - Verified absence of legacy teacher workspace: TeacherWorkspace.tsx, src/admin/, src/server/
+
+2. Modular Split of Teacher Workspace:
+   - Modularized src/components/teacher/TeacherPrototypeWorkspace.tsx into:
+     * src/components/teacher/types.ts (shared models, step enums, helper functions)
+     * src/components/teacher/PaperSetupStep.tsx (Step 1: paper extraction, section rules cards, reference generation)
+     * src/components/teacher/SheetIntakeStep.tsx (Steps 2 & 3: batch sheet upload, manual identity entry, live queue, bulk finalize)
+     * src/components/teacher/ReviewWorkspaceStep.tsx (Step 4: 3-pane layout, handwriting crops, rubric steppers, overrides)
+     * src/components/teacher/ReportsStep.tsx (Step 5: KPI cards, student report cards, PDF & Excel exports)
+     * src/components/teacher/TeacherPrototypeWorkspace.tsx (Root orchestrator shell with tab nav & keyboard shortcuts)
+
+3. Verification Gate Outputs:
+   - TypeScript Type Check:
+     $ npx tsc --noEmit
+     Exit code: 0 (Zero errors)
+   - Vite Production Build:
+     $ npm run build
+     Exit code: 0
+     Output: dist/index.html 1.47 kB, dist/assets/index-DeKZL0ho.css 29.71 kB, dist/assets/index-BtiTkNdW.js 320.23 kB
+   - Backend Pytest Suite:
+     $ pytest
+     33 passed, 1 warning in 32.05s
+   - check_all.py Comprehensive Gate:
+     $ python scripts/check_all.py --base http://127.0.0.1:8000
+     [PASS] banned strings
+     [PASS] no .env/dist/data/cache tracked
+     [PASS] pytest
+     [PASS] tsc --noEmit
+     [PASS] live provider health (endpoint reachable)
+     RESULT: ALL PASS
+
+ALL PHASE E & PHASE F REQUIREMENTS AND VERIFICATION GATES PASSED!

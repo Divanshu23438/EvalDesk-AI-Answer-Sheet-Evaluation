@@ -1,7 +1,9 @@
 # STATUS (update at the end of every session)
 Date / author (agent or model name): 2026-11-16 / Antigravity (Gemini 3.8 Flash)
-Current phase and task: Phase C & Phase D Completed and Verified (Per-Question Deep References, Even Rubric Weights, 3-Pane Teacher Review Workspace, Dynamic Handwriting Crops, Keyboard Shortcuts, Finalize Gating, and Batch Sheets Operations)
+Current phase and task: Plan V2 Complete — Phase A through Phase F Fully Implemented, Verified, and Passing All Gates
 Done (task id, commit, proof file):
+- Task PlanV2.F: Legacy cleanup & modular split of teacher workspace (Removed `src/data/seedData.ts` and `src/store/EvalContext.tsx`; modularized `TeacherPrototypeWorkspace.tsx` into clean, single-responsibility components in `src/components/teacher/`: `types.ts`, `PaperSetupStep.tsx`, `SheetIntakeStep.tsx`, `ReviewWorkspaceStep.tsx`, `ReportsStep.tsx`, and a lean orchestrator `TeacherPrototypeWorkspace.tsx`; verified with `npx tsc --noEmit`, `npm run build`, `pytest`, and `scripts/check_all.py`) | docs/proof/plan_v2_ef_proof.txt
+- Task PlanV2.E: Executive Report Card PDF (`backend/reports_generator.py`, `backend/main.py`, `backend/storage.py`, `backend/assets/fonts/`: clean extracted exam title, Page-1 Executive Summary Block with Student details, score, percentage, grade, and quality review metrics; grouped questions by Part/Section with section subtotals e.g. `Part II Subtotal: 20.0 / 24.0`; excluded optional questions labeled `"Optional — Not Counted"`; aspect-ratio preserved embedded handwriting crop thumbnails from `bbox_json`; verbatim student transcript; clean 1-2 line plain-English feedback; bundled Devanagari font support for Hindi/bilingual exams; ReportLab `KeepTogether` preventing row clipping across page breaks; programmatically verified on Kanak Patel `SGSU250489` with PyMuPDF) | commit ca59978 | docs/proof/plan_v2_ef_proof.txt
 - Task PlanV2.C: Per-question deep references (word limit extraction, `word_limit` in SQLite, per-question reference generation with `asyncio.Semaphore(3)`, two-pass critique & auto-expansion for answers under 70% of word limit, clean even rubric weights `2/2/1/1` for 6M and `3/3/2/2` for 10M, explicit `accept_if` and `reject_if` criteria on every rubric key point, single-question regeneration endpoint `POST /api/papers/{id}/questions/{key}/reference/regenerate`, single-question critique & expansion endpoint `POST /api/papers/{id}/questions/{key}/reference/expand`, UI word count badge `{count} / ~{target} words`, single-question regenerate and expand buttons, and dual-draft cross-check divergence banner) | commit bdbfdd7 | docs/proof/plan_v2_cd_proof.txt
 - Task PlanV2.D: 3-pane teacher review workspace & batch sheets (`GET /api/sheets/{id}/review` returning section-scoped questions, model answer, key points, bbox, page numbers; dynamic answer handwriting crop endpoint `GET /api/sheets/{id}/crop/{eval_id}`; 3-pane review layout with Left: grouped questions by section with status chips + Section Choice Rules summary + Flagged only filter; Center: interactive sheet viewer with auto-jump to page, zoom 50%-250%, 90° rotation, thumbnail strip, and bounding box highlight overlay; Right: question evaluation card with handwriting crop, verbatim character-by-character editable transcript, verified quote badge, rubric breakdown with +/- 0.5M steppers, plain-English flag reasons, teacher override marks + required reason, count in total score toggle, accept AI marks, live AI recheck; keyboard shortcuts J/K/A/F; finalize sheet blocked on unresolved flags `POST /api/sheets/{id}/finalize`; batch sheets list `GET /api/papers/{id}/sheets` with status filters and search; bulk finalize `POST /api/sheets/bulk-finalize` for 0-flag clean sheets) | commit bdbfdd7 | docs/proof/plan_v2_cd_proof.txt
 - Task PlanV2.A: Section rules & scoped question keys (Added `sections` table, `section_id` in questions, `is_counted` in evaluations; T1 section rule extraction with contradiction warning; section-scoped keys `P1-Q1`, `P2-Q1`, `P3-Q1` preventing label collisions; UI Section Rules card per Part with contradiction alert; real sections wired into `calculate_section_choice_totals` supporting 'best_n' and 'first_n_answered' policies; verified under both attempt_n = 4 (54M) and attempt_n = 5 (60M)) | commit db6db98 | docs/proof/phase_a_sections_proof.txt
@@ -34,11 +36,11 @@ Done (task id, commit, proof file):
 - Task P7.5: Marking Concurrency & Screen 3 Polling Fix (instant skip for unattempted answers, asyncio.Semaphore(3) concurrent grading with 25s timeout, startup resume for marking sheets, continuous 2s frontend polling with auto-advance and Retry button) | commit 7f8c34a | `docs/proof/p3_marking_concurrency_fix.txt`
 - Task P7.6: Grading Engine & Report Card Formatting Fixes (deterministic MCQ routing, robust punctuation/whitespace normalized quote verification, open-ended/conceptual Task T6 grading prompt, clean Q-numbering without Q.Q., and unattempted indicator in evidence quote) | commit 8bc5d44 | `docs/proof/p7_grading_report_fixes.txt`
 - Task P7.7: Evaluation Accuracy Calibration & Executive UI/UX Upgrade (zero marks for unattempted/empty answers, rigorous factual checks penalizing wrong technical claims like ls as internal, depth checks penalizing everyday analogies for 6M/10M questions, printed exam header extraction, clean single-line PDF layout, executive 5-step stepper navigation, KPI summary cards, and Split-View zoom controls) | docs/proof/p7_evaluation_calibration_and_ui_upgrade.txt
-In progress / failing (exact error): None. Phase A (Section Rules & Scoped Keys) and Phase B (Grading Accuracy & Gold Benchmark) are fully verified and passing all gates.
+In progress / failing (exact error): None. All Plan V2 phases (Phase A, B, C, D, E, F) are complete and verified.
 Next three actions:
-1. Stop for user review of Phase A & Phase B verification proofs.
-2. Upon user review/approval, proceed to Phase C (Better References without Answer Key).
-3. Implement Phase D (Teacher Review Workspace) and Phase E (Class Analytics & Report Card Layout).
+1. Present completed EvalDesk Plan V2 execution summary to the user.
+2. Conduct user acceptance walkthrough of the modularized UI and new executive Report Card PDFs.
+3. Assist user with any further custom assessment workflows, production deployment, or domain calibration.
 Known issues and decisions (link to docs/DECISIONS.md):
 - On Windows, `check_all.py` calls `npx.cmd` when on win32 to prevent `[WinError 2]`.
 - Groq Vision requires images to be at least 32x32 pixels; `health_check_providers` generates a 64x64 patterned test JPEG.
@@ -47,6 +49,8 @@ Known issues and decisions (link to docs/DECISIONS.md):
 - FastAPI `lifespan` context manager resumes all `queued` and `evaluating` jobs on server startup.
 - Review and Reports states persist across page reloads via `localStorage` and `GET /api/sheets/{id}/review`.
 - Cascading sheet deletion purges associated records across reviews, evaluations, answers, ai_reads, sheet_pages, training_lines, reports, and disk files.
+- ReportLab font registration uses bundled Nirmala TrueType fonts (`Devanagari-Regular.ttf` & `Devanagari-Bold.ttf`) providing unified support for Latin ASCII, numerals, and Devanagari script.
+- Dynamic answer crop coordinates (`bbox_json`) are lazily rendered and cached under `data/storage/sheets/{sheet_id}/crops/{eval_id}.jpg`.
 How to run: backend command, frontend command, check_all command
 - Unified Dev: `.\start_dev.ps1` or `start_dev.bat`
 - Backend: `python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000`
@@ -54,6 +58,6 @@ How to run: backend command, frontend command, check_all command
 - check_all: `python scripts/check_all.py --base http://127.0.0.1:8000`
 - Live E2E: `python scripts/e2e_real.py`
 Provider status (from /api/health/providers):
-- Gemini text: online (gemini-3.5-flash-lite, latency ~0ms)
-- Gemini image: online (gemini-3.5-flash-lite, latency ~1ms)
-- Groq image: online (qwen/qwen3.8-27b, accepts_images: true, latency ~1ms)
+- Gemini text: online (gemini-3.5-flash-lite, latency ~21ms)
+- Gemini image: online (gemini-3.5-flash-lite, latency ~26ms)
+- Groq image: online (qwen/qwen3.8-27b, accepts_images: true, latency ~19ms)
