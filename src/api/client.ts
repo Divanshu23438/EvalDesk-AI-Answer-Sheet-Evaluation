@@ -130,4 +130,57 @@ export const apiClient = {
     });
     return handleResponse<T>(res);
   },
+
+  uploadWithProgress<T>(
+    url: string,
+    formData: FormData,
+    onProgress?: (percent: number) => void
+  ): Promise<T> {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', url, true);
+      xhr.setRequestHeader('Accept', 'application/json');
+
+      if (xhr.upload && onProgress) {
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) {
+            const percent = Math.round((e.loaded / e.total) * 100);
+            onProgress(percent);
+          }
+        };
+      }
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            const parsed = JSON.parse(xhr.responseText);
+            resolve(parsed);
+          } catch {
+            resolve(xhr.responseText as unknown as T);
+          }
+        } else {
+          let code = `HTTP_${xhr.status}`;
+          let message = xhr.statusText || 'Upload failed.';
+          try {
+            const errorJson = JSON.parse(xhr.responseText);
+            if (errorJson.detail) {
+              message = typeof errorJson.detail === 'string' ? errorJson.detail : JSON.stringify(errorJson.detail);
+            } else if (errorJson.message) {
+              message = errorJson.message;
+            }
+            if (errorJson.code) code = errorJson.code;
+          } catch {
+            // Non-JSON response
+          }
+          reject(new ApiError({ code, message, status: xhr.status }));
+        }
+      };
+
+      xhr.onerror = () => {
+        reject(new ApiError({ code: 'NETWORK_ERROR', message: 'Network error during upload.', status: 0 }));
+      };
+
+      xhr.send(formData);
+    });
+  },
 };

@@ -1634,6 +1634,7 @@ async def upload_answer_sheet(
             )
 
     sheet_id = str(uuid.uuid4())
+    raw_filename = files[0].filename if (files and files[0].filename) else f"sheet_{sheet_id[:8]}.pdf"
     sheet_dir = get_sheet_dir(sheet_id)
     (sheet_dir / "original").mkdir(parents=True, exist_ok=True)
 
@@ -1737,10 +1738,10 @@ async def upload_answer_sheet(
         cursor = conn.cursor()
         cursor.execute(
             """
-            INSERT INTO sheets (id, paper_id, student_name, roll_number, consent_flag, status, current_stage)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO sheets (id, paper_id, student_name, roll_number, consent_flag, status, current_stage, raw_filename)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (sheet_id, paper_id, student_name, roll_number, consent_flag, status, current_stage),
+            (sheet_id, paper_id, student_name, roll_number, consent_flag, status, current_stage, raw_filename),
         )
         for page_num, p_path, _ in saved_pages:
             p_id = str(uuid.uuid4())
@@ -1763,6 +1764,7 @@ async def upload_answer_sheet(
         "current_stage": current_stage,
         "needs_manual_name": needs_manual_name,
         "pages_count": len(saved_pages),
+        "filename": raw_filename,
     }
 
 @app.post("/api/sheets/{sheet_id}/identity")

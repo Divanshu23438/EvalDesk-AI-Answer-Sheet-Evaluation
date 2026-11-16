@@ -139,6 +139,7 @@ def init_db():
                 roll_number TEXT DEFAULT '',
                 consent_flag INTEGER NOT NULL DEFAULT 1,
                 status TEXT NOT NULL DEFAULT 'pending', -- 'pending', 'evaluating', 'evaluated', 'error'
+                raw_filename TEXT DEFAULT '',
                 current_stage TEXT DEFAULT 'Uploaded',
                 error_message TEXT,
                 total_score REAL DEFAULT 0.0,
@@ -281,6 +282,7 @@ def init_db():
         add_column_if_missing("questions", "word_limit INTEGER DEFAULT 150", "word_limit")
         add_column_if_missing("evaluations", "is_counted INTEGER NOT NULL DEFAULT 1", "is_counted")
         add_column_if_missing("sheets", "failed_stage TEXT", "failed_stage")
+        add_column_if_missing("sheets", "raw_filename TEXT DEFAULT ''", "raw_filename")
         add_column_if_missing("answers", "page_numbers TEXT DEFAULT '[]'", "page_numbers")
         add_column_if_missing("answers", "bbox_json TEXT DEFAULT '{}'", "bbox_json")
         add_column_if_missing("answers", "reader_texts_json TEXT DEFAULT '{}'", "reader_texts_json")

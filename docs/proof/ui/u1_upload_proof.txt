@@ -1,0 +1,11 @@
+=== PHASE U1: UPLOAD SCREEN & BATCH QUEUE VERIFICATION ===
+
+Timestamp: 2026-11-16 08:55:12 UTC
+
+Using locked paper: 00a95e94-7d4e-47a9-801b-4f8834fa60cf ('Operating Systems Exam')
+Bad File Test (expected HTTP 400): HTTP 400 -> {'detail': "Uploaded file 'bad_file.jpg' is empty or corrupt (minimum 500 bytes required)."}
+Upload Valid Sheet: HTTP 200 -> {'sheet_id': '1b195f5f-b3c8-4980-9abf-4da861fe0f06', 'paper_id': '00a95e94-7d4e-47a9-801b-4f8834fa60cf', 'student_name': 'Sarah Jenkins', 'roll_number': '', 'confidence': 0.99, 'status': 'needs_identity', 'current_stage': 'Waiting for student name & roll number', 'needs_manual_name': True, 'pages_count': 1}
+Inline Identity Submission: HTTP 200 -> {'status': 'queued', 'sheet_id': '1b195f5f-b3c8-4980-9abf-4da861fe0f06', 'student_name': 'Arjun Sharma', 'roll_number': 'ROLL-409', 'message': 'Student identity updated. Evaluation automatically queued.'}
+Queue Verified: Sheet found with name='Arjun Sharma', roll='ROLL-409', status='needs_review'
+[PASS] Viewport 1366x768: scrollHeight=768 <= innerHeight=768 | Console Errors: 0 | Screenshot: F:\EvalDesk-AI-Answer-Sheet-Evaluation-main\docs\proof\ui\screenshots\u1_upload_1366x768.png
+[PASS] Viewport 1920x1080: scrollHeight=1080 <= innerHeight=1080 | Console Errors: 0 | Screenshot: F:\EvalDesk-AI-Answer-Sheet-Evaluation-main\docs\proof\ui\screenshots\u1_upload_1920x1080.png

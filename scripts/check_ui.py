@@ -159,7 +159,7 @@ def check_playwright_viewports():
                     page.on("pageerror", lambda err: console_errors.append(str(err)))
 
                     url = f"http://localhost:5173/{route['path']}"
-                    page.goto(url, wait_until="networkidle")
+                    page.goto(url, wait_until="domcontentloaded")
                     page.wait_for_selector(".app", timeout=5000)
                     time.sleep(0.3)  # Allow rendering to settle
 
