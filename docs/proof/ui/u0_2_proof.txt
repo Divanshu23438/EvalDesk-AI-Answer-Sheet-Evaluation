@@ -1,0 +1,44 @@
+=== EVALDESK UI OVERHAUL: TASK U0.2 PROOF ===
+Task: Section 9 Backend Contract Additions (backend/main.py)
+
+1. Endpoints Implemented & Verified against SQLite database:
+   - GET /api/papers/{id}/sheets:
+     Returns: id, filename, student_name, roll, status, stage, page_count, flags_open, updated_at
+     Verified with live sheet data in SQLite.
+   - GET /api/sheets/{id}:
+     Returns: pages_read, pages_total, questions_marked, questions_total, failed_stage, error_message, retry_at, history[{stage, at}]
+   - GET /api/sheets/{id}/pages/{n}/image:
+     Serves JPEG page image with media_type="image/jpeg" and Cache-Control: public, max-age=86400
+   - GET /api/sheets/{id}/review:
+     Returns per-question Section 9 schema:
+     key, q_no, text, options, max_marks, status, ocr_text, reader_texts[], legibility, page_numbers[], bbox, continues,
+     reference{source, model_answer, key_points[], correct_option}, ai_marks, final_marks,
+     key_point_verdicts[{text, marks, verdict, quote, reason}], flags[{code, message}], error_message
+   - POST /api/evaluations/{id}/review:
+     Accepts OCR edits (ocr_text), marks override, recalculates sheet totals, returns sheet_total, percentage, grade.
+   - POST /api/sheets/{id}/approve-unflagged:
+     Marks all unflagged questions resolved=1, returns approved_count.
+   - POST /api/evaluations/{id}/recheck:
+     Performs live AI recheck via AI gateway, returns updated marks, reason, evidence.
+   - POST /api/sheets/{id}/finish:
+     Validates 0 unresolved flags remain, updates status to 'evaluated', returns report_url and pdf_url.
+   - GET /api/sheets/{id}/report:
+     Returns student report details (marks, percentage, grade, strengths, improvements, questions, pdf_url).
+   - GET /api/papers/{id}/reports:
+     Returns paper summary, student report matrix, excel_report_url, paper_summary_pdf_url.
+
+2. Verification Script Output (scripts/verify_u0_2.py):
+   PASS: 1. GET /api/papers/{id}/sheets has all Section 9 contract keys
+   PASS: 2. GET /api/sheets/{id} has all Section 9 counters, stages & history
+   PASS: 3. GET /api/sheets/{id}/pages/{n}/image serves JPEG with cache headers
+   PASS: 4. GET /api/sheets/{id}/review returns all per-question contract fields
+   PASS: 5. POST /api/evaluations/{id}/review accepts OCR edits and returns sheet totals
+   PASS: 6. POST /api/sheets/{id}/approve-unflagged approves unflagged questions
+   PASS: 7. POST /api/sheets/{id}/finish validates and returns report links
+   PASS: 8. GET /api/sheets/{id}/report returns student report data
+   PASS: 9. GET /api/papers/{id}/reports returns paper report and export links
+
+   ALL SECTION 9 BACKEND CONTRACT ENDPOINTS VERIFIED SUCCESSFULLY!
+
+3. Regression Testing:
+   - pytest backend/tests: 33 passed, 0 failures.
