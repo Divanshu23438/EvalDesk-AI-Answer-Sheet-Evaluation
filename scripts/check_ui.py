@@ -24,13 +24,26 @@ VIEWPORTS = [
     {"width": 1920, "height": 1080, "label": "1920x1080"},
 ]
 
-ROUTES = [
-    {"path": "#/upload", "name": "upload"},
-    {"path": "#/processing", "name": "processing"},
-    {"path": "#/evaluate", "name": "evaluate"},
-    {"path": "#/report", "name": "report"},
-    {"path": "#/setup", "name": "setup"},
-]
+def get_sample_sheet_id():
+    try:
+        import sqlite3
+        conn = sqlite3.connect(ROOT / "data" / "app.db")
+        row = conn.execute("SELECT id FROM sheets WHERE status = 'evaluated' ORDER BY total_score DESC LIMIT 1").fetchone()
+        if not row:
+            row = conn.execute("SELECT id FROM sheets ORDER BY created_at DESC LIMIT 1").fetchone()
+        return row[0] if row else ""
+    except Exception:
+        return ""
+
+def get_routes():
+    sid = get_sample_sheet_id()
+    return [
+        {"path": "#/upload", "name": "upload"},
+        {"path": f"#/processing/{sid}" if sid else "#/processing", "name": "processing"},
+        {"path": f"#/evaluate/{sid}" if sid else "#/evaluate", "name": "evaluate"},
+        {"path": f"#/report/{sid}" if sid else "#/report", "name": "report"},
+        {"path": "#/setup", "name": "setup"},
+    ]
 
 def check_banned_strings():
     hits = []
@@ -99,36 +112,37 @@ def ensure_backend_server():
     proc.terminate()
     raise RuntimeError("Failed to start FastAPI backend server within 15 seconds")
 
+def check_frontend_ready():
+    for url in ["http://localhost:5173", "http://127.0.0.1:5173"]:
+        try:
+            with urllib.request.urlopen(url, timeout=1) as resp:
+                if resp.status in (200, 304):
+                    return True
+        except Exception:
+            pass
+    return False
+
 def ensure_frontend_server():
-    # Check if port 5173 is already responding
-    try:
-        with urllib.request.urlopen("http://localhost:5173", timeout=1) as resp:
-            if resp.status in (200, 304):
-                return None  # already running
-    except Exception:
-        pass
+    if check_frontend_ready():
+        return None
 
     # Launch Vite
     npx = "npx.cmd" if sys.platform == "win32" else "npx"
-    print("Starting Vite development server on port 5173...")
+    print("Starting Vite development server on port 5173...", flush=True)
     proc = subprocess.Popen(
         [npx, "vite", "--port", "5173"],
         cwd=ROOT,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
         shell=(sys.platform == "win32")
     )
 
     # Wait up to 15 seconds for server to respond
     for _ in range(30):
         time.sleep(0.5)
-        try:
-            with urllib.request.urlopen("http://localhost:5173", timeout=1) as resp:
-                if resp.status in (200, 304):
-                    print("Vite development server ready at http://localhost:5173")
-                    return proc
-        except Exception:
-            continue
+        if check_frontend_ready():
+            print("Vite development server ready at port 5173", flush=True)
+            return proc
 
     proc.terminate()
     raise RuntimeError("Failed to start Vite dev server within 15 seconds")
@@ -153,7 +167,7 @@ def check_playwright_viewports():
                 )
                 page = context.new_page()
 
-                for route in ROUTES:
+                for route in get_routes():
                     console_errors = []
                     page.on("console", lambda msg: console_errors.append(msg.text) if msg.type == "error" else None)
                     page.on("pageerror", lambda err: console_errors.append(str(err)))

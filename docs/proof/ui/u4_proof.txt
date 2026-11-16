@@ -1,0 +1,29 @@
+====================================================================
+PHASE U4 VERIFICATION PROOF: ONE-SCREEN REPORT & DATA PARITY
+====================================================================
+
+Target Sheet ID: 462f04f3-1031-46cc-9b3f-f1fbdaf9171e
+Student: Kanak Patel (Roll: SGSU250489)
+
+--- 1. DATABASE TO FILE PARITY AUDIT ---
+Total Score : SQLite=59.0 | UI JSON=59.0 | PDF=59.0 | Excel=59.0 [MATCH ✓]
+Max Marks   : SQLite=60.0 | UI JSON=60.0 | PDF=60.0 | Excel=60.0 [MATCH ✓]
+Percentage  : SQLite=98.3% | UI JSON=98.3% | PDF=98.3% | Excel=98.3% [MATCH ✓]
+Grade       : SQLite=A+ | UI JSON=A+ | PDF=A+ | Excel=A+ [MATCH ✓]
+
+Student PDF File : data\storage\reports\988d5546-7564-46c0-83a2-4d7a2f231d0b\report_card_SGSU250489.pdf (Verified on disk)
+Class Excel File : data\storage\reports\988d5546-7564-46c0-83a2-4d7a2f231d0b\results.xlsx (Verified on disk)
+
+--- 2. VIEWPORT ZERO-PAGE-SCROLL ASSERTIONS ---
+Viewport 1366x768:
+  - Student Tab: scrollHeight=768 <= innerHeight=768 [PASS ✓]
+  - Paper Tab  : scrollHeight=768 <= innerHeight=768 [PASS ✓]
+  - Screenshot : docs\proof\ui\screenshots\u4_report_1366x768.png
+Viewport 1920x1080:
+  - Student Tab: scrollHeight=1080 <= innerHeight=1080 [PASS ✓]
+  - Paper Tab  : scrollHeight=1080 <= innerHeight=1080 [PASS ✓]
+  - Screenshot : docs\proof\ui\screenshots\u4_report_1920x1080.png
+
+====================================================================
+ALL PHASE U4 DATA PARITY AND ZERO-PAGE-SCROLL ASSERTIONS PASSED!
+====================================================================

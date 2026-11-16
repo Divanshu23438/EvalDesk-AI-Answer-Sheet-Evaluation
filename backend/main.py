@@ -3064,9 +3064,10 @@ def finalize_sheet(sheet_id: str, force: bool = False):
     }
 
 @app.get("/api/sheets/{sheet_id}/report")
-def get_sheet_report_endpoint(sheet_id: str):
+def get_sheet_report_endpoint(sheet_id: str, regenerate: bool = False):
     """
-    Returns student report data: marks, grade, T7 strengths & improvements.
+    Returns student report data: marks, grade, T7 strengths & improvements,
+    flagged count, teacher overridden count, and ensures report card PDF exists.
     """
     with get_db() as conn:
         cursor = conn.cursor()
@@ -3081,10 +3082,14 @@ def get_sheet_report_endpoint(sheet_id: str):
 
         cursor.execute(
             """
-            SELECT e.id as eval_id, e.ai_marks, e.final_marks, e.reason, e.evidence_quote, e.is_counted, e.flags_json,
-                   q.id as question_id, q.key as question_key, q.q_no, q.question_text, q.max_marks, q.section_name
+            SELECT e.id as eval_id, e.ai_marks, e.final_marks, e.reason, e.evidence_quote, e.is_counted, e.flags_json, e.resolved,
+                   q.id as question_id, q.key as question_key, q.q_no, q.question_text, q.max_marks, q.section_name,
+                   a.extracted_text, a.bbox_json, a.page_numbers, a.is_attempted,
+                   r.teacher_marks, (CASE WHEN r.id IS NOT NULL THEN 1 ELSE 0 END) as is_overridden
             FROM evaluations e
             JOIN questions q ON e.question_id = q.id
+            LEFT JOIN answers a ON a.sheet_id = e.sheet_id AND a.question_id = e.question_id
+            LEFT JOIN reviews r ON r.evaluation_id = e.id
             WHERE e.sheet_id = ?
             ORDER BY q.order_idx ASC
             """,
@@ -3092,21 +3097,104 @@ def get_sheet_report_endpoint(sheet_id: str):
         )
         questions = [dict(r) for r in cursor.fetchall()]
 
-        cursor.execute("SELECT * FROM reports WHERE sheet_id = ?", (sheet_id,))
-        report_row = cursor.fetchone()
+        # Compute achieved and missed topics for T7 synthesis
+        achieved_topics = []
+        missed_topics = []
+        for qe in questions:
+            max_m = qe["max_marks"] or 1.0
+            score = qe["final_marks"] or 0.0
+            is_att = bool((qe.get("extracted_text") or "").strip()) and "not_attempted" not in str(qe.get("flags_json") or "")
+            if max_m > 0 and score >= max_m * 0.75:
+                achieved_topics.append(f"{format_q_number(qe['q_no'])} ({qe['question_text'][:50]})")
+            elif is_att and score < max_m:
+                missed_topics.append(f"{format_q_number(qe['q_no'])} ({qe['question_text'][:50]})")
 
-        strengths = report_row["strengths"] if report_row and "strengths" in report_row.keys() else ""
-        improvements = report_row["improvements"] if report_row and "improvements" in report_row.keys() else ""
-        if not strengths:
-            strengths = "Good demonstration of foundational concepts and structure."
-        if not improvements:
-            improvements = "Enhance detail in technical explanations and verify exact command syntax."
+        strengths_list = [
+            f"Strong mastery on {', '.join(achieved_topics[:2])} demonstrating accurate technical execution." if achieved_topics else "Attempted core questions with consistent effort and structure."
+        ]
+        improvements_list = [
+            f"Review rubric depth in {', '.join(missed_topics[:2])} to secure full marks." if missed_topics else "Review detailed reasoning to secure maximum marks on extended questions."
+        ]
+
+        # Flags and Overrides count
+        flagged_count = sum(1 for q in questions if (q.get("flags_json") and q.get("flags_json") != "[]") or q.get("resolved") == 0)
+        unres_cnt = sum(1 for q in questions if q.get("resolved") == 0)
+        res_cnt = sum(1 for q in questions if q.get("resolved") == 1 and (q.get("flags_json") and q.get("flags_json") != "[]"))
+        overrides_cnt = sum(1 for q in questions if q.get("is_overridden"))
 
         roll = sheet["roll_number"] or ""
-        pdf_url = f"/storage/reports/{paper_id}/report_card_{roll}.pdf" if roll else None
+        reports_dir = get_reports_dir(paper_id)
+        card_name = f"report_card_{roll or sheet['student_name'] or sheet_id[:8]}.pdf"
+        pdf_path = reports_dir / card_name
+
+        cursor.execute("SELECT created_at FROM reports WHERE sheet_id = ? AND report_type = 'student_report_card' ORDER BY created_at DESC LIMIT 1", (sheet_id,))
+        rep_row = cursor.fetchone()
+        is_stale = False
+        if rep_row and pdf_path.exists():
+            rep_created = rep_row["created_at"]
+            cursor.execute("SELECT MAX(updated_at) as m_up FROM evaluations WHERE sheet_id = ?", (sheet_id,))
+            m_up = cursor.fetchone()["m_up"]
+            cursor.execute("SELECT MAX(created_at) as m_rev FROM reviews r JOIN evaluations e ON r.evaluation_id = e.id WHERE e.sheet_id = ?", (sheet_id,))
+            m_rev = cursor.fetchone()["m_rev"]
+            if (m_up and m_up > rep_created) or (m_rev and m_rev > rep_created):
+                is_stale = True
+
+        # Generate student report card PDF if missing or forced
+        if not pdf_path.exists() or regenerate:
+            cursor.execute("SELECT * FROM sheet_pages WHERE sheet_id = ? ORDER BY page_number ASC", (sheet_id,))
+            sheet_pages_list = [dict(p) for p in cursor.fetchall()]
+
+            for qe in questions:
+                p_idx = 0
+                if qe.get("page_numbers"):
+                    try:
+                        parsed_pgs = json.loads(qe["page_numbers"]) if isinstance(qe["page_numbers"], str) else qe["page_numbers"]
+                        if parsed_pgs:
+                            p_idx = int(parsed_pgs[0]) - 1
+                    except Exception:
+                        p_idx = 0
+                if p_idx < 0 or p_idx >= len(sheet_pages_list):
+                    p_idx = 0
+                page_file = Path(sheet_pages_list[p_idx]["file_path"]) if sheet_pages_list else None
+                crop = get_or_create_answer_crop_path(
+                    sheet_id=sheet_id,
+                    eval_id=qe["eval_id"],
+                    page_file_path=page_file,
+                    bbox_raw=qe.get("bbox_json"),
+                    page_idx=p_idx,
+                )
+                qe["crop_image_path"] = str(crop) if crop and crop.exists() else None
+
+            generate_student_report_card_pdf(
+                output_path=pdf_path,
+                student_name=sheet["student_name"] or "Student",
+                roll_number=roll,
+                paper_title=paper["title"] if paper else "Academic Assessment",
+                questions=questions,
+                total_score=sheet["total_score"] or 0.0,
+                max_marks=sheet["max_marks"] or 10.0,
+                percentage=sheet["percentage"] or 0.0,
+                grade=sheet["grade"] or "N/A",
+                strengths=strengths_list,
+                improvements=improvements_list,
+                quality_stats={
+                    "unresolved_flags": unres_cnt,
+                    "resolved_flags": res_cnt,
+                    "overrides": overrides_cnt,
+                },
+            )
+            report_id = str(uuid.uuid4())
+            cursor.execute(
+                "INSERT INTO reports (id, paper_id, sheet_id, report_type, file_path, created_at) VALUES (?, ?, ?, 'student_report_card', ?, datetime('now'))",
+                (report_id, paper_id, sheet_id, str(pdf_path))
+            )
+            is_stale = False
+
+        pdf_url = f"/storage/reports/{paper_id}/{card_name}"
 
         return {
             "sheet_id": sheet_id,
+            "paper_id": paper_id,
             "student_name": sheet["student_name"] or "Student",
             "roll_number": roll,
             "paper_title": paper["title"] if paper else "Examination",
@@ -3114,11 +3202,21 @@ def get_sheet_report_endpoint(sheet_id: str):
             "max_marks": sheet["max_marks"] or 100.0,
             "percentage": sheet["percentage"] or 0.0,
             "grade": sheet["grade"] or "Needs Support",
-            "strengths": strengths,
-            "improvements": improvements,
+            "strengths": strengths_list,
+            "improvements": improvements_list,
+            "flagged_count": flagged_count,
+            "teacher_overridden_count": overrides_cnt,
+            "is_stale": is_stale,
             "questions": questions,
             "pdf_url": pdf_url,
         }
+
+@app.post("/api/sheets/{sheet_id}/report/regenerate")
+def regenerate_sheet_report_endpoint(sheet_id: str):
+    """
+    Forcibly re-generates student report card PDF and refreshes scores.
+    """
+    return get_sheet_report_endpoint(sheet_id=sheet_id, regenerate=True)
 
 @app.post("/api/sheets/bulk-finalize")
 def bulk_finalize_sheets(payload: BulkFinalizePayload):
@@ -3389,7 +3487,9 @@ async def build_paper_reports_data(paper_id: str) -> Dict[str, Any]:
         })
 
         s_dict = dict(s)
-        s_dict["question_scores"] = {q["q_no"]: q["final_marks"] for q in q_evals}
+        s_dict["question_scores"] = {q["question_id"]: q["final_marks"] for q in q_evals}
+        for qe in q_evals:
+            s_dict["question_scores"].setdefault(qe["q_no"], qe["final_marks"])
         student_records.append(s_dict)
 
     # Compute Question Stats
@@ -3431,6 +3531,17 @@ async def build_paper_reports_data(paper_id: str) -> Dict[str, Any]:
     avg_score = round(sum(scores) / len(scores), 1) if scores else 0.0
     avg_pct = round((avg_score / (paper["total_marks"] or 1.0)) * 100.0, 1) if paper["total_marks"] else 0.0
 
+    score_distribution = [
+        {"range": "80-100%", "label": "A / A+", "count": sum(1 for s in sheets if (s.get("percentage") or 0) >= 80)},
+        {"range": "60-79%", "label": "B / B+", "count": sum(1 for s in sheets if 60 <= (s.get("percentage") or 0) < 80)},
+        {"range": "40-59%", "label": "C", "count": sum(1 for s in sheets if 40 <= (s.get("percentage") or 0) < 60)},
+        {"range": "0-39%", "label": "Needs Support", "count": sum(1 for s in sheets if (s.get("percentage") or 0) < 40)},
+    ]
+
+    total_eval_count = len(sheets) * len(questions) if (sheets and questions) else 1
+    flag_rate = round((total_flagged_count / total_eval_count) * 100.0, 1)
+    teacher_change_rate = round((total_overrides / total_eval_count) * 100.0, 1)
+
     analytics = {
         "total_students": len(sheets),
         "max_marks": paper["total_marks"] or 10.0,
@@ -3438,6 +3549,10 @@ async def build_paper_reports_data(paper_id: str) -> Dict[str, Any]:
         "average_percentage": avg_pct,
         "flagged_count": total_flagged_count,
         "override_count": total_overrides,
+        "flag_rate": flag_rate,
+        "teacher_change_rate": teacher_change_rate,
+        "score_distribution": score_distribution,
+        "is_single_sheet": len(sheets) <= 1,
     }
 
     # Generate Paper Summary PDF

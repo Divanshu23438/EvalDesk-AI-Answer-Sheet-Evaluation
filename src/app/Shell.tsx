@@ -9,6 +9,7 @@ import { EvaluateScreen } from '../screens/EvaluateScreen';
 import { ReportScreen } from '../screens/ReportScreen';
 import {
   FileText,
+  FileSpreadsheet,
   Upload,
   Cpu,
   CheckCircle,
@@ -297,6 +298,16 @@ export const Shell: React.FC = () => {
                 </div>
               )}
             </div>
+          ) : state.step === 'report' ? (
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new CustomEvent('evaldesk:report:back-review'))}
+              className="p-1 px-2.5 rounded border border-[var(--surface-border)] hover:bg-[var(--surface-hover)] text-[var(--ink-secondary)] flex items-center gap-1 font-medium text-xs transition"
+              title="Return to Evaluation Review"
+            >
+              <ChevronLeft className="w-3.5 h-3.5" />
+              <span>Back to Review</span>
+            </button>
           ) : (
             <div className="flex items-center gap-2 text-xs text-[var(--ink-secondary)]">
               <span className="font-semibold text-[var(--ink-primary)]">Paper:</span>
@@ -357,6 +368,19 @@ export const Shell: React.FC = () => {
                 </kbd>{' '}
                 Recheck
               </div>
+            </div>
+          ) : state.step === 'report' ? (
+            <div className="flex items-center gap-2 text-xs text-[var(--ink-secondary)]">
+              <span className="font-semibold text-[var(--ink-primary)]">
+                {state.studentName || 'Student Report'}
+              </span>
+              {state.rollNumber && (
+                <span className="tabular-nums text-[var(--ink-muted)]">
+                  · Roll {state.rollNumber}
+                </span>
+              )}
+              <span className="text-[var(--ink-muted)]">·</span>
+              <span>Complete Assessment Report & Class Analytics</span>
             </div>
           ) : (
             <div className="hidden lg:flex items-center gap-3 text-[11px] text-[var(--ink-muted)]">
@@ -429,6 +453,33 @@ export const Shell: React.FC = () => {
                     {(state.reviewMetrics?.flagged || 0) + (state.reviewMetrics?.failed || 0)} flagged left (Jump)
                   </span>
                 )}
+              </button>
+            </div>
+          ) : state.step === 'report' ? (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => window.dispatchEvent(new CustomEvent('evaldesk:report:download-pdf'))}
+                className="px-2.5 py-1.5 text-xs font-medium rounded border border-[var(--surface-border)] bg-[var(--surface-canvas)] hover:bg-[var(--surface-hover)] text-[var(--ink-primary)] transition flex items-center gap-1 shadow-sm"
+              >
+                <FileText className="w-3.5 h-3.5 text-rose-500" />
+                <span>PDF</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => window.dispatchEvent(new CustomEvent('evaldesk:report:download-excel'))}
+                className="px-2.5 py-1.5 text-xs font-medium rounded border border-[var(--surface-border)] bg-[var(--surface-canvas)] hover:bg-[var(--surface-hover)] text-[var(--ink-primary)] transition flex items-center gap-1 shadow-sm"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Excel</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => window.dispatchEvent(new CustomEvent('evaldesk:report:next-sheet'))}
+                className="px-3 py-1.5 rounded-md bg-[var(--accent-indigo)] text-white text-xs font-semibold hover:bg-[var(--accent-indigo-hover)] transition flex items-center gap-1 shadow-sm"
+              >
+                <span>Next Sheet</span>
+                <ChevronRight className="w-3.5 h-3.5" />
               </button>
             </div>
           ) : (

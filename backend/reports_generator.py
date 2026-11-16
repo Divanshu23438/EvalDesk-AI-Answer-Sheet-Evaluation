@@ -621,7 +621,9 @@ def generate_paper_report_excel(
         ]
         q_scores = s.get("question_scores", {})
         for q in questions:
-            row.append(q_scores.get(q.get("q_no"), 0.0))
+            qid = q.get("id")
+            score = q_scores.get(qid) if (qid and qid in q_scores) else q_scores.get(q.get("q_no"), 0.0)
+            row.append(score)
         ws1.append(row)
 
     # --- Sheet 2: Question Breakdown ---

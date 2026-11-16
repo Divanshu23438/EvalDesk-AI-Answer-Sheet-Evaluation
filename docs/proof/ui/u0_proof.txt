@@ -5,14 +5,14 @@
 
 3. Playwright Viewport & Page Scroll Assertions:
   [PASS] Viewport 1366x768 | Route: #/upload | scrollHeight: 768px | innerHeight: 768px | Console Errors: 0 | Screenshot: docs\proof\ui\screenshots\upload_1366x768.png
-  [PASS] Viewport 1366x768 | Route: #/processing | scrollHeight: 768px | innerHeight: 768px | Console Errors: 0 | Screenshot: docs\proof\ui\screenshots\processing_1366x768.png
-  [PASS] Viewport 1366x768 | Route: #/evaluate | scrollHeight: 768px | innerHeight: 768px | Console Errors: 0 | Screenshot: docs\proof\ui\screenshots\evaluate_1366x768.png
-  [PASS] Viewport 1366x768 | Route: #/report | scrollHeight: 768px | innerHeight: 768px | Console Errors: 0 | Screenshot: docs\proof\ui\screenshots\report_1366x768.png
+  [PASS] Viewport 1366x768 | Route: #/processing/462f04f3-1031-46cc-9b3f-f1fbdaf9171e | scrollHeight: 768px | innerHeight: 768px | Console Errors: 0 | Screenshot: docs\proof\ui\screenshots\processing_1366x768.png
+  [PASS] Viewport 1366x768 | Route: #/evaluate/462f04f3-1031-46cc-9b3f-f1fbdaf9171e | scrollHeight: 768px | innerHeight: 768px | Console Errors: 0 | Screenshot: docs\proof\ui\screenshots\evaluate_1366x768.png
+  [PASS] Viewport 1366x768 | Route: #/report/462f04f3-1031-46cc-9b3f-f1fbdaf9171e | scrollHeight: 768px | innerHeight: 768px | Console Errors: 0 | Screenshot: docs\proof\ui\screenshots\report_1366x768.png
   [PASS] Viewport 1366x768 | Route: #/setup | scrollHeight: 768px | innerHeight: 768px | Console Errors: 0 | Screenshot: docs\proof\ui\screenshots\setup_1366x768.png
   [PASS] Viewport 1920x1080 | Route: #/upload | scrollHeight: 1080px | innerHeight: 1080px | Console Errors: 0 | Screenshot: docs\proof\ui\screenshots\upload_1920x1080.png
-  [PASS] Viewport 1920x1080 | Route: #/processing | scrollHeight: 1080px | innerHeight: 1080px | Console Errors: 0 | Screenshot: docs\proof\ui\screenshots\processing_1920x1080.png
-  [PASS] Viewport 1920x1080 | Route: #/evaluate | scrollHeight: 1080px | innerHeight: 1080px | Console Errors: 0 | Screenshot: docs\proof\ui\screenshots\evaluate_1920x1080.png
-  [PASS] Viewport 1920x1080 | Route: #/report | scrollHeight: 1080px | innerHeight: 1080px | Console Errors: 0 | Screenshot: docs\proof\ui\screenshots\report_1920x1080.png
+  [PASS] Viewport 1920x1080 | Route: #/processing/462f04f3-1031-46cc-9b3f-f1fbdaf9171e | scrollHeight: 1080px | innerHeight: 1080px | Console Errors: 0 | Screenshot: docs\proof\ui\screenshots\processing_1920x1080.png
+  [PASS] Viewport 1920x1080 | Route: #/evaluate/462f04f3-1031-46cc-9b3f-f1fbdaf9171e | scrollHeight: 1080px | innerHeight: 1080px | Console Errors: 0 | Screenshot: docs\proof\ui\screenshots\evaluate_1920x1080.png
+  [PASS] Viewport 1920x1080 | Route: #/report/462f04f3-1031-46cc-9b3f-f1fbdaf9171e | scrollHeight: 1080px | innerHeight: 1080px | Console Errors: 0 | Screenshot: docs\proof\ui\screenshots\report_1920x1080.png
   [PASS] Viewport 1920x1080 | Route: #/setup | scrollHeight: 1080px | innerHeight: 1080px | Console Errors: 0 | Screenshot: docs\proof\ui\screenshots\setup_1920x1080.png
 
 Assertion: document.scrollingElement.scrollHeight <= window.innerHeight holds on all screens.
