@@ -15,6 +15,15 @@ export interface SheetStoreError {
   onRetry?: () => void;
 }
 
+export interface ReviewMetrics {
+  total: number;
+  checked: number;
+  flagged: number;
+  failed: number;
+  currentIndex: number;
+  allResolved: boolean;
+}
+
 export interface SheetStoreState {
   step: AppStep;
   paperId: string | null;
@@ -29,6 +38,7 @@ export interface SheetStoreState {
   error: SheetStoreError | null;
   providerHealth: ProviderHealthState | null;
   isSidebarCollapsed: boolean;
+  reviewMetrics: ReviewMetrics | null;
 }
 
 // Initial state is strictly empty - server is sole source of truth
@@ -45,7 +55,8 @@ const initialStoreState: SheetStoreState = {
   activeQuestionKey: null,
   error: null,
   providerHealth: null,
-  isSidebarCollapsed: false,
+  isSidebarCollapsed: typeof localStorage !== 'undefined' ? localStorage.getItem('evaldesk_sidebar_collapsed') === 'true' : false,
+  reviewMetrics: null,
 };
 
 let globalState: SheetStoreState = { ...initialStoreState };
@@ -109,10 +120,21 @@ export const sheetStore = {
   },
 
   toggleSidebar() {
+    const nextVal = !globalState.isSidebarCollapsed;
+    if (typeof localStorage !== 'undefined') {
+      try {
+        localStorage.setItem('evaldesk_sidebar_collapsed', String(nextVal));
+      } catch {}
+    }
     globalState = {
       ...globalState,
-      isSidebarCollapsed: !globalState.isSidebarCollapsed,
+      isSidebarCollapsed: nextVal,
     };
+    emitChange();
+  },
+
+  setReviewMetrics(metrics: ReviewMetrics | null) {
+    globalState = { ...globalState, reviewMetrics: metrics };
     emitChange();
   },
 

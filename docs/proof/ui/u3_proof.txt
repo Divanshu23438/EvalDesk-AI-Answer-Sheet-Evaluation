@@ -1,0 +1,23 @@
+=== PHASE U3: ONE-SCREEN EVALUATION WORKSPACE PROOF ===
+
+Verification Timestamp: 2026-11-16 09:31:33 UTC
+
+Target Sheet: da175524-3d9a-466c-b432-4e53b80cc58b under Paper: 6e9aa335-fda1-43a2-a5c9-fce69a442fbd
+Loaded 2 questions for evaluation review.
+Testing Question Q1 (Key: q_mcq, Eval ID: f94cc8d8-5153-46b5-8fd9-1e83f06ffe35)
+
+[API TRACE] Save OCR & Teacher Marks Override (POST /api/evaluations/f94cc8d8-5153-46b5-8fd9-1e83f06ffe35/review):
+  HTTP 200 -> Response: {"status": "saved", "evaluation_id": "f94cc8d8-5153-46b5-8fd9-1e83f06ffe35", "final_marks": 2.0, "new_total": 2.0, "sheet_total": 2.0, "percentage": 20.0, "grade": "Needs Support", "is_counted": true}
+
+[API TRACE] Live AI Recheck (POST /api/evaluations/f94cc8d8-5153-46b5-8fd9-1e83f06ffe35/recheck):
+  HTTP 200 -> Marks: 2.0, Resolved: 1
+
+[API TRACE] Update Single Reference (PUT /api/papers/6e9aa335-fda1-43a2-a5c9-fce69a442fbd/questions/q_mcq/reference):
+  HTTP 200 -> {'status': 'success', 'message': 'Reference updated. Recheck needed.'}
+
+[API TRACE] Approve All Unflagged (POST /api/sheets/da175524-3d9a-466c-b432-4e53b80cc58b/approve-unflagged):
+  HTTP 200 -> {'status': 'success', 'approved_count': 1}
+
+[PASS] Viewport 1366x768: scrollHeight=768 <= innerHeight=768 | Console Errors: 0 | Screenshot: F:\EvalDesk-AI-Answer-Sheet-Evaluation-main\docs\proof\ui\screenshots\u3_evaluate_1366x768.png
+
+[PASS] Viewport 1920x1080: scrollHeight=1080 <= innerHeight=1080 | Console Errors: 0 | Screenshot: F:\EvalDesk-AI-Answer-Sheet-Evaluation-main\docs\proof\ui\screenshots\u3_evaluate_1920x1080.png

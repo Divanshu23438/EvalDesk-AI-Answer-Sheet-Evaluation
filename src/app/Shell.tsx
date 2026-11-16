@@ -17,6 +17,8 @@ import {
   Activity,
   ArrowRight,
   RotateCcw,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 
 export const Shell: React.FC = () => {
@@ -114,14 +116,32 @@ export const Shell: React.FC = () => {
           <div className="h-4 w-[1px] bg-[var(--surface-border)] shrink-0" />
 
           <div className="min-w-0 flex items-center gap-1.5 text-xs text-[var(--ink-secondary)]">
-            <FileText className="w-3.5 h-3.5 text-[var(--ink-muted)] shrink-0" />
-            <span className="truncate font-medium">
-              {state.paperTitle || 'Untitled Assessment'}
-            </span>
-            {state.paperTotalMarks > 0 && (
-              <span className="text-[11px] text-[var(--ink-muted)] tabular-nums shrink-0">
-                ({state.paperTotalMarks} Marks)
-              </span>
+            <FileText className="w-3.5 h-3.5 text-[var(--accent-indigo)] shrink-0" />
+            {state.step === 'evaluate' && state.studentName ? (
+              <div className="flex items-center gap-2 truncate">
+                <span className="font-bold text-[var(--ink-primary)]">{state.studentName}</span>
+                {state.rollNumber && (
+                  <span className="tabular-nums text-[var(--ink-muted)]">Roll {state.rollNumber}</span>
+                )}
+                <span className="text-[var(--ink-muted)]">·</span>
+                <span className="font-medium text-[var(--ink-primary)] truncate">{state.paperTitle}</span>
+                {state.reviewMetrics && (
+                  <span className="text-[11px] text-[var(--status-flagged)] font-semibold shrink-0">
+                    · {state.reviewMetrics.flagged} flagged
+                  </span>
+                )}
+              </div>
+            ) : (
+              <>
+                <span className="truncate font-medium">
+                  {state.paperTitle || 'Untitled Assessment'}
+                </span>
+                {state.paperTotalMarks > 0 && (
+                  <span className="text-[11px] text-[var(--ink-muted)] tabular-nums shrink-0">
+                    ({state.paperTotalMarks} Marks)
+                  </span>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -231,44 +251,134 @@ export const Shell: React.FC = () => {
       {/* 56px Bottom Action Bar */}
       <ActionBar
         leftContent={
-          <div className="flex items-center gap-2 text-xs text-[var(--ink-secondary)]">
-            <span className="font-semibold text-[var(--ink-primary)]">Paper:</span>
-            {state.paperIsLocked ? (
-              <span className="text-[var(--status-approved)] font-medium inline-flex items-center gap-1">
-                <CheckCircle className="w-3.5 h-3.5" />
-                Locked ✓
+          state.step === 'evaluate' ? (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => window.dispatchEvent(new CustomEvent('evaldesk:prev'))}
+                className="p-1 rounded border border-[var(--surface-border)] hover:bg-[var(--surface-hover)] text-[var(--ink-secondary)] flex items-center gap-1 font-medium text-xs transition"
+                title="Previous Question (←)"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Prev</span>
+              </button>
+              <span className="font-semibold text-xs text-[var(--ink-primary)] tabular-nums">
+                Q {state.reviewMetrics?.currentIndex || 1} of {state.reviewMetrics?.total || 1}
               </span>
-            ) : (
-              <span className="text-[var(--status-flagged)] font-medium inline-flex items-center gap-1">
-                Unlocked (Ready)
+              <button
+                type="button"
+                onClick={() => window.dispatchEvent(new CustomEvent('evaldesk:next'))}
+                className="p-1 rounded border border-[var(--surface-border)] hover:bg-[var(--surface-hover)] text-[var(--ink-secondary)] flex items-center gap-1 font-medium text-xs transition"
+                title="Next Question (→)"
+              >
+                <span className="hidden sm:inline">Next</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+              {state.reviewMetrics && state.reviewMetrics.total > 0 && (
+                <div className="hidden lg:flex w-24 h-2 rounded-full bg-[var(--surface-subtle)] overflow-hidden">
+                  <div
+                    className="bg-[var(--status-approved)] h-full transition-all duration-300"
+                    style={{
+                      width: `${(state.reviewMetrics.checked / state.reviewMetrics.total) * 100}%`,
+                    }}
+                  />
+                  <div
+                    className="bg-[var(--status-flagged)] h-full transition-all duration-300"
+                    style={{
+                      width: `${(state.reviewMetrics.flagged / state.reviewMetrics.total) * 100}%`,
+                    }}
+                  />
+                  <div
+                    className="bg-[var(--status-failed)] h-full transition-all duration-300"
+                    style={{
+                      width: `${(state.reviewMetrics.failed / state.reviewMetrics.total) * 100}%`,
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 text-xs text-[var(--ink-secondary)]">
+              <span className="font-semibold text-[var(--ink-primary)]">Paper:</span>
+              {state.paperIsLocked ? (
+                <span className="text-[var(--status-approved)] font-medium inline-flex items-center gap-1">
+                  <CheckCircle className="w-3.5 h-3.5" />
+                  Locked ✓
+                </span>
+              ) : (
+                <span className="text-[var(--status-flagged)] font-medium inline-flex items-center gap-1">
+                  Unlocked (Ready)
+                </span>
+              )}
+              <span className="text-[var(--ink-muted)]">·</span>
+              <span className="tabular-nums">
+                {state.paperQuestionCount > 0
+                  ? `${state.paperQuestionCount} questions`
+                  : 'No questions'}
               </span>
-            )}
-            <span className="text-[var(--ink-muted)]">·</span>
-            <span className="tabular-nums">
-              {state.paperQuestionCount > 0 ? `${state.paperQuestionCount} questions` : 'No questions'}
-            </span>
-          </div>
+            </div>
+          )
         }
         centerContent={
-          <div className="hidden lg:flex items-center gap-3 text-[11px] text-[var(--ink-muted)]">
-            <span>Shortcuts:</span>
-            <kbd className="px-1.5 py-0.5 rounded bg-[var(--surface-subtle)] border border-[var(--surface-border)] font-mono text-[10px]">
-              A
-            </kbd>{' '}
-            Approve
-            <kbd className="px-1.5 py-0.5 rounded bg-[var(--surface-subtle)] border border-[var(--surface-border)] font-mono text-[10px]">
-              F
-            </kbd>{' '}
-            Next Flag
-            <kbd className="px-1.5 py-0.5 rounded bg-[var(--surface-subtle)] border border-[var(--surface-border)] font-mono text-[10px]">
-              ← / →
-            </kbd>{' '}
-            Navigate
-            <kbd className="px-1.5 py-0.5 rounded bg-[var(--surface-subtle)] border border-[var(--surface-border)] font-mono text-[10px]">
-              [
-            </kbd>{' '}
-            Toggle Sidebar
-          </div>
+          state.step === 'evaluate' ? (
+            <div className="flex items-center gap-3 text-xs">
+              <span className="text-[var(--status-approved)] font-semibold tabular-nums">
+                ✔ {state.reviewMetrics?.checked || 0} checked
+              </span>
+              <span>·</span>
+              <span
+                className={`font-semibold tabular-nums ${
+                  (state.reviewMetrics?.flagged || 0) > 0
+                    ? 'text-[var(--status-flagged)]'
+                    : 'text-[var(--ink-muted)]'
+                }`}
+              >
+                ⚑ {state.reviewMetrics?.flagged || 0} flagged
+              </span>
+              {(state.reviewMetrics?.failed || 0) > 0 && (
+                <>
+                  <span>·</span>
+                  <span className="text-[var(--status-failed)] font-semibold tabular-nums">
+                    ✕ {state.reviewMetrics?.failed} failed
+                  </span>
+                </>
+              )}
+              <div className="hidden xl:flex items-center gap-1.5 text-[10px] text-[var(--ink-muted)] ml-2">
+                <kbd className="px-1 py-0.5 rounded bg-[var(--surface-subtle)] border border-[var(--surface-border)] font-mono">
+                  A
+                </kbd>{' '}
+                Approve
+                <kbd className="px-1 py-0.5 rounded bg-[var(--surface-subtle)] border border-[var(--surface-border)] font-mono">
+                  F
+                </kbd>{' '}
+                Flag
+                <kbd className="px-1 py-0.5 rounded bg-[var(--surface-subtle)] border border-[var(--surface-border)] font-mono">
+                  R
+                </kbd>{' '}
+                Recheck
+              </div>
+            </div>
+          ) : (
+            <div className="hidden lg:flex items-center gap-3 text-[11px] text-[var(--ink-muted)]">
+              <span>Shortcuts:</span>
+              <kbd className="px-1.5 py-0.5 rounded bg-[var(--surface-subtle)] border border-[var(--surface-border)] font-mono text-[10px]">
+                A
+              </kbd>{' '}
+              Approve
+              <kbd className="px-1.5 py-0.5 rounded bg-[var(--surface-subtle)] border border-[var(--surface-border)] font-mono text-[10px]">
+                F
+              </kbd>{' '}
+              Next Flag
+              <kbd className="px-1.5 py-0.5 rounded bg-[var(--surface-subtle)] border border-[var(--surface-border)] font-mono text-[10px]">
+                ← / →
+              </kbd>{' '}
+              Navigate
+              <kbd className="px-1.5 py-0.5 rounded bg-[var(--surface-subtle)] border border-[var(--surface-border)] font-mono text-[10px]">
+                [
+              </kbd>{' '}
+              Toggle Sidebar
+            </div>
+          )
         }
         rightContent={
           state.step === 'upload' ? (
@@ -288,13 +398,39 @@ export const Shell: React.FC = () => {
               Open Evaluation Workspace <ArrowRight className="w-3.5 h-3.5" />
             </button>
           ) : state.step === 'evaluate' ? (
-            <button
-              type="button"
-              onClick={() => store.setStep('report')}
-              className="px-4 py-1.5 rounded-md bg-[var(--status-approved)] text-white text-xs font-semibold hover:opacity-90 transition flex items-center gap-1.5 shadow-sm"
-            >
-              Evaluated → Report <ArrowRight className="w-3.5 h-3.5" />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => window.dispatchEvent(new CustomEvent('evaldesk:approve-all'))}
+                disabled={
+                  !state.reviewMetrics ||
+                  state.reviewMetrics.checked >= state.reviewMetrics.total
+                }
+                className="px-2.5 py-1.5 text-xs font-medium rounded border border-[var(--surface-border)] bg-[var(--surface-canvas)] hover:bg-[var(--surface-hover)] text-[var(--ink-primary)] disabled:opacity-40 transition"
+              >
+                Approve all unflagged
+              </button>
+              <button
+                type="button"
+                onClick={() => window.dispatchEvent(new CustomEvent('evaldesk:finish'))}
+                className={`px-4 py-1.5 text-xs font-semibold rounded-md text-white transition flex items-center gap-1.5 shadow-sm ${
+                  state.reviewMetrics?.allResolved
+                    ? 'bg-[var(--status-approved)] hover:opacity-90'
+                    : 'bg-[var(--status-flagged)] hover:opacity-90'
+                }`}
+              >
+                {state.reviewMetrics?.allResolved ? (
+                  <>
+                    <span>Evaluated → Report</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </>
+                ) : (
+                  <span>
+                    {(state.reviewMetrics?.flagged || 0) + (state.reviewMetrics?.failed || 0)} flagged left (Jump)
+                  </span>
+                )}
+              </button>
+            </div>
           ) : (
             <button
               type="button"

@@ -1524,6 +1524,52 @@ def get_paper_reference(paper_id: str):
             refs.append(d)
         return {"references": refs}
 
+class SingleReferenceUpdate(BaseModel):
+    model_answer: str
+    key_points: Optional[List[Any]] = None
+
+@app.put("/api/papers/{paper_id}/questions/{key}/reference")
+def update_single_question_reference(paper_id: str, key: str, payload: SingleReferenceUpdate):
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM questions WHERE paper_id = ? AND (key = ? OR id = ? OR q_no = ?)", (paper_id, key, key, key))
+        q_row = cursor.fetchone()
+        if not q_row:
+            raise HTTPException(status_code=404, detail="Question not found")
+        qid = q_row["id"]
+
+        cursor.execute("SELECT id FROM \"references\" WHERE paper_id = ? AND (key = ? OR question_id = ?)", (paper_id, key, qid))
+        r_row = cursor.fetchone()
+        if r_row:
+            if payload.key_points is not None:
+                cursor.execute(
+                    "UPDATE \"references\" SET model_answer = ?, key_points_json = ?, source = 'teacher_key' WHERE id = ?",
+                    (payload.model_answer.strip(), json.dumps(payload.key_points), r_row["id"])
+                )
+            else:
+                cursor.execute(
+                    "UPDATE \"references\" SET model_answer = ?, source = 'teacher_key' WHERE id = ?",
+                    (payload.model_answer.strip(), r_row["id"])
+                )
+        else:
+            ref_id = str(uuid.uuid4())
+            kp_json = json.dumps(payload.key_points or [])
+            cursor.execute(
+                """
+                INSERT INTO \"references\" (id, paper_id, question_id, key, source, model_answer, key_points_json, is_approved)
+                VALUES (?, ?, ?, ?, 'teacher_key', ?, ?, 1)
+                """,
+                (ref_id, paper_id, qid, key, payload.model_answer.strip(), kp_json)
+            )
+
+        # Mark evaluations for this question as unresolved so Recheck is needed
+        cursor.execute(
+            "UPDATE evaluations SET resolved = 0, reason = 'Reference updated by teacher; recheck needed.' WHERE question_id = ?",
+            (qid,)
+        )
+
+    return {"status": "success", "message": "Reference updated. Recheck needed."}
+
 @app.post("/api/papers/{paper_id}/lock")
 def lock_paper(paper_id: str):
     """
