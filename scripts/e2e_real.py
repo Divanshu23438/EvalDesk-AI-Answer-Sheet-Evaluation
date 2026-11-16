@@ -90,7 +90,7 @@ Q2. (5 Marks) Explain the role of chlorophyll in absorbing light energy during t
     doc.close()
 
     extract_files = {"paper_file": ("biology_exam.pdf", qp_pdf_bytes, "application/pdf")}
-    ext_res = requests.post(f"{BASE_URL}/api/papers/extract", files=extract_files, timeout=60)
+    ext_res = requests.post(f"{BASE_URL}/api/papers/extract", files=extract_files, timeout=120)
     t_ext = time.time() - t0
     assert ext_res.status_code == 200, f"Extract paper failed: {ext_res.text}"
     ext_data = ext_res.json()

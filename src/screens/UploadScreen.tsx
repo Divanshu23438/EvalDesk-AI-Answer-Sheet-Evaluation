@@ -41,7 +41,8 @@ interface QuestionItem {
   question_type: string;
   section_name: string;
   model_answer?: string;
-  key_points?: string[];
+  key_points?: any[];
+  source?: string;
 }
 
 interface SectionItem {
@@ -63,12 +64,15 @@ export const UploadScreen: React.FC = () => {
   const [sheets, setSheets] = useState<SheetQueueItem[]>([]);
   const [isLoadingSheets, setIsLoadingSheets] = useState(false);
 
-  // Card A: Question Paper state
+  // Card A: Question Paper & Answer Key state
   const [questions, setQuestions] = useState<QuestionItem[]>([]);
   const [sections, setSections] = useState<SectionItem[]>([]);
+  const [hasAnswerKey, setHasAnswerKey] = useState(false);
   const [isExtractingPaper, setIsExtractingPaper] = useState(false);
+  const [isExtractingKey, setIsExtractingKey] = useState(false);
   const [isPaperDrawerOpen, setIsPaperDrawerOpen] = useState(false);
   const [isPaperDragOver, setIsPaperDragOver] = useState(false);
+  const [isKeyDragOver, setIsKeyDragOver] = useState(false);
   const [isGeneratingRubric, setIsGeneratingRubric] = useState(false);
   const [paperMessage, setPaperMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
   const [newPaperTitle, setNewPaperTitle] = useState('');
@@ -82,6 +86,7 @@ export const UploadScreen: React.FC = () => {
 
   // File input refs (strictly isolated)
   const paperFileInputRef = useRef<HTMLInputElement>(null);
+  const keyFileInputRef = useRef<HTMLInputElement>(null);
   const sheetFileInputRef = useRef<HTMLInputElement>(null);
 
   // 1. Fetch available papers and select the active locked paper
@@ -135,21 +140,29 @@ export const UploadScreen: React.FC = () => {
 
       // Match references if present
       const refMap = new Map<string, any>();
+      let hasTeacherKey = Boolean(paperObj.has_answer_key);
       (details.references || []).forEach((r: any) => {
-        refMap.set(r.question_key, r);
+        if (r.key) refMap.set(r.key, r);
+        if (r.question_id) refMap.set(r.question_id, r);
+        if (r.source === 'teacher_key') hasTeacherKey = true;
       });
 
       const enriched = qList.map((q) => {
-        const ref = refMap.get(q.key || q.q_no);
+        const ref =
+          (q.key ? refMap.get(q.key) : undefined) ||
+          (q.id ? refMap.get(q.id) : undefined) ||
+          (q.q_no ? refMap.get(q.q_no) : undefined);
         return {
           ...q,
           model_answer: ref ? ref.model_answer : '',
           key_points: ref ? ref.key_points || [] : [],
+          source: ref ? ref.source : undefined,
         };
       });
 
       setQuestions(enriched);
       setSections(details.sections || []);
+      setHasAnswerKey(hasTeacherKey);
 
       store.setPaper({
         id: paperObj.id,
@@ -348,6 +361,66 @@ export const UploadScreen: React.FC = () => {
     } finally {
       setIsExtractingPaper(false);
       if (paperFileInputRef.current) paperFileInputRef.current.value = '';
+    }
+  };
+
+  const handleUploadKeyFile = async (fileOrEvent: React.ChangeEvent<HTMLInputElement> | File) => {
+    let file: File | undefined;
+    if ('target' in fileOrEvent) {
+      file = fileOrEvent.target.files?.[0];
+    } else {
+      file = fileOrEvent;
+    }
+    if (!file) return;
+
+    if (!state.paperId || questions.length === 0) {
+      setPaperMessage({
+        type: 'error',
+        text: 'Please upload the Question Paper first so the answer key can be mapped to its questions.',
+      });
+      return;
+    }
+
+    const ext = '.' + file.name.split('.').pop()?.toLowerCase();
+    const allowed = ['.pdf', '.jpg', '.jpeg', '.png', '.docx'];
+    if (!allowed.includes(ext)) {
+      setPaperMessage({
+        type: 'error',
+        text: `File "${file.name}" has an unsupported format. Please upload a PDF, JPG, PNG, or DOCX document.`,
+      });
+      return;
+    }
+    if (file.size > 50 * 1024 * 1024) {
+      setPaperMessage({
+        type: 'error',
+        text: `File "${file.name}" exceeds the maximum allowed size of 50MB.`,
+      });
+      return;
+    }
+
+    setIsExtractingKey(true);
+    setPaperMessage(null);
+    try {
+      const formData = new FormData();
+      formData.append('answer_key_file', file);
+      formData.append('file', file);
+
+      const res = await apiClient.post<any>(`/api/papers/${state.paperId}/answer-key`, formData);
+      setHasAnswerKey(true);
+      setPaperMessage({
+        type: 'success',
+        text: `Answer Key parsed and linked (${res.references?.length || questions.length} questions mapped).`,
+      });
+      await loadPaperDetails(state.paperId);
+      await loadPapers();
+    } catch (err: any) {
+      setPaperMessage({
+        type: 'error',
+        text: err.message || 'Failed to parse teacher answer key.',
+      });
+    } finally {
+      setIsExtractingKey(false);
+      if (keyFileInputRef.current) keyFileInputRef.current.value = '';
     }
   };
 
@@ -704,63 +777,158 @@ export const UploadScreen: React.FC = () => {
               )}
             </div>
 
-            {/* When Unlocked: Show Question Paper Upload Zone & Actions */}
+            {/* When Unlocked: Show 2-Column Upload Grid (QP & AK), Status Chips, Section Summary, and Actions */}
             {!state.paperIsLocked ? (
               <div className="space-y-2">
-                {/* Dedicated Question Paper Upload Zone */}
-                <input
-                  type="file"
-                  ref={paperFileInputRef}
-                  onChange={handleUploadPaperFile}
-                  accept=".pdf,.jpg,.jpeg,.png"
-                  className="hidden"
-                />
-                <button
-                  type="button"
-                  disabled={isExtractingPaper}
-                  onClick={() => paperFileInputRef.current?.click()}
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setIsPaperDragOver(true);
-                  }}
-                  onDragLeave={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setIsPaperDragOver(false);
-                  }}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setIsPaperDragOver(false);
-                    const dropped = e.dataTransfer.files?.[0];
-                    if (dropped) handleUploadPaperFile(dropped);
-                  }}
-                  className={`w-full p-2.5 rounded-lg border border-dashed text-xs font-semibold transition flex items-center justify-center gap-2 cursor-pointer ${
-                    isPaperDragOver
-                      ? 'border-indigo-600 bg-indigo-100/70 text-indigo-900 scale-[1.01]'
-                      : 'border-indigo-300 hover:border-indigo-500 bg-indigo-50/40 hover:bg-indigo-50 text-indigo-700'
-                  }`}
-                >
-                  {isExtractingPaper ? (
-                    <>
-                      <RefreshCw className="w-3.5 h-3.5 animate-spin text-indigo-600" />
-                      <span>Extracting Questions with AI...</span>
-                    </>
-                  ) : (
-                    <>
-                      <FileUp className="w-4 h-4 text-indigo-600" />
-                      <span>{isPaperDragOver ? 'Drop Question Paper to Extract' : 'Upload or Drop Question Paper (PDF / Image)'}</span>
-                    </>
-                  )}
-                </button>
+                {/* 2-Column Responsive Upload Grid: QP on Left, AK on Right */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {/* Left: Question Paper Drop Zone */}
+                  <input
+                    type="file"
+                    ref={paperFileInputRef}
+                    onChange={handleUploadPaperFile}
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    className="hidden"
+                  />
+                  <div
+                    onClick={() => !isExtractingPaper && paperFileInputRef.current?.click()}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setIsPaperDragOver(true);
+                    }}
+                    onDragLeave={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setIsPaperDragOver(false);
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setIsPaperDragOver(false);
+                      const dropped = e.dataTransfer.files?.[0];
+                      if (dropped) handleUploadPaperFile(dropped);
+                    }}
+                    className={`p-2.5 rounded-lg border border-dashed text-xs font-semibold transition flex flex-col items-center justify-center gap-1 cursor-pointer select-none min-h-[64px] ${
+                      isPaperDragOver
+                        ? 'border-indigo-600 bg-indigo-100/70 text-indigo-900 scale-[1.01]'
+                        : questions.length > 0
+                        ? 'border-indigo-300 bg-indigo-50/40 hover:bg-indigo-50 text-indigo-800'
+                        : 'border-indigo-200 hover:border-indigo-400 bg-indigo-50/20 hover:bg-indigo-50/50 text-indigo-700'
+                    }`}
+                  >
+                    {isExtractingPaper ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin text-indigo-600" />
+                        <span className="font-semibold text-indigo-950">Extracting Questions...</span>
+                      </>
+                    ) : (
+                      <>
+                        <FileUp className="w-4 h-4 text-indigo-600" />
+                        <span>{questions.length > 0 ? 'Replace Question Paper' : 'Upload Question Paper'}</span>
+                        <span className="text-[10px] text-slate-500 font-normal">PDF or Image (Required)</span>
+                      </>
+                    )}
+                  </div>
 
-                {/* Question Summary & Drawer Trigger */}
+                  {/* Right: Teacher Answer Key Drop Zone (Optional) */}
+                  <input
+                    type="file"
+                    ref={keyFileInputRef}
+                    onChange={handleUploadKeyFile}
+                    accept=".pdf,.jpg,.jpeg,.png,.docx"
+                    className="hidden"
+                  />
+                  <div
+                    onClick={() => !isExtractingKey && keyFileInputRef.current?.click()}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setIsKeyDragOver(true);
+                    }}
+                    onDragLeave={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setIsKeyDragOver(false);
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setIsKeyDragOver(false);
+                      const dropped = e.dataTransfer.files?.[0];
+                      if (dropped) handleUploadKeyFile(dropped);
+                    }}
+                    className={`p-2.5 rounded-lg border border-dashed text-xs font-semibold transition flex flex-col items-center justify-center gap-1 cursor-pointer select-none min-h-[64px] ${
+                      isKeyDragOver
+                        ? 'border-emerald-600 bg-emerald-100/70 text-emerald-900 scale-[1.01]'
+                        : hasAnswerKey
+                        ? 'border-emerald-300 bg-emerald-50/50 text-emerald-800 hover:bg-emerald-50'
+                        : 'border-slate-200 hover:border-slate-300 bg-slate-50/50 hover:bg-slate-100/60 text-slate-600'
+                    }`}
+                  >
+                    {isExtractingKey ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin text-emerald-600" />
+                        <span className="font-semibold text-emerald-950">Parsing Answer Key...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className={`w-4 h-4 ${hasAnswerKey ? 'text-emerald-600' : 'text-slate-400'}`} />
+                        <span>{hasAnswerKey ? 'Replace Answer Key' : 'Upload Teacher Answer Key'}</span>
+                        <span className="text-[10px] text-slate-500 font-normal">PDF, Image, DOCX (Optional)</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Status Chips Row */}
+                <div className="flex flex-wrap items-center gap-1.5 pt-0.5 text-xs">
+                  {questions.length > 0 ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-medium">
+                      <CheckCircle className="w-3 h-3 text-emerald-600" />
+                      <span>Question Paper Extracted ({questions.length} Qs · {state.paperTotalMarks}M)</span>
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200 text-[11px] font-medium">
+                      <span>No question paper uploaded</span>
+                    </span>
+                  )}
+
+                  {hasAnswerKey ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-medium">
+                      <CheckCircle className="w-3 h-3 text-emerald-600" />
+                      <span>Teacher Answer Key Linked</span>
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-[11px] font-medium">
+                      <span>No Answer Key (AI will draft references)</span>
+                    </span>
+                  )}
+                </div>
+
+                {/* Extracted Sections Summary Pills */}
+                {sections && sections.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1 pt-0.5">
+                    {sections.map((s, idx) => {
+                      const qCount = s.total_questions || questions.filter(q => q.section_name?.toLowerCase() === s.name.toLowerCase()).length;
+                      return (
+                        <span
+                          key={s.id || idx}
+                          className="text-[10px] bg-slate-100 text-slate-700 font-medium px-2 py-0.5 rounded border border-slate-200"
+                        >
+                          {s.name}: {qCount} Qs · {s.section_marks || 0}M
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Actions & Drawer Trigger */}
                 <div className="flex items-center justify-between text-xs pt-1">
-                  <span className="text-slate-600 font-medium">
+                  <span className="text-slate-500 text-[11px]">
                     {questions.length > 0
-                      ? `${questions.length} questions · ${state.paperTotalMarks} marks`
-                      : 'No questions added yet'}
+                      ? 'Review questions & rubric before locking'
+                      : 'Upload a question paper to begin'}
                   </span>
                   <div className="flex items-center gap-2">
                     <button
@@ -771,22 +939,52 @@ export const UploadScreen: React.FC = () => {
                       <Settings className="w-3 h-3" />
                       <span>Edit Questions & Rubric</span>
                     </button>
+                    <button
+                      type="button"
+                      onClick={handleLockPaper}
+                      disabled={questions.length === 0}
+                      className="px-2.5 py-1 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 rounded-md transition shadow-2xs flex items-center gap-1"
+                    >
+                      <Lock className="w-3 h-3" />
+                      <span>Lock Paper</span>
+                    </button>
                   </div>
                 </div>
               </div>
             ) : (
               /* When Locked: Compact summary display giving room to Card B */
               <div className="flex items-center justify-between text-xs text-slate-600 pt-0.5">
-                <span className="font-medium">
-                  {state.paperQuestionCount} questions · {state.paperTotalMarks} marks configured
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setIsPaperDrawerOpen(true)}
-                  className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 hover:underline"
-                >
-                  View Rubric
-                </button>
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-slate-800">
+                    Locked ✓ {state.paperQuestionCount} questions · {state.paperTotalMarks} marks
+                  </span>
+                  {hasAnswerKey ? (
+                    <span className="text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.5 rounded font-medium">
+                      Teacher Key Linked
+                    </span>
+                  ) : (
+                    <span className="text-[10px] bg-indigo-50 text-indigo-700 border border-indigo-200 px-1.5 py-0.5 rounded font-medium">
+                      AI Reference Active
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsPaperDrawerOpen(true)}
+                    className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 hover:underline"
+                  >
+                    View Rubric
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleUnlockPaper}
+                    className="text-xs font-semibold text-slate-500 hover:text-rose-600 hover:underline flex items-center gap-0.5"
+                  >
+                    <Unlock className="w-3 h-3" />
+                    <span>Unlock</span>
+                  </button>
+                </div>
               </div>
             )}
 
@@ -1146,6 +1344,19 @@ export const UploadScreen: React.FC = () => {
                         placeholder="Section"
                         className="w-20 text-[11px] px-2 py-0.5 rounded border border-slate-300 bg-white"
                       />
+                      {q.source === 'teacher_key' ? (
+                        <span className="text-[10px] bg-emerald-100 text-emerald-800 font-semibold px-1.5 py-0.5 rounded border border-emerald-200">
+                          Teacher Key
+                        </span>
+                      ) : q.model_answer ? (
+                        <span className="text-[10px] bg-indigo-100 text-indigo-800 font-semibold px-1.5 py-0.5 rounded border border-indigo-200">
+                          AI Reference
+                        </span>
+                      ) : (
+                        <span className="text-[10px] bg-amber-100 text-amber-800 font-semibold px-1.5 py-0.5 rounded border border-amber-200">
+                          Pending Rubric
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-1.5 text-xs">
                       <span className="text-slate-500">Marks:</span>
@@ -1188,12 +1399,21 @@ export const UploadScreen: React.FC = () => {
                     className="w-full text-xs p-2 rounded border border-slate-200 bg-white text-slate-800 focus:outline-none focus:border-indigo-500 font-sans"
                   />
 
+                  {q.model_answer && (
+                    <div className="text-[11px] text-slate-700 bg-white border border-slate-200 p-2 rounded space-y-1">
+                      <strong className="text-slate-900 block font-semibold">Model Answer:</strong>
+                      <p className="whitespace-pre-wrap">{q.model_answer}</p>
+                    </div>
+                  )}
+
                   {q.key_points && q.key_points.length > 0 && (
                     <div className="text-[11px] text-slate-600 bg-indigo-50/50 border border-indigo-100 p-2 rounded">
                       <strong className="text-indigo-900 block mb-1">Key Points ({q.key_points.length}):</strong>
                       <ul className="list-disc list-inside space-y-0.5">
                         {q.key_points.map((kp, kIdx) => (
-                          <li key={kIdx} className="truncate">{kp}</li>
+                          <li key={kIdx} className="truncate">
+                            {typeof kp === 'object' && kp !== null ? `${kp.text || ''} (${kp.marks || 0}M)` : String(kp)}
+                          </li>
                         ))}
                       </ul>
                     </div>

@@ -173,8 +173,8 @@ def strip_markdown_fences(text: str) -> str:
 
 class AIGateway:
     def __init__(self):
-        self.image_timeout = httpx.Timeout(90.0, connect=15.0)
-        self.text_timeout = httpx.Timeout(45.0, connect=15.0)
+        self.image_timeout = httpx.Timeout(120.0, connect=15.0)
+        self.text_timeout = httpx.Timeout(120.0, connect=15.0)
 
     def prepare_media_input(
         self,
@@ -326,11 +326,15 @@ class AIGateway:
 
                         elif resp.status_code in (500, 502, 503, 504):
                             last_status_code = resp.status_code
-                            retry_after = 1.0 * (2 ** attempt)
                             last_error_msg = f"HTTP {resp.status_code} Provider unavailable: {resp.text[:200]}"
-                            print(f"[Gemini {resp.status_code}] Backing off for {retry_after:.1f}s on {model}...")
-                            await asyncio.sleep(retry_after)
-                            continue
+                            if attempt == 0:
+                                retry_after = 0.5
+                                print(f"[Gemini {resp.status_code}] Backing off for {retry_after:.1f}s on {model}...")
+                                await asyncio.sleep(retry_after)
+                                continue
+                            else:
+                                print(f"[Gemini {resp.status_code}] {model} unavailable; switching to fallback model...")
+                                break
 
                         elif resp.status_code in (401, 403):
                             latency_ms = int((time.time() - start_time) * 1000)

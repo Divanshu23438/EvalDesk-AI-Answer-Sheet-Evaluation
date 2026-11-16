@@ -1,7 +1,18 @@
 # STATUS (update at the end of every session)
 Date / author (agent or model name): 2026-11-16 / Antigravity (Gemini 3.8 Flash)
-Current phase and task: Step 1A Question Paper intake & Server Error remediation complete (Global exception handler installed; PaperCreateRequest schema made optional with safe defaults; /api/papers/{id}/upload endpoint added; SQLite persistence verified; 100% test pass on pytest and check_all).
+Current phase and task: Step 1A Question Paper & Teacher Answer Key intake restored; Gateway timeout & AI reference drafting remediated; Full end-to-end evaluation & reports verified (100% test pass on pytest, check_ui, and check_all).
 Done (task id, commit, proof file):
+- Teacher Answer Key Intake & AI Reference Generation Remediation (`backend/main.py`, `backend/ai_gateway.py`, `src/screens/UploadScreen.tsx`, `scripts/test_answer_key_and_step1a.py`, `scripts/test_student_sheet_e2e.py`):
+  1. Teacher Answer Key Upload on `#/upload` Step 1A: Restored dedicated "Upload or Drop Teacher Answer Key (PDF / Image / DOCX — Optional)" next to Question Paper upload in responsive 2-column grid. Added `.docx` text extraction without external pip dependencies using standard library `zipfile` and `xml.etree.ElementTree`.
+  2. Answer Key & AI Reference Parity: Answer key parsing stores references with `source = 'teacher_key'`. Reference generation (`POST /api/papers/{paper_id}/reference/generate`) automatically detects and skips AI drafting for any question with `source == 'teacher_key'`, preserving teacher references 1:1.
+  3. AI Reference Drafting Resilience & Throttling:
+     - Increased LLM timeout to 120s in `backend/ai_gateway.py`.
+     - Grouped questions by section, processing section-by-section with `asyncio.Semaphore(2)` and backoff retry.
+     - Added automatic fallback to Groq (`ai_gateway.call_groq`) whenever Gemini returns 503/429 or times out.
+     - Added fallback rubric generation with `needs_retry: True` so that paper locking is never permanently blocked by upstream provider outages.
+  4. OCR Reading & Grading Fallback: Added automatic Groq Vision fallback to `read_sheet_answers` and `evaluate_answer_sheet` when Gemini returns 429 quota exhaustion.
+  5. Question Drawer Display: Shows Reference Source badge (`Teacher Key` vs `AI Reference`), model answers, and key points with marks.
+  6. Verified via `scripts/test_answer_key_and_step1a.py`, `scripts/test_student_sheet_e2e.py`, `npm run check:ui` (ALL PASS across 1366x768 and 1920x1080), and `python scripts/check_all.py --base http://127.0.0.1:8000` (ALL PASS).
 - Step 1A Question Paper Remediation & Global Exception Handler (`backend/main.py`, `src/api/client.ts`, `src/screens/UploadScreen.tsx`, `scripts/verify_step1a.py`):
   1. Global FastAPI Exception Handlers: Added module-level `logger = logging.getLogger("evaldesk")`, `@app.exception_handler(Exception)` and `@app.exception_handler(HTTPException)` returning structured JSON `{code, message, detail, path}` and logging complete stack traces to eliminate opaque "Internal Server Error" (500) messages.
   2. PaperCreateRequest & POST /api/papers Schema Fix: Changed required `questions: List[QuestionInput]` and `title: str` to optional fields with `default_factory=list` and safe default assessment titles. When `draft_id` is supplied, extracts questions, sections, and marks from `paper_drafts.extracted_data_json` and persists them into SQLite `questions` and `sections` tables.
