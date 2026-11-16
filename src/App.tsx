@@ -1,5 +1,5 @@
-import { TeacherPrototypeWorkspace } from './components/teacher/TeacherPrototypeWorkspace';
+import { Shell } from './app/Shell';
 
 export default function App() {
-  return <TeacherPrototypeWorkspace />;
+  return <Shell />;
 }

@@ -1,0 +1,27 @@
+=== EVALDESK UI OVERHAUL: TASK U0.1 PROOF ===
+Task: Locked Viewport App Shell & Design System (src/app/Shell.tsx, CSS tokens, fonts, hash routing)
+
+1. CSS Tokens & Locked 100dvh Shell:
+   - File: src/index.css
+   - Viewport constraint: html, body, #root { height: 100dvh; margin: 0; overflow: hidden; }
+   - Grid shell: .app { display: grid; grid-template-rows: 48px 1fr 56px; height: 100dvh; }
+   - Inner panel: .panel { min-height: 0; overflow: auto; }
+   - Design tokens: 4px spacing scale (--space-1 through --space-12), neutral grey surfaces, indigo accent, status tokens (approved, flagged, failed, pending), dark mode support via @media (prefers-color-scheme: dark).
+   - Fonts: Noto Sans + Noto Sans Devanagari loaded via index.html and configured on :root.
+
+2. App Shell Components:
+   - src/app/Shell.tsx: 48px TopBar (brand, paper title, stepper Setup · Upload > Processing > Evaluate > Report, live provider health chip), 1fr screen area, 56px ActionBar with shortcuts indicator and primary action.
+   - src/components/ErrorBanner.tsx: Sliding overlay error banner with code, message, countdown, Retry & Dismiss without shifting layout.
+   - src/components/ActionBar.tsx: 56px Bottom action bar.
+   - src/components/StatusChip.tsx: Screen-reader accessible status chip with color + icon + text.
+   - src/screens/UploadScreen.tsx, ProcessingScreen.tsx, EvaluateScreen.tsx, ReportScreen.tsx: 100dvh compliant non-scrolling screen panels.
+   - Hash Routing: #/upload, #/processing/<sheetId>, #/evaluate/<sheetId>, #/report/<sheetId>, #/setup.
+
+3. Core Utilities:
+   - src/api/client.ts: Typed fetch client throwing ApiError with code, message, retry_at, status on non-2xx.
+   - src/hooks/usePolling.ts: 1s polling with no cutoff, stopping on terminal states (needs_review, evaluated, failed) or unmount.
+   - src/state/useSheetStore.ts: Central store with empty initial state (zero hardcoded sample text or IDs).
+
+4. Verification Gates:
+   - npx tsc --noEmit: Passed (0 errors)
+   - npm run build: Passed (dist built in 4.93s, 248kB JS bundle, 39kB CSS)

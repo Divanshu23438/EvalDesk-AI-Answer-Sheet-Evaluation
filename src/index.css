@@ -1,53 +1,172 @@
 @import "tailwindcss";
 
-@theme {
-  --font-display: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
-  --font-sans: "DM Sans", system-ui, -apple-system, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
-
-  --color-surface: #f8f9ff;
-  --color-surface-card: #ffffff;
-  --color-surface-low: #eff4ff;
-  --color-surface-container: #e5eeff;
-  --color-surface-high: #dce9ff;
-
-  --color-ink: #0b1c30;
-  --color-ink-secondary: #414752;
-  --color-ink-muted: #64748b;
-  --color-outline: #c1c6d4;
-  --color-border-hairline: #e2e8f0;
-
-  --color-primary: #005dac;
-  --color-primary-hover: #004786;
-  --color-primary-tint: #d4e3ff;
-
-  --color-amber-accent: #875200;
-  --color-amber-surface: #ffddba;
-
-  --color-success: #196b22;
-  --color-success-surface: #e8f5e9;
-
-  --color-danger: #ba1a1a;
-  --color-danger-surface: #ffdad6;
+html,
+body,
+#root {
+  height: 100dvh;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
-@layer base {
-  body {
-    font-family: var(--font-sans);
-    background-color: var(--color-surface);
-    color: var(--color-ink);
-  }
+*, *::before, *::after {
+  box-sizing: inherit;
+}
 
-  h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-display);
+:root {
+  /* 4px spacing scale */
+  --space-0: 0px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* Typography */
+  --font-sans: 'Noto Sans', 'Noto Sans Devanagari', system-ui, -apple-system, sans-serif;
+  --font-display: 'Plus Jakarta Sans', var(--font-sans);
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  /* Palette: Neutral Grey Surfaces (Light) */
+  --surface-bg: #f3f4f6;
+  --surface-canvas: #f9fafb;
+  --surface-card: #ffffff;
+  --surface-panel: #ffffff;
+  --surface-subtle: #f1f3f5;
+  --surface-hover: #e5e7eb;
+  --surface-active: #d1d5db;
+  --surface-border: #e2e5e9;
+  --surface-border-subtle: #f0f2f5;
+
+  /* Typography colors */
+  --ink-primary: #111827;
+  --ink-secondary: #4b5563;
+  --ink-muted: #6b7280;
+  --ink-faint: #9ca3af;
+  --ink-inverse: #ffffff;
+
+  /* Accent: Indigo */
+  --accent-indigo: #4f46e5;
+  --accent-indigo-hover: #4338ca;
+  --accent-indigo-subtle: #eef2ff;
+  --accent-indigo-border: #c7d2fe;
+
+  /* Status Colors */
+  --status-approved: #15803d;
+  --status-approved-bg: #f0fdf4;
+  --status-approved-border: #bbf7d0;
+
+  --status-flagged: #d97706;
+  --status-flagged-bg: #fffbeb;
+  --status-flagged-border: #fde68a;
+
+  --status-failed: #dc2626;
+  --status-failed-bg: #fef2f2;
+  --status-failed-border: #fecaca;
+
+  --status-pending: #4b5563;
+  --status-pending-bg: #f3f4f6;
+  --status-pending-border: #e5e7eb;
+
+  /* Elevation & Shape */
+  --radius-xs: 3px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+
+  /* Motion */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --surface-bg: #0b0f19;
+    --surface-canvas: #0f172a;
+    --surface-card: #182234;
+    --surface-panel: #182234;
+    --surface-subtle: #1e293b;
+    --surface-hover: #26354a;
+    --surface-active: #334155;
+    --surface-border: #263346;
+    --surface-border-subtle: #1a2536;
+
+    --ink-primary: #f8fafc;
+    --ink-secondary: #cbd5e1;
+    --ink-muted: #94a3b8;
+    --ink-faint: #64748b;
+    --ink-inverse: #0b0f19;
+
+    --accent-indigo: #6366f1;
+    --accent-indigo-hover: #818cf8;
+    --accent-indigo-subtle: #1e1b4b;
+    --accent-indigo-border: #3730a3;
+
+    --status-approved: #22c55e;
+    --status-approved-bg: #052e16;
+    --status-approved-border: #14532d;
+
+    --status-flagged: #f59e0b;
+    --status-flagged-bg: #451a03;
+    --status-flagged-border: #78350f;
+
+    --status-failed: #ef4444;
+    --status-failed-bg: #450a0a;
+    --status-failed-border: #7f1d1d;
+
+    --status-pending: #94a3b8;
+    --status-pending-bg: #1e293b;
+    --status-pending-border: #334155;
   }
 }
 
+body {
+  font-family: var(--font-sans);
+  background-color: var(--surface-bg);
+  color: var(--ink-primary);
+  line-height: 1.45;
+  font-size: 14px;
+}
+
+/* App Locked Shell */
+.app {
+  display: grid;
+  grid-template-rows: 48px 1fr 56px;
+  height: 100dvh;
+  width: 100vw;
+  overflow: hidden;
+  position: relative;
+  background-color: var(--surface-bg);
+}
+
+/* Inner Panels: Only inner containers may scroll */
+.panel {
+  min-height: 0;
+  overflow: auto;
+}
+
+/* Tabular figures for score and numbers */
 .tabular-nums {
   font-variant-numeric: tabular-nums;
 }
 
-/* Custom subtle scrollbars for dense multi-pane grading workspace */
+/* Focus outline accessibility */
+:focus-visible {
+  outline: 2px solid var(--accent-indigo);
+  outline-offset: 1px;
+}
+
+/* Custom subtle scrollbars for dense inner panels */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -56,9 +175,18 @@
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #c1c6d4;
+  background: rgba(156, 163, 175, 0.4);
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: rgba(156, 163, 175, 0.7);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
