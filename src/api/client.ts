@@ -44,10 +44,16 @@ async function handleResponse<T>(res: Response): Promise<T> {
   try {
     const errorJson = await res.json();
     if (errorJson) {
-      if (typeof errorJson.detail === 'string') {
-        message = errorJson.detail;
-      } else if (typeof errorJson.message === 'string') {
+      if (typeof errorJson.message === 'string' && errorJson.message.trim()) {
         message = errorJson.message;
+      } else if (typeof errorJson.detail === 'string' && errorJson.detail.trim()) {
+        message = errorJson.detail;
+      } else if (Array.isArray(errorJson.detail)) {
+        message = errorJson.detail
+          .map((e: any) => (typeof e === 'object' && e.msg ? `${e.loc ? e.loc.join('.') : 'field'}: ${e.msg}` : String(e)))
+          .join(', ');
+      } else if (errorJson.error && typeof errorJson.error.message === 'string') {
+        message = errorJson.error.message;
       } else if (typeof errorJson.detail === 'object') {
         message = JSON.stringify(errorJson.detail);
       }

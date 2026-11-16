@@ -68,8 +68,9 @@ export const UploadScreen: React.FC = () => {
   const [sections, setSections] = useState<SectionItem[]>([]);
   const [isExtractingPaper, setIsExtractingPaper] = useState(false);
   const [isPaperDrawerOpen, setIsPaperDrawerOpen] = useState(false);
+  const [isPaperDragOver, setIsPaperDragOver] = useState(false);
   const [isGeneratingRubric, setIsGeneratingRubric] = useState(false);
-  const [paperMessage, setPaperMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [paperMessage, setPaperMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
   const [newPaperTitle, setNewPaperTitle] = useState('');
   const [isCreatingNewPaper, setIsCreatingNewPaper] = useState(false);
 
@@ -226,14 +227,21 @@ export const UploadScreen: React.FC = () => {
         isLocked: Boolean(p.is_locked),
       });
       store.setSheet(null);
+    } else {
+      store.setPaper({ id: paperId });
+      store.setSheet(null);
     }
   };
 
   const handleCreatePaper = async () => {
-    if (!newPaperTitle.trim()) return;
+    const title = newPaperTitle.trim();
+    if (!title) {
+      setPaperMessage({ type: 'error', text: 'Please enter an assessment title.' });
+      return;
+    }
     try {
       const res = await apiClient.post<any>('/api/papers', {
-        title: newPaperTitle.trim(),
+        title: title,
         subject: 'General Assessment',
         strictness: 'lenient',
         checking_medium: 'ai_reference',
@@ -241,45 +249,96 @@ export const UploadScreen: React.FC = () => {
       setNewPaperTitle('');
       setIsCreatingNewPaper(false);
       setPaperMessage({ type: 'success', text: 'Created new assessment paper.' });
-      await loadPapers();
       if (res.paper_id) {
-        handleSelectPaper(res.paper_id);
+        store.setPaper({
+          id: res.paper_id,
+          title: res.title || title,
+          totalMarks: 0,
+          questionCount: 0,
+          isLocked: false,
+        });
+        store.setSheet(null);
+        await loadPaperDetails(res.paper_id);
       }
+      await loadPapers();
     } catch (err: any) {
       setPaperMessage({ type: 'error', text: err.message || 'Failed to create paper.' });
     }
   };
 
-  const handleUploadPaperFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const handleUploadPaperFile = async (fileOrEvent: React.ChangeEvent<HTMLInputElement> | File) => {
+    let file: File | undefined;
+    if ('target' in fileOrEvent) {
+      file = fileOrEvent.target.files?.[0];
+    } else {
+      file = fileOrEvent;
+    }
     if (!file) return;
+
+    // Validate file type & size
+    const ext = '.' + file.name.split('.').pop()?.toLowerCase();
+    const allowed = ['.pdf', '.jpg', '.jpeg', '.png'];
+    if (!allowed.includes(ext)) {
+      setPaperMessage({
+        type: 'error',
+        text: `File "${file.name}" has an unsupported format. Please upload a PDF, JPG, or PNG document.`,
+      });
+      return;
+    }
+    if (file.size > 50 * 1024 * 1024) {
+      setPaperMessage({
+        type: 'error',
+        text: `File "${file.name}" exceeds the maximum allowed size of 50MB.`,
+      });
+      return;
+    }
 
     setIsExtractingPaper(true);
     setPaperMessage(null);
     try {
+      let targetPaperId: string = state.paperId || '';
+      const defaultTitle = file.name.replace(/\.[^/.]+$/, '').trim() || 'New Assessment';
+
+      // Auto-create a draft paper first if none selected
+      if (!targetPaperId) {
+        const createRes = await apiClient.post<any>('/api/papers', {
+          title: defaultTitle,
+          subject: 'General Assessment',
+          strictness: 'lenient',
+          checking_medium: 'ai_reference',
+        });
+        targetPaperId = String(createRes.paper_id);
+        store.setPaper({
+          id: targetPaperId,
+          title: defaultTitle,
+          totalMarks: 0,
+          isLocked: false,
+        });
+        store.setSheet(null);
+      }
+
       const formData = new FormData();
+      formData.append('file', file);
       formData.append('paper_file', file);
 
-      const extracted = await apiClient.post<any>('/api/papers/extract', formData);
+      const res = await apiClient.post<any>(`/api/papers/${targetPaperId}/upload`, formData);
 
-      // Create or update paper with extracted draft
-      const createRes = await apiClient.post<any>('/api/papers', {
-        title: extracted.paper_title || file.name.replace(/\.[^/.]+$/, ''),
-        subject: 'Extracted Assessment',
-        strictness: 'lenient',
-        checking_medium: 'ai_reference',
-        draft_id: extracted.draft_id,
+      store.setPaper({
+        id: targetPaperId,
+        title: res.paper_title || defaultTitle,
+        totalMarks: res.total_marks || 0,
+        questionCount: res.questions_count || res.questions?.length || 0,
+        isLocked: false,
       });
 
       setPaperMessage({
         type: 'success',
-        text: `Extracted ${extracted.questions?.length || 0} questions from "${file.name}".`,
+        text: `Extracted ${res.questions_count || res.questions?.length || 0} questions from "${file.name}".`,
       });
 
       await loadPapers();
-      if (createRes.paper_id) {
-        handleSelectPaper(createRes.paper_id);
-        await loadPaperDetails(createRes.paper_id);
+      if (targetPaperId) {
+        await loadPaperDetails(targetPaperId);
       }
     } catch (err: any) {
       setPaperMessage({
@@ -303,7 +362,19 @@ export const UploadScreen: React.FC = () => {
     }
 
     try {
-      const res = await apiClient.post<any>(`/api/papers/${state.paperId}/lock`, {});
+      let res: any;
+      try {
+        res = await apiClient.post<any>(`/api/papers/${state.paperId}/lock`, {});
+      } catch (lockErr: any) {
+        if (lockErr.message && lockErr.message.toLowerCase().includes('reference')) {
+          setPaperMessage({ type: 'info', text: 'Generating answer references before locking...' });
+          await apiClient.post(`/api/papers/${state.paperId}/reference/generate`, {});
+          res = await apiClient.post<any>(`/api/papers/${state.paperId}/lock`, {});
+        } else {
+          throw lockErr;
+        }
+      }
+
       setPaperMessage({
         type: 'success',
         text: `Paper locked with ${res.questions_count || questions.length} questions. Ready for student sheets!`,
@@ -648,7 +719,28 @@ export const UploadScreen: React.FC = () => {
                   type="button"
                   disabled={isExtractingPaper}
                   onClick={() => paperFileInputRef.current?.click()}
-                  className="w-full p-2.5 rounded-lg border border-dashed border-indigo-300 hover:border-indigo-500 bg-indigo-50/40 hover:bg-indigo-50 text-indigo-700 text-xs font-semibold transition flex items-center justify-center gap-2"
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setIsPaperDragOver(true);
+                  }}
+                  onDragLeave={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setIsPaperDragOver(false);
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setIsPaperDragOver(false);
+                    const dropped = e.dataTransfer.files?.[0];
+                    if (dropped) handleUploadPaperFile(dropped);
+                  }}
+                  className={`w-full p-2.5 rounded-lg border border-dashed text-xs font-semibold transition flex items-center justify-center gap-2 cursor-pointer ${
+                    isPaperDragOver
+                      ? 'border-indigo-600 bg-indigo-100/70 text-indigo-900 scale-[1.01]'
+                      : 'border-indigo-300 hover:border-indigo-500 bg-indigo-50/40 hover:bg-indigo-50 text-indigo-700'
+                  }`}
                 >
                   {isExtractingPaper ? (
                     <>
@@ -658,7 +750,7 @@ export const UploadScreen: React.FC = () => {
                   ) : (
                     <>
                       <FileUp className="w-4 h-4 text-indigo-600" />
-                      <span>Upload Question Paper (PDF / Image)</span>
+                      <span>{isPaperDragOver ? 'Drop Question Paper to Extract' : 'Upload or Drop Question Paper (PDF / Image)'}</span>
                     </>
                   )}
                 </button>
@@ -704,6 +796,8 @@ export const UploadScreen: React.FC = () => {
                 className={`mt-2 p-2 rounded-lg text-xs flex items-center justify-between ${
                   paperMessage.type === 'success'
                     ? 'bg-emerald-50 border border-emerald-200 text-emerald-800'
+                    : paperMessage.type === 'info'
+                    ? 'bg-blue-50 border border-blue-200 text-blue-800'
                     : 'bg-rose-50 border border-rose-200 text-rose-800'
                 }`}
               >

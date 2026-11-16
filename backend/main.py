@@ -5,6 +5,9 @@ import uuid
 import json
 import shutil
 import asyncio
+import logging
+import traceback
+from datetime import datetime
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Optional, List, Dict, Any
@@ -13,7 +16,10 @@ from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Query, Backg
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse, Response
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+logger = logging.getLogger("evaldesk")
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 
 from backend.config import (
     BASE_DIR,
@@ -104,6 +110,37 @@ app.add_middleware(
 # Serve storage files (images and PDFs)
 app.mount("/storage", StaticFiles(directory=str(STORAGE_DIR)), name="storage")
 
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    detail = exc.detail
+    code = f"HTTP_{exc.status_code}"
+    message = str(detail) if isinstance(detail, (str, int, float)) else json.dumps(detail)
+    if isinstance(detail, dict):
+        code = detail.get("code", code)
+        message = detail.get("message", message)
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "code": code,
+            "message": message,
+            "detail": detail,
+            "path": str(request.url.path),
+        },
+    )
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    tb = traceback.format_exc()
+    logger.error(f"Unhandled server error on {request.method} {request.url.path}:\n{tb}")
+    return JSONResponse(
+        status_code=500,
+        content={
+            "code": "INTERNAL_ERROR",
+            "message": f"{type(exc).__name__}: {str(exc) or 'An unhandled server error occurred.'}",
+            "path": str(request.url.path),
+        },
+    )
+
 def map_ai_error_to_http(ae: AIError, prefix: str = "") -> HTTPException:
     if ae.kind == "rate_limited" or ae.status_code == 429:
         status_code = 429
@@ -155,27 +192,27 @@ class ExtractPaperResponse(BaseModel):
 class QuestionInput(BaseModel):
     id: Optional[str] = None
     key: Optional[str] = None
-    q_no: str
-    question_text: str
-    max_marks: float
+    q_no: str = "1"
+    question_text: str = ""
+    max_marks: float = 1.0
     question_type: str = "short"
     section_name: str = "General"
     section_id: Optional[str] = None
-    options: List[str] = []
+    options: List[str] = Field(default_factory=list)
     word_limit: Optional[int] = 150
     strictness_override: Optional[str] = None
     checking_medium_override: Optional[str] = None
 
 class PaperCreateRequest(BaseModel):
     draft_id: Optional[str] = None
-    title: str
-    subject: str = ""
-    strictness: str = "lenient"
-    checking_medium: str = "ai_reference"
+    title: Optional[str] = None
+    subject: Optional[str] = "General"
+    strictness: Optional[str] = "lenient"
+    checking_medium: Optional[str] = "ai_reference"
     total_marks: Optional[float] = None
     instructions: Optional[str] = ""
-    sections: Optional[List[SectionItem]] = []
-    questions: List[QuestionInput]
+    sections: Optional[List[SectionItem]] = Field(default_factory=list)
+    questions: Optional[List[QuestionInput]] = Field(default_factory=list)
 
 class QuestionsUpdateRequest(BaseModel):
     questions: List[QuestionInput]
@@ -516,26 +553,8 @@ Return ONLY a valid JSON object matching this schema:
 Do not invent questions that are not on the page. If something is unreadable, add it to `warnings`.
 """
 
-@app.post("/api/papers/extract", response_model=ExtractPaperResponse)
-async def extract_paper_questions(paper_file: UploadFile = File(...)):
-    """
-    Task T1: Extract questions from an uploaded question paper (PDF or image).
-    Uses PDF text layer when present, otherwise renders/normalizes to JPEG and calls vision model.
-    Never returns templates or silent fallbacks.
-    """
-    if not paper_file or not paper_file.filename:
-        raise HTTPException(status_code=400, detail="No question paper file uploaded.")
-
-    content = await paper_file.read()
-    if not content or len(content) < 10:
-        raise HTTPException(status_code=400, detail="Uploaded question paper is empty or corrupted.")
-
-    draft_id = str(uuid.uuid4())
-    draft_dir = get_paper_draft_dir(draft_id)
-    saved_paper_path = draft_dir / paper_file.filename
-    saved_paper_path.write_bytes(content)
-
-    is_pdf = paper_file.filename.lower().endswith(".pdf") or content.startswith(b"%PDF-")
+async def _extract_questions_from_file_bytes(content: bytes, filename: str) -> Dict[str, Any]:
+    is_pdf = filename.lower().endswith(".pdf") or content.startswith(b"%PDF-")
     source = "vision"
     provider = "gemini"
     data = {}
@@ -561,8 +580,8 @@ async def extract_paper_questions(paper_file: UploadFile = File(...)):
             if not pdf_info["page_images_bytes"]:
                 raise HTTPException(status_code=400, detail="Scanned PDF contains no renderable pages.")
             page_img = pdf_info["page_images_bytes"][0]
-            page_img = await auto_orient_image_bytes(page_img)
             try:
+                page_img = await auto_orient_image_bytes(page_img)
                 res = await ai_gateway.call_gemini(T1_PROMPT, image_bytes=page_img, mime_type="image/jpeg", task="extract_paper")
                 data = res.get("data", {})
             except AIError as ae:
@@ -572,7 +591,6 @@ async def extract_paper_questions(paper_file: UploadFile = File(...)):
         source = "vision"
         try:
             content = await auto_orient_image_bytes(content)
-            saved_paper_path.write_bytes(content)
             res = await ai_gateway.call_gemini(T1_PROMPT, image_bytes=content, mime_type="image/jpeg", task="extract_paper")
             data = res.get("data", {})
         except AIError as ae:
@@ -596,7 +614,6 @@ async def extract_paper_questions(paper_file: UploadFile = File(...)):
     except (ValueError, TypeError):
         printed_total = 0.0
 
-    # Extract or synthesize structured sections
     raw_sections = data.get("sections", [])
     validated_sections = []
     sec_id_by_name = {}
@@ -638,7 +655,6 @@ async def extract_paper_questions(paper_file: UploadFile = File(...)):
                 "policy": policy,
             })
 
-    # If LLM didn't return structured sections, synthesize them from question sections and paper instructions
     if not validated_sections:
         seen_secs = []
         for q in raw_questions:
@@ -667,7 +683,6 @@ async def extract_paper_questions(paper_file: UploadFile = File(...)):
                 "policy": "best_n",
             })
 
-    # Validate questions and assign section-scoped keys
     for idx, q in enumerate(raw_questions):
         q_no = str(q.get("q_no") or (idx + 1)).strip()
         q_text = str(q.get("text") or q.get("question_text") or "").strip()
@@ -704,7 +719,6 @@ async def extract_paper_questions(paper_file: UploadFile = File(...)):
             "word_limit": w_limit,
         })
 
-    # Reconcile section question counts and detect contradictions
     for s in validated_sections:
         s_qs = [q for q in validated_questions if q["section"].lower() == s["name"].lower()]
         if not s["total_questions"] or s["total_questions"] <= 0:
@@ -743,8 +757,7 @@ async def extract_paper_questions(paper_file: UploadFile = File(...)):
 
     paper_title = str(data.get("paper_title") or data.get("title") or "").strip()
 
-    response_payload = {
-        "draft_id": draft_id,
+    return {
         "paper_title": paper_title,
         "questions": validated_questions,
         "sections": validated_sections,
@@ -753,6 +766,46 @@ async def extract_paper_questions(paper_file: UploadFile = File(...)):
         "warnings": warnings,
         "source": source,
         "provider": provider,
+        "processed_content": content,
+    }
+
+@app.post("/api/papers/extract", response_model=ExtractPaperResponse)
+async def extract_paper_questions(
+    paper_file: Optional[UploadFile] = File(None),
+    file: Optional[UploadFile] = File(None),
+):
+    """
+    Task T1: Extract questions from an uploaded question paper (PDF or image).
+    Uses PDF text layer when present, otherwise renders/normalizes to JPEG and calls vision model.
+    Never returns templates or silent fallbacks.
+    """
+    upload = paper_file or file
+    if not upload or not upload.filename:
+        raise HTTPException(status_code=400, detail="No question paper file uploaded.")
+
+    content = await upload.read()
+    if not content or len(content) < 10:
+        raise HTTPException(status_code=400, detail="Uploaded question paper is empty or corrupted.")
+
+    draft_id = str(uuid.uuid4())
+    draft_dir = get_paper_draft_dir(draft_id)
+    saved_paper_path = draft_dir / upload.filename
+    saved_paper_path.write_bytes(content)
+
+    res = await _extract_questions_from_file_bytes(content, upload.filename)
+    if res.get("processed_content"):
+        saved_paper_path.write_bytes(res["processed_content"])
+
+    response_payload = {
+        "draft_id": draft_id,
+        "paper_title": res["paper_title"],
+        "questions": res["questions"],
+        "sections": res["sections"],
+        "total_marks": res["total_marks"],
+        "instructions": res["instructions"],
+        "warnings": res["warnings"],
+        "source": res["source"],
+        "provider": res["provider"],
         "paper_file_path": str(saved_paper_path),
     }
 
@@ -763,6 +816,117 @@ async def extract_paper_questions(paper_file: UploadFile = File(...)):
         )
 
     return response_payload
+
+@app.post("/api/papers/{paper_id}/upload")
+async def upload_question_paper_to_paper(
+    paper_id: str,
+    file: Optional[UploadFile] = File(None),
+    paper_file: Optional[UploadFile] = File(None),
+):
+    target = file or paper_file
+    if not target or not target.filename:
+        raise HTTPException(status_code=400, detail="No question paper file uploaded.")
+
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM papers WHERE id = ?", (paper_id,))
+        paper_row = cursor.fetchone()
+        if not paper_row:
+            raise HTTPException(status_code=404, detail=f"Paper with ID '{paper_id}' not found.")
+        paper = dict(paper_row)
+
+    content = await target.read()
+    if not content or len(content) < 10:
+        raise HTTPException(status_code=400, detail="Uploaded question paper is empty or corrupted.")
+
+    paper_dir = get_paper_dir(paper_id)
+    saved_paper_path = paper_dir / f"question_paper_{target.filename}"
+    saved_paper_path.write_bytes(content)
+
+    res = await _extract_questions_from_file_bytes(content, target.filename)
+    if res.get("processed_content"):
+        saved_paper_path.write_bytes(res["processed_content"])
+
+    validated_sections = res["sections"]
+    validated_questions = res["questions"]
+    total_marks = res["total_marks"]
+    extracted_title = res["paper_title"]
+
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM sections WHERE paper_id = ?", (paper_id,))
+        sec_id_map = {}
+        for s in validated_sections:
+            sec_id = s.get("id") or str(uuid.uuid4())
+            sec_id_map[s["name"].lower()] = sec_id
+            cursor.execute(
+                """
+                INSERT INTO sections (id, paper_id, name, instructions, attempt_n, total_questions, marks_each, section_marks, policy)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    sec_id,
+                    paper_id,
+                    s["name"],
+                    s.get("instructions", ""),
+                    s.get("attempt_n", 0),
+                    s.get("total_questions", 0),
+                    s.get("marks_each", 0.0),
+                    s.get("section_marks", 0.0),
+                    s.get("policy", "best_n"),
+                ),
+            )
+
+        cursor.execute("DELETE FROM questions WHERE paper_id = ?", (paper_id,))
+        for idx, q in enumerate(validated_questions):
+            q_id = str(uuid.uuid4())
+            sec_name = q.get("section") or "General"
+            sec_id = sec_id_map.get(sec_name.lower())
+            key = q.get("key") or generate_scoped_key(sec_name, q["q_no"], idx)
+            cursor.execute(
+                """
+                INSERT INTO questions (id, paper_id, key, q_no, question_text, max_marks, question_type, section_name, section_id, options_json, word_limit, order_idx)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    q_id,
+                    paper_id,
+                    key,
+                    q["q_no"],
+                    q.get("text", ""),
+                    q.get("marks", 1.0),
+                    q.get("type", "short"),
+                    sec_name,
+                    sec_id,
+                    json.dumps(q.get("options", [])),
+                    q.get("word_limit", 150),
+                    idx,
+                ),
+            )
+
+        new_title = paper["title"]
+        if extracted_title and (not new_title or new_title.lower().startswith("assessment ") or new_title.lower().startswith("new assessment") or new_title.lower().startswith("untitled")):
+            new_title = extracted_title
+
+        cursor.execute(
+            """
+            UPDATE papers
+            SET title = ?, total_marks = ?, paper_path = ?, updated_at = datetime('now')
+            WHERE id = ?
+            """,
+            (new_title, total_marks, str(saved_paper_path), paper_id),
+        )
+
+    return {
+        "status": "uploaded",
+        "paper_id": paper_id,
+        "paper_title": new_title,
+        "questions_count": len(validated_questions),
+        "sections_count": len(validated_sections),
+        "total_marks": total_marks,
+        "questions": validated_questions,
+        "sections": validated_sections,
+    }
 
 @app.post("/api/papers")
 async def create_paper_setup(
@@ -803,9 +967,49 @@ async def create_paper_setup(
                             d_title = d_info.get("paper_title") or d_info.get("title")
                             if d_title and (not payload.title or payload.title.lower().startswith("whatsapp") or payload.title.lower().startswith("question_paper")):
                                 payload.title = d_title.strip()
-                        except Exception:
-                            pass
+                            if (not payload.questions or len(payload.questions) == 0) and d_info.get("questions"):
+                                payload.questions = [
+                                    QuestionInput(
+                                        id=str(uuid.uuid4()),
+                                        key=q.get("key"),
+                                        q_no=str(q.get("q_no") or (i + 1)),
+                                        question_text=q.get("text") or q.get("question_text") or "",
+                                        max_marks=float(q.get("marks") or q.get("max_marks") or 1.0),
+                                        question_type=q.get("type") or q.get("question_type") or "short",
+                                        section_name=q.get("section") or q.get("section_name") or "General",
+                                        section_id=q.get("section_id"),
+                                        options=q.get("options") or [],
+                                        word_limit=q.get("word_limit") or 150,
+                                    )
+                                    for i, q in enumerate(d_info["questions"])
+                                ]
+                            if (not payload.sections or len(payload.sections) == 0) and d_info.get("sections"):
+                                payload.sections = [
+                                    SectionItem(
+                                        id=s.get("id"),
+                                        name=s.get("name") or "General",
+                                        instructions=s.get("instructions") or "",
+                                        attempt_n=int(s.get("attempt_n") or 0),
+                                        total_questions=int(s.get("total_questions") or 0),
+                                        marks_each=float(s.get("marks_each") or 0.0),
+                                        section_marks=float(s.get("section_marks") or 0.0),
+                                        policy=s.get("policy") or "best_n",
+                                    )
+                                    for s in d_info["sections"]
+                                ]
+                            if (payload.total_marks is None or payload.total_marks <= 0) and d_info.get("total_marks"):
+                                payload.total_marks = float(d_info["total_marks"])
+                            if not payload.instructions and d_info.get("instructions"):
+                                payload.instructions = d_info.get("instructions")
+                        except Exception as e:
+                            logger.warning(f"Error parsing draft data: {e}")
 
+        if not payload.title or not payload.title.strip():
+            payload.title = f"Assessment {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+        else:
+            payload.title = payload.title.strip()
+
+        payload.questions = payload.questions or []
         calc_total = sum(q.max_marks for q in payload.questions)
         total_marks = payload.total_marks if (payload.total_marks is not None and payload.total_marks > 0) else calc_total
 
@@ -817,7 +1021,7 @@ async def create_paper_setup(
                     INSERT INTO papers (id, title, subject, total_marks, strictness, checking_medium, has_answer_key, is_locked, instructions, paper_path)
                     VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
                     """,
-                    (paper_id, payload.title, payload.subject, total_marks, payload.strictness, payload.checking_medium, 0, payload.instructions or "", str(paper_path) if paper_path else None),
+                    (paper_id, payload.title, payload.subject or "General", total_marks, payload.strictness or "lenient", payload.checking_medium or "ai_reference", 0, payload.instructions or "", str(paper_path) if paper_path else None),
                 )
 
                 # Insert sections with fresh unique IDs per paper to prevent UNIQUE constraint collisions
@@ -878,7 +1082,15 @@ async def create_paper_setup(
             logger.error(f"Error saving paper to database: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail=f"Database error creating paper: {e}")
 
-        return {"status": "created", "paper_id": paper_id, "questions_count": len(payload.questions), "sections_count": len(payload.sections or []), "total_marks": total_marks}
+        return {
+            "status": "created",
+            "paper_id": paper_id,
+            "title": payload.title,
+            "questions_count": len(payload.questions),
+            "sections_count": len(payload.sections or []),
+            "total_marks": total_marks,
+            "is_locked": False,
+        }
     else:
         # Form-data backward compatibility
         paper_id = str(uuid.uuid4())
@@ -898,6 +1110,7 @@ async def create_paper_setup(
             has_key = 1
 
         med = checking_medium or ("answer_key" if has_key else "ai_reference")
+        actual_title = (title or "").strip() or f"Assessment {datetime.now().strftime('%Y-%m-%d %H:%M')}"
         with get_db() as conn:
             cursor = conn.cursor()
             cursor.execute(
@@ -905,9 +1118,9 @@ async def create_paper_setup(
                 INSERT INTO papers (id, title, subject, total_marks, strictness, checking_medium, has_answer_key, is_locked, paper_path, answer_key_path)
                 VALUES (?, ?, ?, 0.0, ?, ?, ?, 0, ?, ?)
                 """,
-                (paper_id, title or "Untitled Paper", subject or "", strictness or "lenient", med, has_key, str(paper_path) if paper_path else None, str(key_path) if key_path else None),
+                (paper_id, actual_title, subject or "", strictness or "lenient", med, has_key, str(paper_path) if paper_path else None, str(key_path) if key_path else None),
             )
-        return {"status": "created", "paper_id": paper_id, "questions_count": 0, "total_marks": 0.0}
+        return {"status": "created", "paper_id": paper_id, "title": actual_title, "questions_count": 0, "total_marks": 0.0, "is_locked": False}
 
 @app.put("/api/papers/{paper_id}/questions")
 def update_paper_questions(paper_id: str, payload: QuestionsUpdateRequest):
@@ -1341,14 +1554,14 @@ async def generate_paper_reference(paper_id: str):
     questions_info = [
         {
             "id": r["id"],
-            "key": r["key"] or f"q_{idx + 1}",
+            "key": dict(r).get("key") or f"q_{idx + 1}",
             "q_no": r["q_no"],
             "question_text": r["question_text"],
             "max_marks": r["max_marks"],
             "question_type": r["question_type"],
-            "section_name": r.get("section_name", "General"),
-            "word_limit": r.get("word_limit"),
-            "options": json.loads(r["options_json"] or "[]"),
+            "section_name": dict(r).get("section_name", "General"),
+            "word_limit": dict(r).get("word_limit"),
+            "options": json.loads(dict(r).get("options_json") or "[]"),
         }
         for idx, r in enumerate(q_rows)
     ]
@@ -1582,7 +1795,7 @@ def lock_paper(paper_id: str):
         if not paper:
             raise HTTPException(status_code=404, detail="Paper not found")
 
-        cursor.execute("SELECT * FROM questions WHERE paper_id = ?", (paper_id,))
+        cursor.execute("SELECT * FROM questions WHERE paper_id = ? ORDER BY order_idx ASC", (paper_id,))
         questions = cursor.fetchall()
         if not questions:
             raise HTTPException(status_code=400, detail="Cannot lock paper with 0 questions.")
@@ -1611,11 +1824,16 @@ def lock_paper(paper_id: str):
                 (r["id"], paper_id, r["question_id"], r["model_answer"], r["key_points_json"]),
             )
 
-        cursor.execute("UPDATE papers SET is_locked = 1, updated_at = datetime('now') WHERE id = ?", (paper_id,))
+        calc_total = sum(float(q["max_marks"] or 0) for q in questions)
         cursor.execute("SELECT total_marks, title FROM papers WHERE id = ?", (paper_id,))
         p_row = cursor.fetchone()
-        tot = p_row["total_marks"] if p_row else 0
+        tot = p_row["total_marks"] if (p_row and p_row["total_marks"] and p_row["total_marks"] > 0) else calc_total
         p_title = p_row["title"] if p_row else ""
+
+        cursor.execute(
+            "UPDATE papers SET is_locked = 1, total_marks = ?, updated_at = datetime('now') WHERE id = ?",
+            (tot, paper_id),
+        )
 
     return {
         "status": "locked",
@@ -1624,6 +1842,7 @@ def lock_paper(paper_id: str):
         "total_marks": tot,
         "questions_count": len(questions),
         "is_locked": True,
+        "locked": True,
     }
 
 @app.put("/api/papers/{paper_id}")
@@ -1664,9 +1883,9 @@ def unlock_paper(paper_id: str):
     """
     with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute("UPDATE papers SET is_locked = 0 WHERE id = ?", (paper_id,))
+        cursor.execute("UPDATE papers SET is_locked = 0, updated_at = datetime('now') WHERE id = ?", (paper_id,))
         cursor.execute("UPDATE sheets SET status = 'pending', current_stage = 'Unlocked Reset', total_score = 0.0 WHERE paper_id = ?", (paper_id,))
-    return {"status": "unlocked", "message": "Paper unlocked for editing. Associated sheets have been reset."}
+    return {"status": "unlocked", "paper_id": paper_id, "is_locked": False, "locked": False, "message": "Paper unlocked for editing. Associated sheets have been reset."}
 
 # ----------------- SCREEN 2 & SCREEN 3: ANSWER SHEET INTAKE & EVALUATION ENGINE -----------------
 
