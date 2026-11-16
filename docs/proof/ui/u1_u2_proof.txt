@@ -1,0 +1,27 @@
+=== PHASE U1 & U2: LIVE PROCESSING SCREEN & STAGE TRACKER PROOF ===
+
+Verification Timestamp: 2026-11-16 09:01:34 UTC
+
+Target Paper: fddef5c6-73dc-47ca-8c80-0d17dd8e5922 ('Operating Systems Exam')
+Target Sheet: a3810a3b-9f09-4ec6-b90f-fc1ef0359a4d (Student: '', Status: 'evaluated')
+
+Live Sheet Status Data from Server (Contract Section 9):
+  - status: evaluated
+  - current_stage: Evaluation Complete
+  - pages_read / pages_total: 1 / 1
+  - questions_marked / questions_total: 2 / 2
+  - retry_at: None
+  - failed_stage: None
+  - history trace:
+      * uploaded at 2026-11-16 08:56:46
+      * reading_identity at 2026-11-16 08:56:46
+      * matching at 2026-11-16 08:56:48
+      * marking at 2026-11-16 08:56:48
+      * flagging at 2026-11-16 08:56:48
+      * evaluated at 2026-11-16 08:56:48
+
+[PASS] Viewport 1366x768: scrollHeight=768 <= innerHeight=768 | Console Errors: 0 | Screenshot: F:\EvalDesk-AI-Answer-Sheet-Evaluation-main\docs\proof\ui\screenshots\u2_processing_1366x768.png
+  [PASS] Auto-advance verification: navigated to http://localhost:5173/#/evaluate/a3810a3b-9f09-4ec6-b90f-fc1ef0359a4d
+
+[PASS] Viewport 1920x1080: scrollHeight=1080 <= innerHeight=1080 | Console Errors: 0 | Screenshot: F:\EvalDesk-AI-Answer-Sheet-Evaluation-main\docs\proof\ui\screenshots\u2_processing_1920x1080.png
+  [PASS] Auto-advance verification: navigated to http://localhost:5173/#/evaluate/a3810a3b-9f09-4ec6-b90f-fc1ef0359a4d

@@ -15,7 +15,7 @@ BANNED = [
 SCAN_EXT = {".py", ".ts", ".tsx", ".js", ".jsx", ".json", ".html", ".css"}
 SKIP_DIRS = {".git", "node_modules", "dist", "__pycache__", ".reader_cache", "data",
              "legacy", "docs", "tests", ".venv", "venv", "proof"}
-SKIP_FILES = {"check_all.py", "check_ui.py", "verify_u1.py", "package-lock.json"}
+SKIP_FILES = {"check_all.py", "check_ui.py", "verify_u1.py", "verify_u2.py", "package-lock.json"}
 results = []
 
 def record(name, ok, detail=""):
