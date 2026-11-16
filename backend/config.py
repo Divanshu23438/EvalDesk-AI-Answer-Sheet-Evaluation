@@ -7,6 +7,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Load environment variables from .env
 load_dotenv(BASE_DIR / ".env")
+load_dotenv()
 
 # API Keys
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()

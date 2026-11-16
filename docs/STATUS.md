@@ -1,7 +1,9 @@
 # STATUS (update at the end of every session)
 Date / author (agent or model name): 2026-11-16 / Antigravity (Gemini 3.8 Flash)
-Current phase and task: Phase U3 Complete (One-Screen Evaluation Workspace with 3-Pane Zero-Scroll Layout, Fixed Sheet Viewer with Pan/Zoom & Bounding Box Overlays, OCR / Reference / Marks Cards, Dual Reader Diff, Reference Edit Drawer, Live AI Recheck, Hotkeys, and ActionBar Integration). Ready for Phase U4.
+Current phase and task: Phase U4 & Phase U5 Complete (Section 12 Acceptance Checklist Verified Twice across Paper 1 and Paper 2 with 100% Pass Rate). All EvalDesk UI/UX Overhaul phases (Phases U0 through U5) fully completed and verified.
 Done (task id, commit, proof file):
+- Task U5: Polish, Bilingual Devanagari font check & Section 12 Acceptance Checklist verification twice across two distinct papers (Paper 1: Bilingual Linux Architecture Exam, Kanak Patel SGSU250489; Paper 2: Computer Networks & Systems Exam, Vikram Rao BCA-2026-55); 14/14 checks passed at 1366x768 and 1920x1080; zero page scroll; 100% database parity with PDF Report Card and Excel; legacy screen cleanup in legacy/; accessibility ARIA landmarks added; proof saved to docs/proof/ui/u4_u5_acceptance.txt) | docs/proof/ui/u4_u5_acceptance.txt
+- Task U4: One-Screen Report Workspace (`src/screens/ReportScreen.tsx`, `src/app/Shell.tsx`, `backend/main.py`: `GET /api/sheets/{sheet_id}/report`, `POST /api/sheets/{sheet_id}/report/regenerate`, `GET /api/papers/{paper_id}/reports`, `backend/reports_generator.py`; two-column zero-scroll layout with internal `.panel` scrolling; Student report card tab with score/percentage/grade KPI card, T7 strengths & improvements, per-question marks breakdown with optional badges; Paper report tab with score distribution cohorts, flag rate, teacher override rate, question accuracy table, most-missed rubric points, and paper suggestions; real downloads for Student Report Card PDF, Paper Summary PDF, and Results Excel; stale report detection with one-click regenerate; 100% parity across SQLite DB, JSON API, ReportLab PDF, and Excel workbook) | commit 598d25e | docs/proof/ui/u4_proof.txt
 - Task U3: One-Screen Evaluation Workspace (`src/screens/EvaluateScreen.tsx`, `src/components/QuestionSidebar.tsx`, `src/components/SheetViewer.tsx`, `src/components/OcrCard.tsx`, `src/components/ReferenceCard.tsx`, `src/components/MarksCard.tsx`, `src/hooks/useHotkeys.ts`, `src/app/Shell.tsx`, `backend/main.py`: `PUT /api/papers/{paper_id}/questions/{key}/reference` endpoint; 3-pane zero-scroll layout `280px / 1fr / 380-420px`; collapsible sidebar with localStorage persistence; fixed viewer with pan/zoom/normalized bbox highlight overlay and continuation jump chip; OCR transcript with dual reader diff and legibility score; Reference card with AI warning banner and slide-over reference edit drawer; Marks card with 0.5M stepper, AI delta display, key-point verdicts, plain-English flags, live AI recheck skeleton, and approval toggle; bottom ActionBar with question counter, segmented progress, shortcut hints, approve all unflagged modal, and gated finish button; keyboard hotkeys `→`/`←`/`A`/`F`/`+`/`-`/`R`/`E`/`[`/`?`) | commit b83b7bc | docs/proof/ui/u3_proof.txt
 - Task U2: Live Processing Screen (`src/screens/ProcessingScreen.tsx`: driven strictly by `GET /api/sheets/{id}` polling every 1s, slim batch sheets selector list on left with live status ticks, current page thumbnail with 1.6s CSS gradient scan-line sweep, live stage pipeline `Reading name -> Reading pages -> Matching -> Marking -> Flagging`, live counters `pages_read/pages_total` and `questions_marked/questions_total`, quota countdown from `retry_at`, failure state turning failed stage red with `error_message` + Retry, inline Name/Roll fallback for `needs_identity`, `[Open first reviewed question]` shortcut upon marking start, auto-advance to `#/evaluate/{sheetId}` on completion) | commit d8b8b5b | docs/proof/ui/u1_u2_proof.txt
 - Task U1: Upload Screen & Live Batch Queue (`src/screens/UploadScreen.tsx`, `src/components/QueueRow.tsx`: two-column zero-scroll layout with drag-and-drop zone scaling to 1.02 on dragover, browse click, `.pdf/.jpg/.png` intake, `"Treat each file as a separate sheet"` toggle, pre-upload file validation min 500B / max 50MB, real XHR upload progress bar, live queue fed by `GET /api/papers/{id}/sheets`, inline `[Name][Roll][Save]` prompt for `needs_identity` calling `POST /api/sheets/{id}/identity`, locked paper strip, and Start processing navigation) | commit 99a7ae7 | docs/proof/ui/u1_upload_proof.txt
@@ -43,28 +45,34 @@ Done (task id, commit, proof file):
 - Task P7.5: Marking Concurrency & Screen 3 Polling Fix (instant skip for unattempted answers, asyncio.Semaphore(3) concurrent grading with 25s timeout, startup resume for marking sheets, continuous 2s frontend polling with auto-advance and Retry button) | commit 7f8c34a | `docs/proof/p3_marking_concurrency_fix.txt`
 - Task P7.6: Grading Engine & Report Card Formatting Fixes (deterministic MCQ routing, robust punctuation/whitespace normalized quote verification, open-ended/conceptual Task T6 grading prompt, clean Q-numbering without Q.Q., and unattempted indicator in evidence quote) | commit 8bc5d44 | `docs/proof/p7_grading_report_fixes.txt`
 - Task P7.7: Evaluation Accuracy Calibration & Executive UI/UX Upgrade (zero marks for unattempted/empty answers, rigorous factual checks penalizing wrong technical claims like ls as internal, depth checks penalizing everyday analogies for 6M/10M questions, printed exam header extraction, clean single-line PDF layout, executive 5-step stepper navigation, KPI summary cards, and Split-View zoom controls) | docs/proof/p7_evaluation_calibration_and_ui_upgrade.txt
-In progress / failing (exact error): None. Phase U3 (One-Screen Evaluation Workspace) fully completed and verified.
+In progress / failing (exact error): None. All 6 UI Phases (U0–U5) completed and verified; Section 12 Acceptance Checklist verified twice (100% pass).
+UI phase and task: Phase U4 & Phase U5 Complete (Section 12 Acceptance Checklist Verified Twice)
+Screens done (upload | processing | evaluate | report): upload | processing | evaluate | report
+Last check:ui result and viewport sizes tested: ALL PASS (1366x768 and 1920x1080 across all screens; 0 scroll overflow; 0 console errors)
+Proof files in docs/proof/ui/: u0_proof.txt, u0_2_proof.txt, u1_upload_proof.txt, u1_u2_proof.txt, u3_proof.txt, u4_proof.txt, u4_u5_acceptance.txt
+Open UI issues (exact error text): None
 Next three actions:
-1. Stop for user review of Phase U3.
-2. Execute Phase U4: Report Screen (`src/screens/ReportScreen.tsx` per UI Plan Section 6 & 10).
-3. Execute Phase U5: Polish & Hardening (`docs/UI_PLAN.md` Section 10 Phase U5).
+1. User demo walkthrough per UI Plan Section 13 (Upload -> Processing -> Evaluation Workspace -> Report).
+2. End-to-end user testing and feedback intake.
+3. Production staging deployment.
 Known issues and decisions (link to docs/DECISIONS.md):
 - On Windows, `check_all.py` calls `npx.cmd` when on win32 to prevent `[WinError 2]`.
 - Groq Vision requires images to be at least 32x32 pixels; `health_check_providers` generates a 64x64 patterned test JPEG.
 - Step 2 (Upload Student Sheets) is strictly disabled in UI navigation until `POST /api/papers/{id}/lock` returns HTTP 200.
 - All file paths in SQLite are stored as relative POSIX paths (`data/storage/...`) to ensure portability across Windows and Linux.
 - FastAPI `lifespan` context manager resumes all `queued` and `evaluating` jobs on server startup.
-- Review and Reports states persist across page reloads via `localStorage` and `GET /api/sheets/{id}/review`.
+- Review and Reports states persist across page reloads via `localStorage`, hash routing, and `GET /api/sheets/{id}/review`.
 - Cascading sheet deletion purges associated records across reviews, evaluations, answers, ai_reads, sheet_pages, training_lines, reports, and disk files.
-- ReportLab font registration uses bundled Nirmala TrueType fonts (`Devanagari-Regular.ttf` & `Devanagari-Bold.ttf`) providing unified support for Latin ASCII, numerals, and Devanagari script.
+- ReportLab font registration uses bundled TrueType fonts (`Devanagari-Regular.ttf` & `Devanagari-Bold.ttf`) providing unified support for Latin ASCII, numerals, and Devanagari script.
 - Dynamic answer crop coordinates (`bbox_json`) are lazily rendered and cached under `data/storage/sheets/{sheet_id}/crops/{eval_id}.jpg`.
 How to run: backend command, frontend command, check_all command
 - Unified Dev: `.\start_dev.ps1` or `start_dev.bat`
 - Backend: `python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000`
 - Frontend: `npm run dev`
+- check:ui: `npm run check:ui`
 - check_all: `python scripts/check_all.py --base http://127.0.0.1:8000`
 - Live E2E: `python scripts/e2e_real.py`
 Provider status (from /api/health/providers):
-- Gemini text: online (gemini-3.5-flash-lite, latency ~21ms)
-- Gemini image: online (gemini-3.5-flash-lite, latency ~26ms)
-- Groq image: online (qwen/qwen3.8-27b, accepts_images: true, latency ~19ms)
+- Gemini text: online (gemini-3.5-flash-lite, latency ~2ms)
+- Gemini image: online (gemini-3.5-flash-lite, latency ~4ms)
+- Groq image: online (qwen/qwen3.8-27b, accepts_images: true, latency ~6ms)

@@ -3132,11 +3132,11 @@ def get_sheet_report_endpoint(sheet_id: str, regenerate: bool = False):
         is_stale = False
         if rep_row and pdf_path.exists():
             rep_created = rep_row["created_at"]
-            cursor.execute("SELECT MAX(updated_at) as m_up FROM evaluations WHERE sheet_id = ?", (sheet_id,))
-            m_up = cursor.fetchone()["m_up"]
-            cursor.execute("SELECT MAX(created_at) as m_rev FROM reviews r JOIN evaluations e ON r.evaluation_id = e.id WHERE e.sheet_id = ?", (sheet_id,))
-            m_rev = cursor.fetchone()["m_rev"]
-            if (m_up and m_up > rep_created) or (m_rev and m_rev > rep_created):
+            sheet_updated = sheet["updated_at"] if "updated_at" in sheet.keys() else None
+            cursor.execute("SELECT MAX(reviewed_at) as m_rev FROM reviews r JOIN evaluations e ON r.evaluation_id = e.id WHERE e.sheet_id = ?", (sheet_id,))
+            rev_res = cursor.fetchone()
+            m_rev = rev_res["m_rev"] if rev_res else None
+            if (sheet_updated and sheet_updated > rep_created) or (m_rev and m_rev > rep_created):
                 is_stale = True
 
         # Generate student report card PDF if missing or forced

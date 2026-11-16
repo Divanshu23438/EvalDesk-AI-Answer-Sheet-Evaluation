@@ -68,7 +68,10 @@ export const ReferenceCard: React.FC<ReferenceCardProps> = ({
   };
 
   return (
-    <div className="border border-[var(--surface-border)] rounded-lg bg-[var(--surface-card)] flex flex-col min-h-0 h-full overflow-hidden relative">
+    <section
+      aria-label="Rubric Reference"
+      className="border border-[var(--surface-border)] rounded-lg bg-[var(--surface-card)] flex flex-col min-h-0 h-full overflow-hidden relative"
+    >
       {/* Header */}
       <div className="px-3 py-2 bg-[var(--surface-canvas)] border-b border-[var(--surface-border)] flex items-center justify-between gap-2 shrink-0">
         <div className="flex items-center gap-2">
@@ -240,6 +243,6 @@ export const ReferenceCard: React.FC<ReferenceCardProps> = ({
           </div>
         </div>
       )}
-    </div>
+    </section>
   );
 };

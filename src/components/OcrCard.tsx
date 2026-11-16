@@ -148,7 +148,10 @@ export const OcrCard: React.FC<OcrCardProps> = ({
   const hasMultipleReaders = readerKeys.length > 1;
 
   return (
-    <div className="border border-[var(--surface-border)] rounded-lg bg-[var(--surface-card)] flex flex-col min-h-0 h-full overflow-hidden">
+    <section
+      aria-label="Student Transcript"
+      className="border border-[var(--surface-border)] rounded-lg bg-[var(--surface-card)] flex flex-col min-h-0 h-full overflow-hidden"
+    >
       {/* Card Header */}
       <div className="px-3 py-2 bg-[var(--surface-canvas)] border-b border-[var(--surface-border)] flex items-center justify-between gap-2 shrink-0">
         <div className="flex items-center gap-2">
@@ -288,6 +291,6 @@ export const OcrCard: React.FC<OcrCardProps> = ({
           </button>
         </div>
       )}
-    </div>
+    </section>
   );
 };

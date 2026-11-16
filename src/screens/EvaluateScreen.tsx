@@ -346,7 +346,7 @@ export const EvaluateScreen: React.FC = () => {
       : null;
 
   return (
-    <div className="h-full flex flex-col min-h-0 relative select-none">
+    <section aria-label="Evaluation Workspace" className="h-full flex flex-col min-h-0 relative select-none">
       {/* 3-Pane Zero-Scroll Layout */}
       <div
         className={`flex-1 grid min-h-0 transition-all duration-200 ${
@@ -534,6 +534,6 @@ export const EvaluateScreen: React.FC = () => {
           </div>
         </div>
       )}
-    </div>
+    </section>
   );
 };

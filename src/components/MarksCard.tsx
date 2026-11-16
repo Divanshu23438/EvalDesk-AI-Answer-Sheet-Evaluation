@@ -106,7 +106,10 @@ export const MarksCard: React.FC<MarksCardProps> = ({
   };
 
   return (
-    <div className="border border-[var(--surface-border)] rounded-lg bg-[var(--surface-card)] flex flex-col min-h-0 h-full overflow-hidden">
+    <section
+      aria-label="Evaluation Marks"
+      className="border border-[var(--surface-border)] rounded-lg bg-[var(--surface-card)] flex flex-col min-h-0 h-full overflow-hidden"
+    >
       {/* Header */}
       <div className="px-3 py-2 bg-[var(--surface-canvas)] border-b border-[var(--surface-border)] flex items-center justify-between gap-2 shrink-0">
         <div className="flex items-center gap-2">
@@ -297,6 +300,6 @@ export const MarksCard: React.FC<MarksCardProps> = ({
           <span>{isResolved ? 'Approved ✓' : 'Approve'}</span>
         </button>
       </div>
-    </div>
+    </section>
   );
 };
