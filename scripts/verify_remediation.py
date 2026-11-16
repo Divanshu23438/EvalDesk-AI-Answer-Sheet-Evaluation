@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
 scripts/verify_remediation.py - Verifies the complete UI/UX Overhaul & Functional Bug Remediation:
-1. Stepper strictly consists of 3 steps: 1. Upload > 2. Evaluate > 3. Report
-2. Decoupled Paper Setup screen (#/setup) for question paper management and locking
-3. Paper lock preserves questions count in SQLite, header, and footer (no "No questions" bug)
-4. Upload screen (#/upload) contains only student answer sheet dropzone & queue
-5. Clickable batch queue rows with inline processing progress
+1. Stepper strictly consists of 3 steps: 1. Upload > 2. Evaluate > 3. Report (no #/setup, no #/processing)
+2. Question Paper Card A & Student Answer Sheet Card B are strictly isolated on #/upload
+3. Paper lock preserves questions count in SQLite, Card A, and bottom bar (no "No questions" bug)
+4. Inline processing in the upload queue without leaving #/upload
+5. Clickable batch queue rows navigating into #/evaluate/:id
 6. Zero page scroll (scrollHeight <= innerHeight) across all routes at 1366x768 and 1920x1080
 7. Zero hardcoded banned strings in src/
 """
@@ -90,67 +90,82 @@ def run_tests():
             console_errors = []
             page.on("console", lambda msg: console_errors.append(msg.text) if msg.type == "error" else None)
 
-            # Test 1: Route #/upload & Stepper Verification
+            # Test A: Route #/upload, 3-Screen Stepper, Card A & Card B Isolation
             page.goto(f"{FRONTEND_BASE}/#/upload", wait_until="networkidle")
             page.wait_for_timeout(1000)
 
-            # Assert Stepper Navigation has strictly 3 steps
+            # Assert Stepper Navigation has strictly 3 steps: 1. Upload > 2. Evaluate > 3. Report
             stepper_text = page.locator("nav[aria-label='Workflow Stepper']").inner_text()
             assert "Upload" in stepper_text, "Stepper missing 'Upload'"
             assert "Evaluate" in stepper_text, "Stepper missing 'Evaluate'"
             assert "Report" in stepper_text, "Stepper missing 'Report'"
             assert "Processing" not in stepper_text, "Stepper should NOT have 'Processing' step"
+            assert "Setup" not in stepper_text, "Stepper should NOT have 'Setup' step"
             proof_lines.append(f"[PASS] {label} Stepper: strictly 3 steps ('{stepper_text.strip()}')")
 
-            # Assert Zero Page Scroll
-            sh = page.evaluate("() => document.scrollingElement.scrollHeight")
+            # Assert Card A (Question Paper) and Card B (Student Answer Sheets) exist in Left Column
+            card_a = page.locator("section[aria-label='Target Question Paper']")
+            card_b = page.locator("section[aria-label='Student Answer Sheets']")
+            queue_panel = page.locator("section[aria-label='Upload Queue']")
+            assert card_a.count() == 1, "Card A (Target Question Paper) missing"
+            assert card_b.count() == 1, "Card B (Student Answer Sheets) missing"
+            assert queue_panel.count() == 1, "Right column Upload Queue missing"
+            proof_lines.append(f"[PASS] {label} #/upload: Card A & Card B isolated on left, Queue on right")
+
+            # Assert Paper Lock status does not say "No questions"
+            card_a_text = card_a.inner_text()
+            assert "No questions" not in card_a_text, f"Card A shows 'No questions' regression: {card_a_text}"
+            proof_lines.append(f"[PASS] {label} Card A questions count preserved (no 'No questions' bug)")
+
+            # Assert Zero Page Scroll on #/upload
+            sh_upload = page.evaluate("() => document.scrollingElement.scrollHeight")
             ih = page.evaluate("() => window.innerHeight")
-            assert sh <= ih, f"Page scroll overflow on #/upload: scrollHeight={sh} > innerHeight={ih}"
-            proof_lines.append(f"[PASS] {label} #/upload: zero page scroll (scrollHeight={sh} <= {ih})")
+            assert sh_upload <= ih, f"Page scroll overflow on #/upload: {sh_upload} > {ih}"
+            proof_lines.append(f"[PASS] {label} #/upload: zero page scroll ({sh_upload} <= {ih})")
 
             # Screenshot Upload screen
             shot_upload = SCREENSHOTS_DIR / f"remediation_upload_{label}.png"
             page.screenshot(path=str(shot_upload), full_page=False)
 
-            # Test 2: Decoupled Paper Setup (#/setup)
+            # Test Legacy Redirect: #/setup -> redirects to #/upload
             page.goto(f"{FRONTEND_BASE}/#/setup", wait_until="networkidle")
-            page.wait_for_timeout(1000)
+            page.wait_for_timeout(800)
+            cur_hash = page.evaluate("() => window.location.hash")
+            assert cur_hash == "#/upload", f"Expected #/setup to redirect to #/upload, got {cur_hash}"
+            proof_lines.append(f"[PASS] {label} Legacy route #/setup redirected cleanly to #/upload")
 
-            sh_setup = page.evaluate("() => document.scrollingElement.scrollHeight")
-            assert sh_setup <= ih, f"Page scroll overflow on #/setup: scrollHeight={sh_setup} > innerHeight={ih}"
-            setup_h1 = page.locator("h1").inner_text()
-            assert "Assessment & Question Paper Setup" in setup_h1
-            proof_lines.append(f"[PASS] {label} #/setup: loaded cleanly, zero page scroll ({sh_setup} <= {ih})")
+            # Test Legacy Redirect: #/processing -> redirects to #/upload
+            page.goto(f"{FRONTEND_BASE}/#/processing", wait_until="networkidle")
+            page.wait_for_timeout(800)
+            cur_hash_proc = page.evaluate("() => window.location.hash")
+            assert cur_hash_proc == "#/upload", f"Expected #/processing to redirect to #/upload, got {cur_hash_proc}"
+            proof_lines.append(f"[PASS] {label} Legacy route #/processing redirected cleanly to #/upload")
 
-            # Screenshot Setup screen
-            shot_setup = SCREENSHOTS_DIR / f"remediation_setup_{label}.png"
-            page.screenshot(path=str(shot_setup), full_page=False)
-
-            # Test 3: Evaluate Screen (#/evaluate/:id)
+            # Test B & C: Evaluate Screen (#/evaluate/:id)
             if sheet_id:
                 page.goto(f"{FRONTEND_BASE}/#/evaluate/{sheet_id}", wait_until="networkidle")
                 page.wait_for_timeout(1500)
 
                 sh_eval = page.evaluate("() => document.scrollingElement.scrollHeight")
-                assert sh_eval <= ih, f"Page scroll overflow on #/evaluate: scrollHeight={sh_eval} > innerHeight={ih}"
+                assert sh_eval <= ih, f"Page scroll overflow on #/evaluate: {sh_eval} > {ih}"
                 proof_lines.append(f"[PASS] {label} #/evaluate/{sheet_id}: 3-pane layout, zero page scroll ({sh_eval} <= {ih})")
 
                 shot_eval = SCREENSHOTS_DIR / f"remediation_evaluate_{label}.png"
                 page.screenshot(path=str(shot_eval), full_page=False)
 
-                # Test 4: Report Screen (#/report/:id)
+                # Test C & D: Report Screen (#/report/:id)
                 page.goto(f"{FRONTEND_BASE}/#/report/{sheet_id}", wait_until="networkidle")
                 page.wait_for_timeout(1500)
 
                 sh_rep = page.evaluate("() => document.scrollingElement.scrollHeight")
-                assert sh_rep <= ih, f"Page scroll overflow on #/report: scrollHeight={sh_rep} > innerHeight={ih}"
+                assert sh_rep <= ih, f"Page scroll overflow on #/report: {sh_rep} > {ih}"
                 proof_lines.append(f"[PASS] {label} #/report/{sheet_id}: reports loaded, zero page scroll ({sh_rep} <= {ih})")
 
                 shot_rep = SCREENSHOTS_DIR / f"remediation_report_{label}.png"
                 page.screenshot(path=str(shot_rep), full_page=False)
 
-            # Filter out expected network or favicon noise
-            real_errors = [e for e in console_errors if "favicon" not in e and "404" not in e]
+            # Filter out expected network aborts or favicon noise from rapid route navigation
+            real_errors = [e for e in console_errors if "favicon" not in e and "net::ERR" not in e and "404" not in e]
             assert len(real_errors) == 0, f"Console errors found: {real_errors}"
             proof_lines.append(f"[PASS] {label} Console errors: 0")
 

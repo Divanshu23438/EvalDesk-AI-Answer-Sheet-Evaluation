@@ -1,5 +1,5 @@
 === EvalDesk UI/UX Overhaul & Functional Bug Remediation Verification ===
-Timestamp: 2026-11-16 20:39:33
+Timestamp: 2026-11-16 21:06:33
 Backend: http://127.0.0.1:8000 | Frontend: http://localhost:5173
 Active Paper ID: 8e76631a-f650-4d79-96e8-e576394fe339 | Sheet ID: 60040dd9-1594-4fc7-b50c-a031a46b3dba
 
@@ -14,8 +14,11 @@ Evaluate
 ›
 3
 Report')
-[PASS] 1366x768 #/upload: zero page scroll (scrollHeight=768 <= 768)
-[PASS] 1366x768 #/setup: loaded cleanly, zero page scroll (768 <= 768)
+[PASS] 1366x768 #/upload: Card A & Card B isolated on left, Queue on right
+[PASS] 1366x768 Card A questions count preserved (no 'No questions' bug)
+[PASS] 1366x768 #/upload: zero page scroll (768 <= 768)
+[PASS] 1366x768 Legacy route #/setup redirected cleanly to #/upload
+[PASS] 1366x768 Legacy route #/processing redirected cleanly to #/upload
 [PASS] 1366x768 #/evaluate/60040dd9-1594-4fc7-b50c-a031a46b3dba: 3-pane layout, zero page scroll (768 <= 768)
 [PASS] 1366x768 #/report/60040dd9-1594-4fc7-b50c-a031a46b3dba: reports loaded, zero page scroll (768 <= 768)
 [PASS] 1366x768 Console errors: 0
@@ -30,8 +33,11 @@ Evaluate
 ›
 3
 Report')
-[PASS] 1920x1080 #/upload: zero page scroll (scrollHeight=1080 <= 1080)
-[PASS] 1920x1080 #/setup: loaded cleanly, zero page scroll (1080 <= 1080)
+[PASS] 1920x1080 #/upload: Card A & Card B isolated on left, Queue on right
+[PASS] 1920x1080 Card A questions count preserved (no 'No questions' bug)
+[PASS] 1920x1080 #/upload: zero page scroll (1080 <= 1080)
+[PASS] 1920x1080 Legacy route #/setup redirected cleanly to #/upload
+[PASS] 1920x1080 Legacy route #/processing redirected cleanly to #/upload
 [PASS] 1920x1080 #/evaluate/60040dd9-1594-4fc7-b50c-a031a46b3dba: 3-pane layout, zero page scroll (1080 <= 1080)
 [PASS] 1920x1080 #/report/60040dd9-1594-4fc7-b50c-a031a46b3dba: reports loaded, zero page scroll (1080 <= 1080)
 [PASS] 1920x1080 Console errors: 0

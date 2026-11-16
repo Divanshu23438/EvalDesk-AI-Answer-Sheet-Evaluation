@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-export type AppStep = 'setup' | 'upload' | 'processing' | 'evaluate' | 'report';
+export type AppStep = 'upload' | 'evaluate' | 'report';
 
 export interface ProviderHealthState {
   isHealthy: boolean;
@@ -175,20 +175,16 @@ export const sheetStore = {
   syncStateFromHash() {
     const hash = window.location.hash.replace(/^#\/?/, '');
     const parts = hash.split('/').filter(Boolean);
-    const stepPart = (parts[0] || 'upload') as AppStep;
+    const stepPart = parts[0] || 'upload';
     const sheetIdPart = parts[1] || null;
 
     let resolvedStep: AppStep = 'upload';
-    if (stepPart === 'setup') {
-      resolvedStep = 'setup';
-    } else if (stepPart === 'evaluate') {
+    if (stepPart === 'evaluate' && sheetIdPart) {
       resolvedStep = 'evaluate';
-    } else if (stepPart === 'report') {
+    } else if (stepPart === 'report' && sheetIdPart) {
       resolvedStep = 'report';
-    } else if (stepPart === 'processing') {
-      // Legacy or redirected processing route maps to evaluate if sheet is known, or upload
-      resolvedStep = sheetIdPart ? 'evaluate' : 'upload';
     } else {
+      // #/setup, #/processing, #/upload, or any legacy/unknown routes all cleanly route to #/upload
       resolvedStep = 'upload';
     }
 
@@ -198,6 +194,7 @@ export const sheetStore = {
       sheetId: sheetIdPart || globalState.sheetId,
     };
     emitChange();
+    this.updateHashFromState();
   },
 };
 

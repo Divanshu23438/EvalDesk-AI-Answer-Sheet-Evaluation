@@ -223,11 +223,9 @@ export const ReportScreen: React.FC = () => {
     if (nextCandidate) {
       store.setSheet(nextCandidate.id, nextCandidate.student_name, nextCandidate.roll);
       if (nextCandidate.status === 'evaluated' || nextCandidate.status === 'needs_review') {
-        store.setStep('evaluate');
-        window.location.hash = `#/evaluate/${nextCandidate.id}`;
+        store.setStep('evaluate', nextCandidate.id);
       } else {
-        store.setStep('processing');
-        window.location.hash = `#/processing/${nextCandidate.id}`;
+        store.setStep('upload');
       }
     } else {
       // All sheets evaluated
