@@ -776,8 +776,13 @@ async def create_paper_setup(
 ):
     content_type = request.headers.get("content-type", "")
     if "application/json" in content_type:
-        body = await request.json()
-        payload = PaperCreateRequest(**body)
+        try:
+            body = await request.json()
+            payload = PaperCreateRequest(**body)
+        except Exception as ve:
+            logger.error(f"Paper payload validation failed: {ve}")
+            raise HTTPException(status_code=400, detail=f"Invalid paper request data: {ve}")
+
         paper_id = str(uuid.uuid4())
         paper_dir = get_paper_dir(paper_id)
 
@@ -803,65 +808,75 @@ async def create_paper_setup(
         calc_total = sum(q.max_marks for q in payload.questions)
         total_marks = payload.total_marks if (payload.total_marks is not None and payload.total_marks > 0) else calc_total
 
-        with get_db() as conn:
-            cursor = conn.cursor()
-            cursor.execute(
-                """
-                INSERT INTO papers (id, title, subject, total_marks, strictness, checking_medium, has_answer_key, is_locked, instructions, paper_path)
-                VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
-                """,
-                (paper_id, payload.title, payload.subject, total_marks, payload.strictness, payload.checking_medium, 0, payload.instructions or "", str(paper_path) if paper_path else None),
-            )
-
-            # Insert sections
-            sec_id_map = {}
-            for s in (payload.sections or []):
-                s_id = s.id or str(uuid.uuid4())
-                sec_id_map[s.name.lower().strip()] = s_id
+        try:
+            with get_db() as conn:
+                cursor = conn.cursor()
                 cursor.execute(
                     """
-                    INSERT INTO sections (id, paper_id, name, instructions, attempt_n, total_questions, marks_each, section_marks, policy)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO papers (id, title, subject, total_marks, strictness, checking_medium, has_answer_key, is_locked, instructions, paper_path)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
                     """,
-                    (
-                        s_id,
-                        paper_id,
-                        s.name,
-                        s.instructions or "",
-                        s.attempt_n,
-                        s.total_questions,
-                        s.marks_each,
-                        s.section_marks,
-                        s.policy or "best_n",
-                    ),
+                    (paper_id, payload.title, payload.subject, total_marks, payload.strictness, payload.checking_medium, 0, payload.instructions or "", str(paper_path) if paper_path else None),
                 )
 
-            for idx, q in enumerate(payload.questions):
-                q_id = str(uuid.uuid4())
-                q_sec_id = q.section_id or sec_id_map.get(q.section_name.lower().strip())
-                key = q.key or generate_scoped_key(q.section_name, q.q_no, idx)
-                cursor.execute(
-                    """
-                    INSERT INTO questions (id, paper_id, key, q_no, question_text, max_marks, question_type, section_name, section_id, options_json, word_limit, strictness_override, checking_medium_override, order_idx)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """,
-                    (
-                        q_id,
-                        paper_id,
-                        key,
-                        q.q_no,
-                        q.question_text,
-                        q.max_marks,
-                        q.question_type,
-                        q.section_name,
-                        q_sec_id,
-                        json.dumps(q.options),
-                        q.word_limit or 150,
-                        q.strictness_override,
-                        q.checking_medium_override,
-                        idx,
-                    ),
-                )
+                # Insert sections with fresh unique IDs per paper to prevent UNIQUE constraint collisions
+                old_to_new_sec_id = {}
+                sec_id_map = {}
+                for s in (payload.sections or []):
+                    s_id = str(uuid.uuid4())
+                    if s.id:
+                        old_to_new_sec_id[s.id] = s_id
+                    s_name = (s.name or "").strip()
+                    sec_id_map[s_name.lower()] = s_id
+                    cursor.execute(
+                        """
+                        INSERT INTO sections (id, paper_id, name, instructions, attempt_n, total_questions, marks_each, section_marks, policy)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """,
+                        (
+                            s_id,
+                            paper_id,
+                            s_name,
+                            s.instructions or "",
+                            s.attempt_n,
+                            s.total_questions,
+                            s.marks_each,
+                            s.section_marks,
+                            s.policy or "best_n",
+                        ),
+                    )
+
+                for idx, q in enumerate(payload.questions):
+                    q_id = str(uuid.uuid4())
+                    sec_name = (q.section_name or "").strip()
+                    q_sec_id = (old_to_new_sec_id.get(q.section_id) if q.section_id else None) or sec_id_map.get(sec_name.lower())
+                    key = q.key or generate_scoped_key(sec_name or "General", q.q_no, idx)
+                    cursor.execute(
+                        """
+                        INSERT INTO questions (id, paper_id, key, q_no, question_text, max_marks, question_type, section_name, section_id, options_json, word_limit, strictness_override, checking_medium_override, order_idx)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """,
+                        (
+                            q_id,
+                            paper_id,
+                            key,
+                            q.q_no,
+                            q.question_text,
+                            q.max_marks,
+                            q.question_type,
+                            sec_name or "General",
+                            q_sec_id,
+                            json.dumps(q.options),
+                            q.word_limit or 150,
+                            q.strictness_override,
+                            q.checking_medium_override,
+                            idx,
+                        ),
+                    )
+        except Exception as e:
+            logger.error(f"Error saving paper to database: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail=f"Database error creating paper: {e}")
+
         return {"status": "created", "paper_id": paper_id, "questions_count": len(payload.questions), "sections_count": len(payload.sections or []), "total_marks": total_marks}
     else:
         # Form-data backward compatibility
@@ -905,11 +920,15 @@ def update_paper_questions(paper_id: str, payload: QuestionsUpdateRequest):
             raise HTTPException(status_code=400, detail="Paper is locked. Unlock paper before editing questions.")
 
         sec_id_map = {}
+        old_to_new_sec_id = {}
         if payload.sections is not None:
             cursor.execute("DELETE FROM sections WHERE paper_id = ?", (paper_id,))
             for s in payload.sections:
-                s_id = s.id or str(uuid.uuid4())
-                sec_id_map[s.name.lower().strip()] = s_id
+                s_id = str(uuid.uuid4())
+                if s.id:
+                    old_to_new_sec_id[s.id] = s_id
+                s_name = (s.name or "").strip()
+                sec_id_map[s_name.lower()] = s_id
                 cursor.execute(
                     """
                     INSERT INTO sections (id, paper_id, name, instructions, attempt_n, total_questions, marks_each, section_marks, policy)
@@ -918,7 +937,7 @@ def update_paper_questions(paper_id: str, payload: QuestionsUpdateRequest):
                     (
                         s_id,
                         paper_id,
-                        s.name,
+                        s_name,
                         s.instructions or "",
                         s.attempt_n,
                         s.total_questions,
@@ -934,8 +953,9 @@ def update_paper_questions(paper_id: str, payload: QuestionsUpdateRequest):
         cursor.execute("DELETE FROM questions WHERE paper_id = ?", (paper_id,))
         for idx, q in enumerate(payload.questions):
             q_id = str(uuid.uuid4())
-            q_sec_id = q.section_id or sec_id_map.get(q.section_name.lower().strip())
-            key = q.key or generate_scoped_key(q.section_name, q.q_no, idx)
+            sec_name = (q.section_name or "").strip()
+            q_sec_id = (old_to_new_sec_id.get(q.section_id) if q.section_id else None) or sec_id_map.get(sec_name.lower())
+            key = q.key or generate_scoped_key(sec_name or "General", q.q_no, idx)
             cursor.execute(
                 """
                 INSERT INTO questions (id, paper_id, key, q_no, question_text, max_marks, question_type, section_name, section_id, options_json, word_limit, strictness_override, checking_medium_override, order_idx)
@@ -949,7 +969,7 @@ def update_paper_questions(paper_id: str, payload: QuestionsUpdateRequest):
                     q.question_text,
                     q.max_marks,
                     q.question_type,
-                    q.section_name,
+                    sec_name or "General",
                     q_sec_id,
                     json.dumps(q.options),
                     q.word_limit or 150,
@@ -979,7 +999,8 @@ def update_paper_sections(paper_id: str, payload: SectionsUpdateRequest):
 
         cursor.execute("DELETE FROM sections WHERE paper_id = ?", (paper_id,))
         for s in payload.sections:
-            s_id = s.id or str(uuid.uuid4())
+            s_id = str(uuid.uuid4())
+            s_name = (s.name or "").strip()
             cursor.execute(
                 """
                 INSERT INTO sections (id, paper_id, name, instructions, attempt_n, total_questions, marks_each, section_marks, policy)
@@ -988,7 +1009,7 @@ def update_paper_sections(paper_id: str, payload: SectionsUpdateRequest):
                 (
                     s_id,
                     paper_id,
-                    s.name,
+                    s_name,
                     s.instructions or "",
                     s.attempt_n,
                     s.total_questions,
@@ -1000,7 +1021,7 @@ def update_paper_sections(paper_id: str, payload: SectionsUpdateRequest):
             # Link matching questions to this section_id
             cursor.execute(
                 "UPDATE questions SET section_id = ? WHERE paper_id = ? AND lower(trim(section_name)) = lower(trim(?))",
-                (s_id, paper_id, s.name),
+                (s_id, paper_id, s_name),
             )
     return {"status": "updated", "sections_count": len(payload.sections)}
 
