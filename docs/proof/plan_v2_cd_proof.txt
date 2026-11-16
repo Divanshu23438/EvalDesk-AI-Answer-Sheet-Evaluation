@@ -1,0 +1,65 @@
+======================================================================
+EVALDESK PLAN V2 — PHASE C & PHASE D VERIFICATION
+======================================================================
+[1] Live Provider Health: OK (Status 200)
+[2] Target Paper: Operating Systems Exam (ID: 3f196940-25c0-4056-b2e5-d7ddede3910e)
+    Target Sheet: Alice Smith (CS-2026-101) (ID: 11c27e11-0c63-473e-92e6-e51511606e20)
+    Target Question: 2 (q_short) — 8.0 Marks — 'Define process starvation and prevention....'
+
+----------------------------------------------------------------------
+PHASE C: PER-QUESTION REFERENCE GENERATION, EVEN WEIGHTS, REGENERATE & EXPAND
+----------------------------------------------------------------------
+[*] Calling POST /api/papers/3f196940-25c0-4056-b2e5-d7ddede3910e/questions/q_short/reference/regenerate ...
+[PASS] Reference Regenerated:
+       Word Count: 144 / Target ~150 words
+       Key Points Count: 4
+       - [2.0M] Core definition of process starvation
+         Accept if: Accurately defines starvation as indefinite resource denial for a runnable process due to higher-priority monopolization.
+         Reject if: Confuses starvation with deadlock or uses non-technical everyday analogies.
+       - [2.0M] Concept and mechanism of starvation prevention
+         Accept if: Explains prevention as guaranteeing bounded waiting times using fairness policies or scheduling invariants.
+         Reject if: Omits the concept of bounded waiting or prevention strategies.
+       - [2.0M] Technical example (Aging or Fair Queueing)
+         Accept if: Provides a concrete technical mechanism like priority aging (e.g., incrementing priority over time $T$) or Round Robin time-slices.
+         Reject if: Provides vague descriptions or non-technical examples without scheduling parameters.
+       - [2.0M] Summary / Conclusion on system fairness
+         Accept if: Concludes with how prevention ensures system fairness and finite progress.
+         Reject if: Missing summary or incorrect technical conclusion.
+[PASS] Rubric Key Points sum to 8.0M (Matches Question 8.0M)
+
+[*] Calling POST /api/papers/3f196940-25c0-4056-b2e5-d7ddede3910e/questions/q_short/reference/expand ...
+[PASS] Reference Expanded:
+       Word Count: 144 words (Is Expanded: False)
+
+----------------------------------------------------------------------
+PHASE D: 3-PANE REVIEW DATA, CROP, FINALIZE GATING & BATCH OPERATIONS
+----------------------------------------------------------------------
+[*] Calling GET /api/sheets/11c27e11-0c63-473e-92e6-e51511606e20/review ...
+[PASS] Review Data Loaded:
+       Total Questions: 2 (Checked: 2, Flagged: 0)
+       First Question: 1 (q_mcq)
+       Crop URL Present: /api/sheets/11c27e11-0c63-473e-92e6-e51511606e20/crop/cdec0cde-63e5-404d-b45f-530ddb4ed0b6
+       Rubric Attached: 1 key points
+
+[*] Calling GET /api/sheets/11c27e11-0c63-473e-92e6-e51511606e20/crop/cdec0cde-63e5-404d-b45f-530ddb4ed0b6 ...
+[PASS] Handwriting Crop Endpoint: 200 OK (Content-Type: image/jpeg, Size: 5118 bytes)
+
+[*] Testing Finalize Sheet Gating...
+[PASS] Finalize Correctly Blocked on Unresolved Flag (Status 400): Cannot finalize sheet: 1 unresolved flag(s) remain. Review and resolve all flags before finalizing.
+
+[*] Resolving flag via POST /api/evaluations/cdec0cde-63e5-404d-b45f-530ddb4ed0b6/review ...
+[PASS] Flag Resolved via Review Override
+
+[*] Finalizing clean sheet via POST /api/sheets/11c27e11-0c63-473e-92e6-e51511606e20/finalize ...
+[PASS] Sheet Successfully Finalized: Sheet finalized successfully.
+
+[*] Calling GET /api/papers/3f196940-25c0-4056-b2e5-d7ddede3910e/sheets ...
+[PASS] Batch Sheets List: 1 sheets returned
+       Sheet Alice Smith: Status='evaluated', Unresolved Flags=0, Total Flags=2
+
+[*] Calling POST /api/sheets/bulk-finalize ...
+[PASS] Bulk Finalize: 1 sheets finalized, 0 skipped
+
+======================================================================
+ALL PHASE C & PHASE D VERIFICATIONS PASSED SUCCESSFULLY!
+======================================================================

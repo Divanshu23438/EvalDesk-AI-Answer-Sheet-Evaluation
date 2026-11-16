@@ -308,6 +308,25 @@ def check_command_tokens(
             "reason_note": "",
         }
 
+    # Only trigger command syntax checking when the question or reference explicitly involves shell or code commands
+    context = (question_text + " " + reference_text).lower()
+    is_command_context = bool(
+        expected_commands
+        or re.search(
+            r"\b(command|commands|syntax|terminal|shell|bash|cli|prompt|directory|directories|folder|unix|linux|dos|path|paths|pwd|cd|mkdir|rmdir|rm|ls|echo|printf|who|date|cal|grep|cat|touch)\b",
+            context,
+            re.IGNORECASE,
+        )
+    )
+    if not is_command_context:
+        return {
+            "valid": True,
+            "mismatches": [],
+            "flags": [],
+            "penalty_marks": 0.0,
+            "reason_note": "",
+        }
+
     mismatches = []
     flags = []
     penalty_marks = 0.0

@@ -26,6 +26,8 @@ export interface EvaluatedReviewItem {
   eval_id?: string;
   question_id?: string;
   q_no: string;
+  question_key?: string;
+  question_text?: string;
   section_name?: string;
   transcribed_text: string;
   diagram_notes: string;
@@ -40,6 +42,12 @@ export interface EvaluatedReviewItem {
   isCounted: boolean;
   statusLabel: string;
   evidence_quote?: string;
+  page_numbers?: number[];
+  bbox_json?: any;
+  model_answer?: string;
+  key_points?: Array<{ text: string; marks: number; accept_if?: string; reject_if?: string }>;
+  flags?: string[];
+  teacher_override_reason?: string;
 }
 
 export interface SectionRuleSummary {

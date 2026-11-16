@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import {
   AlertTriangle,
   CheckCircle2,
@@ -22,6 +22,16 @@ import {
   Unlock,
   ZoomIn,
   ZoomOut,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+  ChevronUp,
+  Plus,
+  Minus,
+  Search,
+  Filter,
+  Layers,
 } from 'lucide-react';
 import {
   callEvaluateSheetApi,
@@ -97,11 +107,14 @@ interface UIQuestion {
   section_name: string;
   section_id?: string;
   options: string[];
+  word_limit?: number;
 }
 
 interface UIKeyPoint {
   text: string;
   marks: number;
+  accept_if?: string;
+  reject_if?: string;
 }
 
 interface UIReferenceItem {
@@ -109,12 +122,28 @@ interface UIReferenceItem {
   key: string;
   question_id?: string;
   model_answer: string;
+  word_count?: number;
   key_points: UIKeyPoint[];
   accepted_alternatives?: string[];
   common_mistakes?: string[];
   correct_option?: string | null;
   confidence?: number;
   source?: string;
+  disagreements?: string[];
+}
+
+interface UISheetSummary {
+  id: string;
+  student_name: string;
+  roll_number: string;
+  status: string;
+  total_score: number;
+  max_marks: number;
+  percentage: number;
+  grade: string;
+  unresolved_flags_count: number;
+  total_flags_count: number;
+  created_at: string;
 }
 
 export function TeacherPrototypeWorkspace() {
@@ -176,6 +205,24 @@ export function TeacherPrototypeWorkspace() {
   const [paperSummary, setPaperSummary] = useState<EvaluatedPaperSummary | null>(null);
   const [result, setResult] = useState<ServerEvaluateSheetResult | null>(null);
 
+  // Phase C: Per-Question Reference Regeneration & Expansion State
+  const [generatingKeys, setGeneratingKeys] = useState<Record<string, boolean>>({});
+
+  // Phase D: 3-Pane Teacher Review & Shortcuts State
+  const [selectedKey, setSelectedKey] = useState<string>('');
+  const [flaggedOnlyFilter, setFlaggedOnlyFilter] = useState<boolean>(false);
+  const [editTranscript, setEditTranscript] = useState<string>('');
+  const [overrideMarks, setOverrideMarks] = useState<number>(0);
+  const [overrideReason, setOverrideReason] = useState<string>('');
+  const [isCountedOverride, setIsCountedOverride] = useState<boolean>(true);
+  const [isFinalizing, setIsFinalizing] = useState<boolean>(false);
+
+  // Phase D: Batch Sheets State
+  const [sheetsList, setSheetsList] = useState<UISheetSummary[]>([]);
+  const [sheetStatusFilter, setSheetStatusFilter] = useState<string>('all');
+  const [sheetSearchQuery, setSheetSearchQuery] = useState<string>('');
+  const [isBulkFinalizing, setIsBulkFinalizing] = useState<boolean>(false);
+
   // Library & Training Verify State
   const [currentPaperId, setCurrentPaperId] = useState<string>('');
   const [currentSheetId, setCurrentSheetId] = useState<string>('');
@@ -221,6 +268,78 @@ export function TeacherPrototypeWorkspace() {
     [editableQuestions]
   );
   const paperTotalMismatch = paperTotalMarks > 0 ? calculatedQuestionTotal !== paperTotalMarks : false;
+
+  // Selected item and batch sheets loader for Phase D
+  const selectedReviewItem = useMemo(() => {
+    if (!reviewItems || reviewItems.length === 0) return null;
+    if (selectedKey) {
+      const match = reviewItems.find(
+        (it) => it.q_no === selectedKey || it.question_key === selectedKey || it.eval_id === selectedKey
+      );
+      if (match) return match;
+    }
+    return reviewItems[0];
+  }, [reviewItems, selectedKey]);
+
+  useEffect(() => {
+    if (!selectedReviewItem) return;
+    setEditTranscript(selectedReviewItem.transcribed_text || '');
+    setOverrideMarks(
+      selectedReviewItem.finalMarks !== undefined
+        ? selectedReviewItem.finalMarks
+        : (selectedReviewItem.suggested_marks || 0)
+    );
+    setOverrideReason(selectedReviewItem.teacher_override_reason || '');
+    setIsCountedOverride(
+      selectedReviewItem.isCounted !== undefined ? selectedReviewItem.isCounted : true
+    );
+
+    if (
+      selectedReviewItem.page_numbers &&
+      Array.isArray(selectedReviewItem.page_numbers) &&
+      selectedReviewItem.page_numbers.length > 0
+    ) {
+      const p = selectedReviewItem.page_numbers[0];
+      if (typeof p === 'number' && p >= 0) {
+        setActiveSheetPage(p);
+      }
+    }
+  }, [selectedReviewItem?.eval_id, selectedReviewItem?.q_no]);
+
+  const loadSheetsList = async (paperId?: string) => {
+    const pid = paperId || currentPaperId;
+    if (!pid) return;
+    try {
+      const res = await fetch(`/api/papers/${pid}/sheets`);
+      if (res.ok) {
+        const data = await res.json();
+        setSheetsList(data.sheets || []);
+      }
+    } catch {
+      // Offline fallback
+    }
+  };
+
+  const filteredSheets = useMemo(() => {
+    return sheetsList.filter((s) => {
+      if (sheetStatusFilter === 'flagged' && s.unresolved_flags_count === 0) return false;
+      if (sheetStatusFilter === 'completed' && s.status !== 'completed') return false;
+      if (sheetStatusFilter === 'queued' && s.status !== 'queued' && s.status !== 'reading' && s.status !== 'marking') return false;
+      if (sheetSearchQuery.trim()) {
+        const q = sheetSearchQuery.toLowerCase();
+        const nameMatch = (s.student_name || '').toLowerCase().includes(q);
+        const rollMatch = (s.roll_number || '').toLowerCase().includes(q);
+        if (!nameMatch && !rollMatch) return false;
+      }
+      return true;
+    });
+  }, [sheetsList, sheetStatusFilter, sheetSearchQuery]);
+
+  useEffect(() => {
+    if (currentPaperId) {
+      loadSheetsList(currentPaperId);
+    }
+  }, [currentPaperId, step]);
 
   // Load saved papers from SQLite Library
   const loadSavedPapers = async () => {
@@ -529,6 +648,8 @@ export function TeacherPrototypeWorkspace() {
         const mapped: EvaluatedReviewItem[] = allEvals.map((e: any) => ({
           eval_id: e.eval_id || e.id,
           question_id: e.question_id,
+          question_key: e.question_key || e.key || String(e.q_no),
+          question_text: e.question_text || '',
           q_no: String(e.q_no),
           section_name: e.section_name || 'General',
           transcribed_text: e.extracted_text || '',
@@ -546,8 +667,16 @@ export function TeacherPrototypeWorkspace() {
             ? 'Optional / Extra — Not Counted'
             : (e.resolved ? 'Checked' : 'Flagged'),
           evidence_quote: e.evidence_quote || '',
+          page_numbers: Array.isArray(e.page_numbers) ? e.page_numbers : (typeof e.page_numbers === 'string' ? JSON.parse(e.page_numbers || '[]') : []),
+          bbox_json: e.bbox_json,
+          model_answer: e.model_answer || '',
+          key_points: e.key_points || [],
+          flags: e.flags || [],
         }));
         setReviewItems(mapped);
+        if (!selectedKey && mapped.length > 0) {
+          setSelectedKey(mapped[0].question_key || mapped[0].q_no);
+        }
       }
     } catch (err) {
       console.error('Error loading sheet review:', err);
@@ -911,6 +1040,326 @@ export function TeacherPrototypeWorkspace() {
     }
   };
 
+  // Phase C: Per-Question Reference Regeneration & Expansion
+  const handleRegenerateQuestion = async (qKey: string) => {
+    if (!currentPaperId) return;
+    setGeneratingKeys((prev) => ({ ...prev, [qKey]: true }));
+    setError('');
+    setStatus(`Regenerating reference for ${formatQNo(qKey)}...`);
+    try {
+      const res = await fetch(`/api/papers/${currentPaperId}/questions/${encodeURIComponent(qKey)}/reference/regenerate`, {
+        method: 'POST',
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || `Failed to regenerate reference for ${qKey}`);
+      }
+      const data = await res.json();
+      const updatedRef = data.reference;
+      setReferences((prev) =>
+        prev.map((r) => (r.key === qKey ? { ...r, ...updatedRef } : r))
+      );
+      setStatus(`Reference for ${formatQNo(qKey)} regenerated successfully.`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Regeneration failed');
+    } finally {
+      setGeneratingKeys((prev) => ({ ...prev, [qKey]: false }));
+    }
+  };
+
+  const handleExpandQuestion = async (qKey: string) => {
+    if (!currentPaperId) return;
+    setGeneratingKeys((prev) => ({ ...prev, [qKey]: true }));
+    setError('');
+    setStatus(`Critiquing & expanding reference for ${formatQNo(qKey)}...`);
+    try {
+      const res = await fetch(`/api/papers/${currentPaperId}/questions/${encodeURIComponent(qKey)}/reference/expand`, {
+        method: 'POST',
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || `Failed to expand reference for ${qKey}`);
+      }
+      const data = await res.json();
+      const updatedRef = data.reference;
+      setReferences((prev) =>
+        prev.map((r) => (r.key === qKey ? { ...r, ...updatedRef } : r))
+      );
+      setStatus(`Reference for ${formatQNo(qKey)} expanded successfully.`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Expansion failed');
+    } finally {
+      setGeneratingKeys((prev) => ({ ...prev, [qKey]: false }));
+    }
+  };
+
+  // Phase D: Navigation & Keyboard Shortcuts
+  const selectNextQuestion = (direction: 1 | -1) => {
+    if (!reviewItems || reviewItems.length === 0) return;
+    const currentIdx = reviewItems.findIndex(
+      (it) => it.q_no === selectedKey || it.question_key === selectedKey || it.eval_id === selectedKey
+    );
+    let nextIdx = (currentIdx === -1 ? 0 : currentIdx) + direction;
+    if (nextIdx >= reviewItems.length) nextIdx = 0;
+    if (nextIdx < 0) nextIdx = reviewItems.length - 1;
+    const nextItem = reviewItems[nextIdx];
+    if (nextItem) {
+      setSelectedKey(nextItem.question_key || nextItem.q_no || nextItem.eval_id || '');
+    }
+  };
+
+  const selectNextFlaggedQuestion = () => {
+    if (!reviewItems || reviewItems.length === 0) return;
+    const currentIdx = reviewItems.findIndex(
+      (it) => it.q_no === selectedKey || it.question_key === selectedKey || it.eval_id === selectedKey
+    );
+    for (let i = 1; i <= reviewItems.length; i++) {
+      const idx = (currentIdx + i) % reviewItems.length;
+      if (!reviewItems[idx].resolved) {
+        setSelectedKey(reviewItems[idx].question_key || reviewItems[idx].q_no || reviewItems[idx].eval_id || '');
+        return;
+      }
+    }
+  };
+
+  const handleAcceptCurrent = async (item: EvaluatedReviewItem) => {
+    const finalVal = item.suggested_marks !== undefined ? item.suggested_marks : item.finalMarks;
+    const updated = reviewItems.map((cur) =>
+      cur.q_no === item.q_no
+        ? {
+            ...cur,
+            finalMarks: finalVal,
+            resolved: true,
+            statusLabel: 'Checked',
+            isCounted: isCountedOverride,
+          }
+        : cur
+    );
+    setReviewItems(updated);
+
+    if (item.eval_id) {
+      try {
+        const res = await fetch(`/api/evaluations/${item.eval_id}/review`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            teacher_marks: finalVal,
+            comment: '',
+            accept_ai: true,
+            is_counted: isCountedOverride,
+          }),
+        });
+        if (res.ok && currentSheetId) {
+          await loadSheetReview(currentSheetId);
+        }
+      } catch (err) {
+        console.error('Accept failed:', err);
+      }
+    }
+
+    selectNextQuestion(1);
+  };
+
+  const handleOverrideCurrent = async (item: EvaluatedReviewItem) => {
+    const isAiMismatch = overrideMarks !== (item.suggested_marks ?? item.finalMarks);
+    if (isAiMismatch && !overrideReason.trim()) {
+      setError('A teacher override reason is required when overriding AI marks.');
+      return;
+    }
+    setError('');
+
+    const updated = reviewItems.map((cur) =>
+      cur.q_no === item.q_no
+        ? {
+            ...cur,
+            finalMarks: overrideMarks,
+            resolved: true,
+            statusLabel: 'Checked',
+            teacher_override_reason: overrideReason,
+            isCounted: isCountedOverride,
+          }
+        : cur
+    );
+    setReviewItems(updated);
+
+    if (item.eval_id) {
+      try {
+        const res = await fetch(`/api/evaluations/${item.eval_id}/review`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            teacher_marks: overrideMarks,
+            comment: overrideReason.trim(),
+            accept_ai: false,
+            is_counted: isCountedOverride,
+          }),
+        });
+        if (res.ok && currentSheetId) {
+          await loadSheetReview(currentSheetId);
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Override failed');
+      }
+    }
+
+    selectNextQuestion(1);
+  };
+
+  const handleLiveRecheck = async (item: EvaluatedReviewItem) => {
+    if (!item?.eval_id) return;
+    setStatus(`Re-checking ${formatQNo(item.q_no)} with AI rubric...`);
+    try {
+      const res = await fetch(`/api/evaluations/${item.eval_id}/recheck`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ edited_text: editTranscript }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || 'Recheck request failed');
+      }
+      const data = await res.json();
+      const updatedItem: EvaluatedReviewItem = {
+        ...item,
+        transcribed_text: editTranscript,
+        suggested_marks: data.ai_marks,
+        finalMarks: data.final_marks,
+        reason: Array.isArray(data.flags) && data.flags.length > 0 ? data.flags.join('; ') : data.reason,
+        resolved: Boolean(data.resolved),
+        statusLabel: data.resolved ? 'Checked' : 'Flagged',
+        feedback: data.reason,
+        evidence_quote: data.evidence_quote || '',
+      };
+      setReviewItems((items) => items.map((it) => (it.q_no === item.q_no ? updatedItem : it)));
+      if (currentSheetId) {
+        await loadSheetReview(currentSheetId);
+      }
+      setStatus(`Re-check for ${formatQNo(item.q_no)} completed.`);
+      setTimeout(() => setStatus(''), 2000);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Recheck failed');
+    }
+  };
+
+  const handleToggleCounted = async (item: EvaluatedReviewItem, countVal: boolean) => {
+    setIsCountedOverride(countVal);
+    const updated = reviewItems.map((cur) =>
+      cur.q_no === item.q_no
+        ? {
+            ...cur,
+            isCounted: countVal,
+            statusLabel: !countVal ? 'Optional / Extra — Not Counted' : (cur.resolved ? 'Checked' : 'Flagged'),
+          }
+        : cur
+    );
+    setReviewItems(updated);
+
+    if (item.eval_id) {
+      try {
+        await fetch(`/api/evaluations/${item.eval_id}/review`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            teacher_marks: item.finalMarks,
+            accept_ai: true,
+            is_counted: countVal,
+          }),
+        });
+        if (currentSheetId) {
+          await loadSheetReview(currentSheetId);
+        }
+      } catch (err) {
+        console.error('Toggle counted failed:', err);
+      }
+    }
+  };
+
+  const handleFinalizeSheet = async (sheetId: string) => {
+    if (!sheetId) return;
+    const unresolved = reviewItems.filter((it) => !it.resolved);
+    if (unresolved.length > 0) {
+      setError(`Cannot finalize: ${unresolved.length} unresolved flagged question(s) remain. Resolve all flags before finalizing.`);
+      return;
+    }
+    setIsFinalizing(true);
+    setError('');
+    setStatus('Finalizing student answer sheet...');
+    try {
+      const res = await fetch(`/api/sheets/${sheetId}/finalize`, { method: 'POST' });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || 'Failed to finalize sheet.');
+      }
+      setStatus('Sheet finalized successfully! Transitioning to academic reports...');
+      setStep('report');
+      loadReports();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Finalization failed');
+    } finally {
+      setIsFinalizing(false);
+    }
+  };
+
+  const handleBulkFinalize = async () => {
+    if (!currentPaperId) return;
+    setIsBulkFinalizing(true);
+    setError('');
+    setStatus('Bulk finalizing eligible sheets (0 unresolved flags)...');
+    try {
+      const res = await fetch('/api/sheets/bulk-finalize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paper_id: currentPaperId }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || 'Bulk finalization failed.');
+      }
+      const data = await res.json();
+      setStatus(`Successfully finalized ${data.finalized_count} sheet(s).`);
+      loadSheetsList(currentPaperId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Bulk finalization failed');
+    } finally {
+      setIsBulkFinalizing(false);
+    }
+  };
+
+  // Keyboard shortcut listener for Review Workspace (J: next, K: prev, A: accept, F: next flagged)
+  useEffect(() => {
+    if (step !== 'review') return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+      const key = e.key.toUpperCase();
+      if (key === 'J') {
+        e.preventDefault();
+        selectNextQuestion(1);
+      } else if (key === 'K') {
+        e.preventDefault();
+        selectNextQuestion(-1);
+      } else if (key === 'A') {
+        e.preventDefault();
+        if (selectedReviewItem) {
+          handleAcceptCurrent(selectedReviewItem);
+        }
+      } else if (key === 'F') {
+        e.preventDefault();
+        selectNextFlaggedQuestion();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [step, reviewItems, selectedKey, selectedReviewItem, isCountedOverride]);
+
   const handleOpenPaper = async (paperId: string) => {
     try {
       const res = await fetch(`/api/papers/${paperId}`);
@@ -994,6 +1443,7 @@ export function TeacherPrototypeWorkspace() {
 
   const checked = reviewItems.filter((i) => i.resolved && i.isCounted);
   const flagged = reviewItems.filter((i) => !i.resolved);
+  const unresolvedFlagsCount = flagged.length;
   const uncounted = reviewItems.filter((i) => !i.isCounted);
   const totalScore = paperSummary ? paperSummary.totalScore : checked.reduce((s, i) => s + i.finalMarks, 0);
   const maxMarks = answerKey?.paper_max_marks || (paperSummary ? paperSummary.paperMaxMarks : calculatedQuestionTotal);
@@ -1665,10 +2115,15 @@ export function TeacherPrototypeWorkspace() {
                   <div className="space-y-3">
                     {references.map((ref, rIdx) => {
                       const q = editableQuestions.find((item) => item.key === ref.key) || editableQuestions[rIdx];
+                      const wordCount = (ref.model_answer || '').trim().split(/\s+/).filter(Boolean).length;
+                      const targetWords = q?.word_limit || (q?.max_marks && q.max_marks >= 10 ? 300 : q?.max_marks && q.max_marks >= 6 ? 200 : 50);
+                      const isAdequate = wordCount >= Math.floor(targetWords * 0.7);
+                      const isBusy = Boolean(generatingKeys[ref.key]);
+
                       return (
-                        <div key={ref.key || rIdx} className="rounded-lg border border-[#d4e3ff] bg-white p-4 shadow-2xs">
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-2">
+                        <div key={ref.key || rIdx} className="rounded-lg border border-[#d4e3ff] bg-white p-4 shadow-2xs space-y-3">
+                          <div className="flex items-center justify-between flex-wrap gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
                               <span className="rounded bg-[#005dac] px-2 py-0.5 text-[11px] font-bold text-white">
                                 {q?.q_no || `Q.${rIdx + 1}`}
                               </span>
@@ -1678,20 +2133,63 @@ export function TeacherPrototypeWorkspace() {
                               <span className="rounded bg-[#f1f5f9] px-2 py-0.5 text-[10px] font-bold text-[#64748b]">
                                 {q?.max_marks} Marks · {q?.question_type?.toUpperCase()}
                               </span>
-                            </div>
-                            {ref.correct_option && (
-                              <span className="text-xs font-bold text-[#005dac] bg-[#eff4ff] px-2 py-0.5 rounded">
-                                Correct Option: {ref.correct_option}
+                              <span className={`rounded px-2 py-0.5 text-[10px] font-bold ${
+                                isAdequate ? 'bg-[#e8f5e9] text-[#1b5e20] border border-[#a5d6a7]' : 'bg-[#fff3e0] text-[#b26a00] border border-[#ffe0b2]'
+                              }`}>
+                                {wordCount} / ~{targetWords} words
                               </span>
-                            )}
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              {ref.correct_option && (
+                                <span className="text-xs font-bold text-[#005dac] bg-[#eff4ff] px-2 py-0.5 rounded">
+                                  Correct Option: {ref.correct_option}
+                                </span>
+                              )}
+                              {!isLocked && (
+                                <div className="flex items-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    disabled={isBusy}
+                                    onClick={() => handleRegenerateQuestion(ref.key)}
+                                    className="rounded border border-[#c1c6d4] bg-white px-2.5 py-1 text-[11px] font-semibold text-[#005dac] hover:bg-[#eff4ff] flex items-center gap-1 disabled:opacity-50"
+                                    title="Regenerate reference and key points for this question"
+                                  >
+                                    <RefreshCw className={`w-3 h-3 ${isBusy ? 'animate-spin text-[#005dac]' : ''}`} />
+                                    <span>Regenerate</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={isBusy}
+                                    onClick={() => handleExpandQuestion(ref.key)}
+                                    className="rounded border border-[#005dac] bg-[#eff4ff] px-2.5 py-1 text-[11px] font-semibold text-[#005dac] hover:bg-[#dbe6f5] flex items-center gap-1 disabled:opacity-50"
+                                    title="Critique missing depth and expand answer to target word length"
+                                  >
+                                    <Sparkles className="w-3 h-3" />
+                                    <span>Expand</span>
+                                  </button>
+                                </div>
+                              )}
+                            </div>
                           </div>
+
+                          {ref.disagreements && ref.disagreements.length > 0 && (
+                            <div className="rounded border border-[#ffe0b2] bg-[#fff8e1] p-2 text-[11px] text-[#b26a00]">
+                              <strong className="block font-semibold">Dual-Draft Divergence:</strong>
+                              <ul className="list-disc list-inside mt-0.5 space-y-0.5">
+                                {ref.disagreements.map((d, dIdx) => (
+                                  <li key={dIdx}>{d}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
 
                           <div className="space-y-2 text-xs">
                             <div>
                               <label className="block text-[11px] font-semibold text-[#64748b] mb-1">Model Answer:</label>
                               <textarea
                                 disabled={isLocked}
-                                rows={2}
+                                rows={3}
                                 value={ref.model_answer}
                                 onChange={(e) => {
                                   const copy = [...references];
@@ -1707,33 +2205,65 @@ export function TeacherPrototypeWorkspace() {
                                 <label className="block text-[11px] font-semibold text-[#64748b] mb-1">
                                   Rubric Key Points ({ref.key_points.reduce((s, p) => s + (Number(p.marks) || 0), 0)} / {q?.max_marks} M):
                                 </label>
-                                <div className="space-y-1.5">
+                                <div className="space-y-2">
                                   {ref.key_points.map((kp, kpIdx) => (
-                                    <div key={kpIdx} className="flex items-center gap-2">
-                                      <input
-                                        disabled={isLocked}
-                                        value={kp.text}
-                                        onChange={(e) => {
-                                          const copy = [...references];
-                                          copy[rIdx].key_points[kpIdx].text = e.target.value;
-                                          setReferences(copy);
-                                        }}
-                                        className="flex-1 rounded border border-[#c1c6d4] px-2 py-1 text-xs disabled:bg-transparent"
-                                      />
-                                      <input
-                                        disabled={isLocked}
-                                        type="number"
-                                        step={0.5}
-                                        min={0.5}
-                                        value={kp.marks}
-                                        onChange={(e) => {
-                                          const copy = [...references];
-                                          copy[rIdx].key_points[kpIdx].marks = Number(e.target.value) || 0.5;
-                                          setReferences(copy);
-                                        }}
-                                        className="w-16 rounded border border-[#c1c6d4] px-2 py-1 text-xs font-bold text-[#005dac] disabled:bg-transparent"
-                                      />
-                                      <span className="text-[11px] text-[#64748b]">M</span>
+                                    <div key={kpIdx} className="rounded border border-[#e2e8f0] bg-[#fafcff] p-2 space-y-1.5">
+                                      <div className="flex items-center gap-2">
+                                        <input
+                                          disabled={isLocked}
+                                          value={kp.text}
+                                          onChange={(e) => {
+                                            const copy = [...references];
+                                            copy[rIdx].key_points[kpIdx].text = e.target.value;
+                                            setReferences(copy);
+                                          }}
+                                          className="flex-1 rounded border border-[#c1c6d4] px-2 py-1 text-xs disabled:bg-transparent"
+                                        />
+                                        <input
+                                          disabled={isLocked}
+                                          type="number"
+                                          step={0.5}
+                                          min={0.5}
+                                          value={kp.marks}
+                                          onChange={(e) => {
+                                            const copy = [...references];
+                                            copy[rIdx].key_points[kpIdx].marks = Number(e.target.value) || 0.5;
+                                            setReferences(copy);
+                                          }}
+                                          className="w-16 rounded border border-[#c1c6d4] px-2 py-1 text-xs font-bold text-[#005dac] disabled:bg-transparent"
+                                        />
+                                        <span className="text-[11px] text-[#64748b]">M</span>
+                                      </div>
+                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px] pl-1">
+                                        <div className="flex items-center gap-1.5">
+                                          <span className="font-semibold text-[#1b5e20] shrink-0 text-[10px]">Accept if:</span>
+                                          <input
+                                            disabled={isLocked}
+                                            placeholder="e.g. Real syntax or standard command arguments"
+                                            value={kp.accept_if || ''}
+                                            onChange={(e) => {
+                                              const copy = [...references];
+                                              copy[rIdx].key_points[kpIdx].accept_if = e.target.value;
+                                              setReferences(copy);
+                                            }}
+                                            className="w-full rounded border border-[#c8e6c9] bg-[#f9fef9] px-2 py-0.5 text-[11px] text-[#1b5e20]"
+                                          />
+                                        </div>
+                                        <div className="flex items-center gap-1.5">
+                                          <span className="font-semibold text-[#ba1a1a] shrink-0 text-[10px]">Reject if:</span>
+                                          <input
+                                            disabled={isLocked}
+                                            placeholder="e.g. Non-computing analogies or syntax error"
+                                            value={kp.reject_if || ''}
+                                            onChange={(e) => {
+                                              const copy = [...references];
+                                              copy[rIdx].key_points[kpIdx].reject_if = e.target.value;
+                                              setReferences(copy);
+                                            }}
+                                            className="w-full rounded border border-[#ffcdd2] bg-[#fffafb] px-2 py-0.5 text-[11px] text-[#ba1a1a]"
+                                          />
+                                        </div>
+                                      </div>
                                     </div>
                                   ))}
                                 </div>
@@ -1907,6 +2437,156 @@ export function TeacherPrototypeWorkspace() {
                 </div>
               </div>
             </div>
+
+            {/* Phase D: Batch Sheets Queue & Management Card */}
+            {sheetsList.length > 0 && (
+              <div className="rounded-xl border border-[#e2e8f0] bg-white p-5 shadow-sm space-y-4">
+                <div className="flex items-center justify-between flex-wrap gap-2 border-b border-[#f1f5f9] pb-3">
+                  <div>
+                    <h2 className="text-sm font-bold text-[#004786] flex items-center gap-2">
+                      <Layers className="w-4 h-4 text-[#005dac]" />
+                      Class Answer Sheets Queue ({sheetsList.length} Sheets)
+                    </h2>
+                    <p className="text-xs text-[#526071]">
+                      Batch-track student sheet processing status, unresolved flags, and bulk finalize clean sheets.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={isBulkFinalizing || sheetsList.filter(s => s.status === 'completed' && s.unresolved_flags_count === 0).length === 0}
+                      onClick={handleBulkFinalize}
+                      className="rounded-lg bg-[#196b22] px-3.5 py-1.5 text-xs font-bold text-white hover:bg-[#14531b] disabled:opacity-40 flex items-center gap-1.5 shadow-2xs"
+                      title="Bulk finalize all completed sheets with zero unresolved flags"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>{isBulkFinalizing ? 'Finalizing...' : `Bulk Finalize (${sheetsList.filter(s => s.status === 'completed' && s.unresolved_flags_count === 0).length} Clean Sheets)`}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => loadSheetsList(currentPaperId)}
+                      className="rounded-lg border border-[#c1c6d4] bg-white p-1.5 text-[#005dac] hover:bg-[#eff4ff]"
+                      title="Refresh sheets list"
+                    >
+                      <RefreshCw className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Filters Bar */}
+                <div className="flex items-center justify-between gap-3 flex-wrap text-xs">
+                  <div className="flex items-center gap-1.5">
+                    <Filter className="w-3.5 h-3.5 text-[#64748b]" />
+                    <span className="font-semibold text-[#64748b]">Filter:</span>
+                    {(['all', 'flagged', 'completed', 'queued'] as const).map((filterKey) => (
+                      <button
+                        key={filterKey}
+                        type="button"
+                        onClick={() => setSheetStatusFilter(filterKey)}
+                        className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold capitalize transition-all ${
+                          sheetStatusFilter === filterKey
+                            ? 'bg-[#005dac] text-white shadow-2xs'
+                            : 'bg-[#f1f5f9] text-[#64748b] hover:bg-[#e2e8f0]'
+                        }`}
+                      >
+                        {filterKey === 'flagged' ? 'Needs Review / Flagged' : filterKey}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="relative">
+                    <Search className="w-3.5 h-3.5 text-[#94a3b8] absolute left-2.5 top-2" />
+                    <input
+                      value={sheetSearchQuery}
+                      onChange={(e) => setSheetSearchQuery(e.target.value)}
+                      placeholder="Search student or roll no..."
+                      className="rounded-lg border border-[#c1c6d4] pl-8 pr-3 py-1 text-xs w-56"
+                    />
+                  </div>
+                </div>
+
+                {/* Sheets Table */}
+                <div className="overflow-x-auto rounded-lg border border-[#e2e8f0]">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-[#f8f9ff] text-[11px] font-bold text-[#64748b] border-b border-[#e2e8f0]">
+                      <tr>
+                        <th className="py-2.5 px-3">Roll No</th>
+                        <th className="py-2.5 px-3">Student Name</th>
+                        <th className="py-2.5 px-3">Status</th>
+                        <th className="py-2.5 px-3">Score</th>
+                        <th className="py-2.5 px-3">Flags</th>
+                        <th className="py-2.5 px-3 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#f1f5f9]">
+                      {filteredSheets.map((sh) => (
+                        <tr key={sh.id} className="hover:bg-[#f8fbff] transition-all">
+                          <td className="py-2.5 px-3 font-mono font-bold text-[#005dac]">{sh.roll_number || '—'}</td>
+                          <td className="py-2.5 px-3 font-semibold text-[#1e293b]">{sh.student_name || 'Unnamed'}</td>
+                          <td className="py-2.5 px-3">
+                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
+                              sh.status === 'completed'
+                                ? 'bg-[#e8f5e9] text-[#1b5e20]'
+                                : sh.status === 'failed'
+                                ? 'bg-[#ffdad6] text-[#93000a]'
+                                : 'bg-[#eff4ff] text-[#005dac]'
+                            }`}>
+                              {sh.status}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3 font-bold text-[#1e293b]">
+                            {sh.total_score !== undefined ? `${sh.total_score} / ${sh.max_marks} M` : '—'}
+                            {sh.grade && <span className="ml-1 text-[11px] font-semibold text-[#64748b]">({sh.grade})</span>}
+                          </td>
+                          <td className="py-2.5 px-3">
+                            {sh.unresolved_flags_count > 0 ? (
+                              <span className="rounded bg-[#ffdad6] text-[#93000a] px-2 py-0.5 text-[10px] font-bold flex items-center gap-1 w-fit">
+                                <Flag className="w-3 h-3" /> {sh.unresolved_flags_count} Unresolved
+                              </span>
+                            ) : (
+                              <span className="text-[11px] text-[#196b22] font-semibold flex items-center gap-1">
+                                <Check className="w-3.5 h-3.5" /> 0 Flags
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-2.5 px-3 text-right space-x-1.5">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setCurrentSheetId(sh.id);
+                                loadSheetReview(sh.id);
+                                setStep('review');
+                              }}
+                              className="rounded border border-[#005dac] bg-[#eff4ff] px-2.5 py-1 text-[11px] font-bold text-[#005dac] hover:bg-[#dbe6f5]"
+                            >
+                              Review
+                            </button>
+                            <button
+                              type="button"
+                              disabled={sh.unresolved_flags_count > 0 || isFinalizing}
+                              onClick={() => handleFinalizeSheet(sh.id)}
+                              className="rounded border border-[#196b22] bg-white px-2 py-1 text-[11px] font-bold text-[#196b22] hover:bg-[#e8f5e9] disabled:opacity-40"
+                              title={sh.unresolved_flags_count > 0 ? 'Resolve flags before finalizing' : 'Finalize sheet'}
+                            >
+                              Finalize
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteSheet(sh.id)}
+                              className="rounded border border-[#ba1a1a] bg-white p-1 text-[#ba1a1a] hover:bg-[#ffdad6]"
+                              title="Delete sheet"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </section>
         )}
 
@@ -2008,323 +2688,589 @@ export function TeacherPrototypeWorkspace() {
           </section>
         )}
 
-        {/* ----------------- SCREEN 4: SPLIT-VIEW REVIEW & POPUP ----------------- */}
+        {/* ----------------- SCREEN 4: 3-PANE TEACHER REVIEW WORKSPACE ----------------- */}
         {step === 'review' && (
-          <section className="grid gap-5 xl:grid-cols-[1fr_360px]">
+          <section className="space-y-4">
+            {/* Top Bar: Student Identity, Live Total Score, KPI & Finalize Action */}
             <div className="rounded-xl border border-[#e2e8f0] bg-white p-4 shadow-sm">
-              <div className="flex items-center justify-between mb-4 border-b border-[#f1f5f9] pb-3">
+              <div className="flex items-center justify-between flex-wrap gap-3 border-b border-[#f1f5f9] pb-3 mb-3">
                 <div>
                   <h1 className="text-base font-bold flex items-center gap-2 text-[#005dac]">
-                    Answer Sheet Review & Verification
+                    Teacher Review Workspace · {studentName} ({rollNo})
                   </h1>
                   <p className="text-xs text-[#64748b]">
-                    Student: <strong>{studentName}</strong> ({rollNo}) · Evaluation Basis: <strong>{basis}</strong>
+                    Evaluation Basis: <strong className="text-[#005dac]">{basis}</strong> · Paper: <strong>{paperTitle || 'Exam Paper'}</strong>
                   </p>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* Keyboard Shortcuts Pill */}
+                  <span className="hidden sm:inline-flex items-center gap-2 rounded-lg bg-[#f1f5f9] px-2.5 py-1 text-[11px] font-mono text-[#526071] border border-[#e2e8f0]">
+                    <span className="font-bold text-[#005dac]">J/K:</span> Nav &nbsp;|&nbsp;
+                    <span className="font-bold text-[#005dac]">A:</span> Accept &nbsp;|&nbsp;
+                    <span className="font-bold text-[#005dac]">F:</span> Flagged
+                  </span>
+
+                  {/* Finalize Sheet Button */}
+                  <button
+                    type="button"
+                    disabled={unresolvedFlagsCount > 0 || isFinalizing}
+                    onClick={() => currentSheetId && handleFinalizeSheet(currentSheetId)}
+                    className={`rounded-lg px-4 py-2 text-xs font-bold shadow-xs flex items-center gap-1.5 transition-all ${
+                      unresolvedFlagsCount > 0
+                        ? 'bg-[#e2e8f0] text-[#94a3b8] cursor-not-allowed border border-[#cbd5e1]'
+                        : 'bg-[#196b22] text-white hover:bg-[#14531b] cursor-pointer'
+                    }`}
+                    title={unresolvedFlagsCount > 0 ? `Cannot finalize: ${unresolvedFlagsCount} unresolved flag(s) remain` : 'Finalize sheet and generate report card'}
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>{isFinalizing ? 'Finalizing...' : 'Finalize Sheet'}</span>
+                    {unresolvedFlagsCount > 0 && (
+                      <span className="rounded bg-[#ffdad6] px-1.5 py-0.2 text-[10px] text-[#93000a] font-bold">
+                        {unresolvedFlagsCount} flag{unresolvedFlagsCount > 1 ? 's' : ''} left
+                      </span>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStep('report');
+                      loadReports();
+                    }}
+                    className="rounded-lg border border-[#c1c6d4] bg-white px-3 py-2 text-xs font-bold text-[#414752] hover:bg-[#f1f5f9]"
+                  >
+                    Reports
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => currentSheetId && handleDeleteSheet(currentSheetId)}
+                    className="rounded-lg border border-[#ba1a1a] bg-white p-2 text-[#ba1a1a] hover:bg-[#ffdad6]"
+                    title="Delete sheet"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </div>
 
-              {/* Executive KPI Summary Cards */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-                <div className="p-3 rounded-xl bg-[#eff4ff] border border-[#d4e3ff]">
-                  <span className="text-[11px] font-semibold text-[#005dac] block">Total Score</span>
+              {/* KPI Score Strip */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="p-2.5 rounded-xl bg-[#eff4ff] border border-[#d4e3ff]">
+                  <span className="text-[11px] font-semibold text-[#005dac] block">Total Counted Score</span>
                   <div className="flex items-baseline gap-1 mt-0.5">
                     <span className="text-xl font-bold text-[#005dac]">{totalScore}</span>
-                    <span className="text-xs text-[#005dac]/70 font-semibold">/ {maxMarks}</span>
+                    <span className="text-xs text-[#005dac]/70 font-semibold">/ {maxMarks} M</span>
                   </div>
                 </div>
-                <div className="p-3 rounded-xl bg-[#f8f9ff] border border-[#e2e8f0]">
+                <div className="p-2.5 rounded-xl bg-[#f8f9ff] border border-[#e2e8f0]">
                   <span className="text-[11px] font-semibold text-[#64748b] block">Percentage</span>
                   <div className="text-xl font-bold text-[#1e293b] mt-0.5">{percentage}%</div>
                 </div>
-                <div className="p-3 rounded-xl bg-[#e8f5e9] border border-[#c8e6c9]">
+                <div className="p-2.5 rounded-xl bg-[#e8f5e9] border border-[#c8e6c9]">
                   <span className="text-[11px] font-semibold text-[#196b22] block">Grade</span>
                   <div className="text-xl font-bold text-[#196b22] mt-0.5">{grade}</div>
                 </div>
-                <div className={`p-3 rounded-xl border ${flagged.length > 0 ? 'bg-[#ffdad6] border-[#ba1a1a]' : 'bg-[#f8f9ff] border-[#e2e8f0]'}`}>
-                  <span className={`text-[11px] font-semibold block ${flagged.length > 0 ? 'text-[#93000a]' : 'text-[#64748b]'}`}>
-                    Flagged for Review
+                <div className={`p-2.5 rounded-xl border ${unresolvedFlagsCount > 0 ? 'bg-[#ffdad6] border-[#ba1a1a]' : 'bg-[#f8f9ff] border-[#e2e8f0]'}`}>
+                  <span className={`text-[11px] font-semibold block ${unresolvedFlagsCount > 0 ? 'text-[#93000a]' : 'text-[#64748b]'}`}>
+                    Unresolved Flags
                   </span>
-                  <div className={`text-xl font-bold mt-0.5 ${flagged.length > 0 ? 'text-[#93000a]' : 'text-[#1e293b]'}`}>
-                    {flagged.length} {flagged.length === 0 ? '✓' : ''}
-                  </div>
-                </div>
-              </div>
-
-              {/* Side-by-Side Split View */}
-              <div className="grid gap-3 lg:grid-cols-2">
-                {/* Left: Question Paper / Rubric */}
-                <div className="rounded-lg border border-[#e2e8f0] p-2 bg-[#f8f9ff]">
-                  <div className="flex items-center justify-between mb-1.5 flex-wrap gap-1">
-                    <span className="text-xs font-bold text-[#005dac]">Question Paper & Model Answers</span>
-                    <div className="flex items-center gap-1.5">
-                      {paperPages.length > 1 && (
-                        <div className="flex items-center gap-1 text-xs text-[#64748b] mr-1">
-                          <button
-                            type="button"
-                            disabled={activePaperPage <= 0}
-                            onClick={() => setActivePaperPage((p) => Math.max(0, p - 1))}
-                            className="px-1.5 py-0.5 rounded border border-[#c1c6d4] bg-white disabled:opacity-40"
-                          >
-                            Prev
-                          </button>
-                          <span>{activePaperPage + 1}/{paperPages.length}</span>
-                          <button
-                            type="button"
-                            disabled={activePaperPage >= paperPages.length - 1}
-                            onClick={() => setActivePaperPage((p) => Math.min(paperPages.length - 1, p + 1))}
-                            className="px-1.5 py-0.5 rounded border border-[#c1c6d4] bg-white disabled:opacity-40"
-                          >
-                            Next
-                          </button>
-                        </div>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => setPaperZoom((z) => Math.max(0.5, Number((z - 0.25).toFixed(2))))}
-                        className="rounded border border-[#c1c6d4] bg-white p-1 hover:bg-[#f1f5f9]"
-                        title="Zoom Out"
-                      >
-                        <ZoomOut className="w-3.5 h-3.5 text-[#005dac]" />
-                      </button>
-                      <span className="text-[10px] font-bold text-[#64748b] w-8 text-center">{Math.round(paperZoom * 100)}%</span>
-                      <button
-                        type="button"
-                        onClick={() => setPaperZoom((z) => Math.min(2.5, Number((z + 0.25).toFixed(2))))}
-                        className="rounded border border-[#c1c6d4] bg-white p-1 hover:bg-[#f1f5f9]"
-                        title="Zoom In"
-                      >
-                        <ZoomIn className="w-3.5 h-3.5 text-[#005dac]" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setPaperRotation((r) => (r + 90) % 360)}
-                        className="rounded border border-[#c1c6d4] bg-white px-2 py-1 text-xs font-semibold hover:bg-[#f1f5f9] flex items-center gap-1"
-                        title="Rotate Paper"
-                      >
-                        <RotateCw className="w-3 h-3 text-[#005dac]" /> {paperRotation}°
-                      </button>
-                    </div>
-                  </div>
-                  <div className="h-[460px] overflow-auto rounded bg-white p-3 border border-[#e2e8f0] flex items-center justify-center">
-                    {paperPages.length > 0 ? (
-                      <img
-                        src={paperPages[activePaperPage]}
-                        alt="Question paper"
-                        style={{
-                          transform: `rotate(${paperRotation}deg) scale(${paperZoom})`,
-                          transformOrigin: 'center center',
-                          transition: 'transform 0.15s ease',
-                        }}
-                        className="max-h-full max-w-full object-contain mx-auto"
-                      />
-                    ) : paperPreview ? (
-                      <img
-                        src={paperPreview}
-                        alt="Question paper"
-                        style={{
-                          transform: `rotate(${paperRotation}deg) scale(${paperZoom})`,
-                          transformOrigin: 'center center',
-                          transition: 'transform 0.15s ease',
-                        }}
-                        className="max-h-full max-w-full object-contain mx-auto"
-                      />
-                    ) : (
-                      <div className="space-y-3 w-full">
-                        {editableQuestions.map((q) => (
-                          <div key={q.q_no} className="rounded border border-[#e2e8f0] p-2 text-xs">
-                            <div className="font-bold flex justify-between">
-                              <span>{formatQNo(q.q_no)}</span>
-                              <span>{q.max_marks} Marks</span>
-                            </div>
-                            <p className="text-[#414752] mt-1">{q.question_text}</p>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Right: Student Answer Sheet */}
-                <div className="rounded-lg border border-[#e2e8f0] p-2 bg-[#f8f9ff]">
-                  <div className="flex items-center justify-between mb-1.5 flex-wrap gap-1">
-                    <span className="text-xs font-bold text-[#005dac]">Student Answer Sheet (Handwritten)</span>
-                    <div className="flex items-center gap-1.5">
-                      {sheetPages.length > 1 && (
-                        <div className="flex items-center gap-1 text-xs text-[#64748b] mr-1">
-                          <button
-                            type="button"
-                            disabled={activeSheetPage <= 0}
-                            onClick={() => setActiveSheetPage((p) => Math.max(0, p - 1))}
-                            className="px-1.5 py-0.5 rounded border border-[#c1c6d4] bg-white disabled:opacity-40"
-                          >
-                            Prev
-                          </button>
-                          <span>{activeSheetPage + 1}/{sheetPages.length}</span>
-                          <button
-                            type="button"
-                            disabled={activeSheetPage >= sheetPages.length - 1}
-                            onClick={() => setActiveSheetPage((p) => Math.min(sheetPages.length - 1, p + 1))}
-                            className="px-1.5 py-0.5 rounded border border-[#c1c6d4] bg-white disabled:opacity-40"
-                          >
-                            Next
-                          </button>
-                        </div>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => setStudentZoom((z) => Math.max(0.5, Number((z - 0.25).toFixed(2))))}
-                        className="rounded border border-[#c1c6d4] bg-white p-1 hover:bg-[#f1f5f9]"
-                        title="Zoom Out"
-                      >
-                        <ZoomOut className="w-3.5 h-3.5 text-[#005dac]" />
-                      </button>
-                      <span className="text-[10px] font-bold text-[#64748b] w-8 text-center">{Math.round(studentZoom * 100)}%</span>
-                      <button
-                        type="button"
-                        onClick={() => setStudentZoom((z) => Math.min(2.5, Number((z + 0.25).toFixed(2))))}
-                        className="rounded border border-[#c1c6d4] bg-white p-1 hover:bg-[#f1f5f9]"
-                        title="Zoom In"
-                      >
-                        <ZoomIn className="w-3.5 h-3.5 text-[#005dac]" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setStudentRotation((r) => (r + 90) % 360)}
-                        className="rounded border border-[#c1c6d4] bg-white px-2 py-1 text-xs font-semibold hover:bg-[#f1f5f9] flex items-center gap-1"
-                        title="Rotate Sheet"
-                      >
-                        <RotateCw className="w-3 h-3 text-[#005dac]" /> {studentRotation}°
-                      </button>
-                    </div>
-                  </div>
-                  <div className="h-[460px] overflow-auto rounded bg-white p-3 border border-[#e2e8f0] flex items-center justify-center">
-                    {sheetPages.length > 0 ? (
-                      <img
-                        src={sheetPages[activeSheetPage]}
-                        alt={`Student sheet page ${activeSheetPage + 1}`}
-                        style={{
-                          transform: `rotate(${studentRotation}deg) scale(${studentZoom})`,
-                          transformOrigin: 'center center',
-                          transition: 'transform 0.15s ease',
-                        }}
-                        className="max-h-full max-w-full object-contain mx-auto"
-                      />
-                    ) : studentPreview ? (
-                      <img
-                        src={studentPreview}
-                        alt="Student sheet"
-                        style={{
-                          transform: `rotate(${studentRotation}deg) scale(${studentZoom})`,
-                          transformOrigin: 'center center',
-                          transition: 'transform 0.15s ease',
-                        }}
-                        className="max-h-full max-w-full object-contain mx-auto"
-                      />
-                    ) : (
-                      <div className="text-xs text-[#64748b]">Answer sheet image preview unavailable</div>
-                    )}
+                  <div className={`text-xl font-bold mt-0.5 ${unresolvedFlagsCount > 0 ? 'text-[#93000a]' : 'text-[#196b22]'}`}>
+                    {unresolvedFlagsCount} {unresolvedFlagsCount === 0 ? '✓ All Clear' : 'Action Required'}
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Right Panel: Checked vs Flagged Questions */}
-            <aside className="rounded-xl border border-[#e2e8f0] bg-white p-4 shadow-sm h-fit space-y-4">
-              <div>
-                <h2 className="text-sm font-bold">Review Questions</h2>
-                <div className="mt-2 flex items-center justify-between text-xs bg-[#eff4ff] p-2.5 rounded-lg border border-[#d4e3ff]">
-                  <span className="font-semibold text-[#005dac]">Paper Total Score</span>
-                  <span className="text-sm font-bold text-[#005dac]">{totalScore} / {maxMarks}</span>
+            {/* 3-Pane Layout Grid */}
+            <div className="grid gap-4 lg:grid-cols-[300px_1fr_420px] items-start">
+              {/* PANE 1 (LEFT): Question List grouped by Section with Status Chips & Section Choice Rules */}
+              <div className="rounded-xl border border-[#e2e8f0] bg-white p-3.5 shadow-xs space-y-3">
+                {/* Section Choice Rules Summary */}
+                {sections && sections.length > 0 && (
+                  <div className="space-y-1.5 border-b border-[#f1f5f9] pb-3">
+                    <span className="text-[11px] font-bold text-[#64748b] block uppercase tracking-wider">
+                      Section Choice Rules
+                    </span>
+                    {sections.map((sec) => {
+                      const secQuestions = reviewItems.filter((q) => q.section_name === sec.name);
+                      const countedQuestions = secQuestions.filter((q) => q.isCounted);
+                      const secScore = countedQuestions.reduce((s, q) => s + (Number(q.finalMarks) || 0), 0);
+                      const isChoice = sec.attempt_n && sec.total_questions && sec.attempt_n < sec.total_questions;
+                      return (
+                        <div key={sec.name} className="rounded-lg border border-[#c1c6d4]/50 bg-[#f8fbff] p-2 text-xs">
+                          <div className="flex items-center justify-between font-bold text-[#004786]">
+                            <span>{sec.name}</span>
+                            <span className="text-[11px] font-semibold text-[#005dac]">
+                              {secScore} / {sec.section_marks || (sec.attempt_n * sec.marks_each)} M
+                            </span>
+                          </div>
+                          <div className="mt-0.5 text-[10px] text-[#526071] leading-tight">
+                            {isChoice
+                              ? `Attempt ${sec.attempt_n} of ${sec.total_questions} (${sec.policy === 'best_n' ? 'Best N' : 'First N'}): counting ${countedQuestions.map(q => formatQNo(q.q_no)).join(', ') || 'none'}`
+                              : `Compulsory: all ${sec.total_questions || secQuestions.length} Qs counted`}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Filter Bar: All vs Flagged Only */}
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-[#1e293b]">Questions</span>
+                  <button
+                    type="button"
+                    onClick={() => setFlaggedOnlyFilter(!flaggedOnlyFilter)}
+                    className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold transition-all flex items-center gap-1 ${
+                      flaggedOnlyFilter
+                        ? 'bg-[#ba1a1a] text-white shadow-2xs'
+                        : 'bg-[#f1f5f9] text-[#64748b] hover:bg-[#e2e8f0]'
+                    }`}
+                  >
+                    <Flag className="w-3 h-3" />
+                    <span>Flagged Only ({unresolvedFlagsCount})</span>
+                  </button>
+                </div>
+
+                {/* Grouped Questions List */}
+                <div className="space-y-3 max-h-[680px] overflow-y-auto pr-1">
+                  {(() => {
+                    const sectionsList = Array.from(new Set(reviewItems.map((it) => it.section_name || 'General')));
+                    return sectionsList.map((secName) => {
+                      const secItems = reviewItems.filter((it) => (it.section_name || 'General') === secName);
+                      const displayItems = flaggedOnlyFilter ? secItems.filter((it) => !it.resolved) : secItems;
+                      if (displayItems.length === 0) return null;
+
+                      return (
+                        <div key={secName} className="space-y-1">
+                          <span className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block px-1">
+                            {secName}
+                          </span>
+                          {displayItems.map((item) => {
+                            const isSelected = (selectedReviewItem?.q_no === item.q_no) || (selectedReviewItem?.question_key === item.question_key);
+                            return (
+                              <button
+                                key={item.q_no}
+                                type="button"
+                                onClick={() => setSelectedKey(item.question_key || item.q_no || item.eval_id || '')}
+                                className={`w-full text-left rounded-lg p-2.5 text-xs transition-all flex items-center justify-between border ${
+                                  isSelected
+                                    ? 'border-[#005dac] bg-[#eff4ff] ring-2 ring-[#005dac]/30 shadow-xs'
+                                    : !item.resolved
+                                    ? 'border-[#ba1a1a]/60 bg-[#fff5f5] hover:bg-[#ffebee]'
+                                    : 'border-[#e2e8f0] bg-white hover:bg-[#f8f9ff]'
+                                }`}
+                              >
+                                <div className="space-y-0.5">
+                                  <div className="font-bold flex items-center gap-1.5">
+                                    <span className={isSelected ? 'text-[#005dac]' : 'text-[#1e293b]'}>
+                                      {formatQNo(item.q_no)}
+                                    </span>
+                                    {!item.isCounted && (
+                                      <span className="ml-1 rounded bg-[#fff3e0] border border-[#ffe0b2] px-1 py-0.2 text-[9px] font-bold text-[#b26a00]">
+                                        Not Counted
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="text-[10px] truncate max-w-[170px] text-[#64748b]">
+                                    {!item.resolved ? (
+                                      <span className="text-[#ba1a1a] font-medium flex items-center gap-1">
+                                        <Flag className="w-2.5 h-2.5 shrink-0" /> {item.reason || 'Flagged for review'}
+                                      </span>
+                                    ) : (
+                                      <span className="text-[#196b22] font-medium flex items-center gap-1">
+                                        <Check className="w-2.5 h-2.5 shrink-0" /> Verified
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div className="text-right shrink-0">
+                                  <span className={`font-bold block ${!item.resolved ? 'text-[#ba1a1a]' : 'text-[#196b22]'}`}>
+                                    {item.finalMarks} / {item.max_marks} M
+                                  </span>
+                                  <span className="text-[9px] text-[#64748b]">
+                                    {item.resolved ? 'Checked' : 'Flagged'}
+                                  </span>
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      );
+                    });
+                  })()}
                 </div>
               </div>
 
-              {/* Flagged Questions */}
-              <div>
-                <div className="text-xs font-bold text-[#ba1a1a] flex items-center justify-between mb-1.5">
-                  <span>Flagged for Review ({flagged.length})</span>
-                  {flagged.length > 0 && <span className="text-[10px] text-[#ba1a1a]">Action required</span>}
-                </div>
-                {flagged.length === 0 ? (
-                  <div className="text-[11px] text-[#196b22] font-semibold bg-[#e8f5e9] p-2 rounded">
-                    ✓ All questions verified and resolved!
+              {/* PANE 2 (CENTER): Interactive Sheet Viewer with Auto-Page Jump & Bounding-Box Overlay */}
+              <div className="rounded-xl border border-[#e2e8f0] bg-white p-3.5 shadow-xs space-y-2">
+                {/* Center Toolbar */}
+                <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-[#f1f5f9]">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-[#005dac]">Answer Sheet Viewer</span>
+                    {sheetPages.length > 1 && (
+                      <span className="text-[11px] text-[#64748b] font-medium">
+                        (Page {activeSheetPage + 1} of {sheetPages.length})
+                      </span>
+                    )}
                   </div>
-                ) : (
-                  <div className="space-y-1.5">
-                    {flagged.map((item) => (
+
+                  <div className="flex items-center gap-1.5">
+                    {sheetPages.length > 1 && (
+                      <div className="flex items-center gap-1 mr-1">
+                        <button
+                          type="button"
+                          disabled={activeSheetPage <= 0}
+                          onClick={() => setActiveSheetPage((p) => Math.max(0, p - 1))}
+                          className="px-2 py-0.5 rounded border border-[#c1c6d4] bg-white text-xs disabled:opacity-40 hover:bg-[#f1f5f9]"
+                        >
+                          Prev
+                        </button>
+                        <button
+                          type="button"
+                          disabled={activeSheetPage >= sheetPages.length - 1}
+                          onClick={() => setActiveSheetPage((p) => Math.min(sheetPages.length - 1, p + 1))}
+                          className="px-2 py-0.5 rounded border border-[#c1c6d4] bg-white text-xs disabled:opacity-40 hover:bg-[#f1f5f9]"
+                        >
+                          Next
+                        </button>
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setStudentZoom((z) => Math.max(0.5, Number((z - 0.25).toFixed(2))))}
+                      className="rounded border border-[#c1c6d4] bg-white p-1 hover:bg-[#f1f5f9]"
+                      title="Zoom Out"
+                    >
+                      <ZoomOut className="w-3.5 h-3.5 text-[#005dac]" />
+                    </button>
+                    <span className="text-[10px] font-bold text-[#64748b] w-8 text-center">
+                      {Math.round(studentZoom * 100)}%
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setStudentZoom((z) => Math.min(2.5, Number((z + 0.25).toFixed(2))))}
+                      className="rounded border border-[#c1c6d4] bg-white p-1 hover:bg-[#f1f5f9]"
+                      title="Zoom In"
+                    >
+                      <ZoomIn className="w-3.5 h-3.5 text-[#005dac]" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setStudentRotation((r) => (r + 90) % 360)}
+                      className="rounded border border-[#c1c6d4] bg-white px-2 py-1 text-xs font-semibold hover:bg-[#f1f5f9] flex items-center gap-1"
+                      title="Rotate Sheet 90°"
+                    >
+                      <RotateCw className="w-3 h-3 text-[#005dac]" /> {studentRotation}°
+                    </button>
+                  </div>
+                </div>
+
+                {/* Clickable Page Thumbnail Strip (if multiple pages) */}
+                {sheetPages.length > 1 && (
+                  <div className="flex items-center gap-2 overflow-x-auto pb-1.5 pt-0.5 border-b border-[#f1f5f9]">
+                    {sheetPages.map((pageUrl, pIdx) => (
                       <button
-                        key={item.q_no}
+                        key={pIdx}
                         type="button"
-                        onClick={() => setActiveReview(item)}
-                        className="w-full text-left rounded-lg border border-[#ba1a1a] bg-[#ffdad6] p-2.5 text-xs hover:bg-[#ffb4ab] transition-all"
+                        onClick={() => setActiveSheetPage(pIdx)}
+                        className={`shrink-0 rounded border p-0.5 transition-all ${
+                          activeSheetPage === pIdx
+                            ? 'border-[#005dac] ring-2 ring-[#005dac]/40 bg-[#eff4ff]'
+                            : 'border-[#e2e8f0] opacity-70 hover:opacity-100'
+                        }`}
                       >
-                        <div className="font-bold flex items-center justify-between">
-                          <span className="flex items-center gap-1">
-                            <Flag className="w-3.5 h-3.5 text-[#ba1a1a]" /> {formatQNo(item.q_no)}
-                            {!item.isCounted && (
-                              <span className="ml-1 rounded bg-[#fff3e0] border border-[#ffe0b2] px-1.5 py-0.2 text-[9px] font-bold text-[#b26a00]">
-                                Not Counted
-                              </span>
-                            )}
-                          </span>
-                          <span className="text-[#93000a]">{item.suggested_marks ?? 0} / {item.max_marks}M</span>
-                        </div>
-                        <div className="text-[11px] text-[#93000a] mt-1 font-medium truncate">
-                          {item.reason || 'Flagged for teacher inspection'}
-                        </div>
+                        <img
+                          src={pageUrl}
+                          alt={`Thumbnail ${pIdx + 1}`}
+                          className="w-10 h-14 object-cover rounded-xs"
+                        />
+                        <span className="text-[9px] font-bold block text-center mt-0.5 text-[#64748b]">
+                          P.{pIdx + 1}
+                        </span>
                       </button>
                     ))}
                   </div>
                 )}
+
+                {/* Sheet Page Canvas Container with Bounding Box Overlay */}
+                <div className="relative min-h-[560px] max-h-[720px] overflow-auto rounded-lg bg-[#f8f9ff] p-3 border border-[#e2e8f0] flex items-center justify-center">
+                  <div
+                    className="relative inline-block transition-transform duration-150"
+                    style={{
+                      transform: `rotate(${studentRotation}deg) scale(${studentZoom})`,
+                      transformOrigin: 'center center',
+                    }}
+                  >
+                    {sheetPages.length > 0 ? (
+                      <img
+                        src={sheetPages[activeSheetPage]}
+                        alt={`Student sheet page ${activeSheetPage + 1}`}
+                        className="max-h-[660px] max-w-full object-contain rounded shadow-xs"
+                      />
+                    ) : studentPreview ? (
+                      <img
+                        src={studentPreview}
+                        alt="Student sheet preview"
+                        className="max-h-[660px] max-w-full object-contain rounded shadow-xs"
+                      />
+                    ) : (
+                      <div className="text-xs text-[#64748b] p-8 text-center">Answer sheet image preview unavailable</div>
+                    )}
+
+                    {/* Bounding Box Highlight Overlay */}
+                    {selectedReviewItem?.bbox_json && Array.isArray(selectedReviewItem.bbox_json) && selectedReviewItem.bbox_json.length > 0 && (
+                      (() => {
+                        const box = selectedReviewItem.bbox_json[0];
+                        let top = 0, left = 0, width = 100, height = 25;
+                        if (box && typeof box === 'object' && 'x' in box && 'y' in box && 'w' in box && 'h' in box) {
+                          left = box.x <= 1.0 ? box.x * 100 : (box.x / 800) * 100;
+                          top = box.y <= 1.0 ? box.y * 100 : (box.y / 1100) * 100;
+                          width = box.w <= 1.0 ? box.w * 100 : (box.w / 800) * 100;
+                          height = box.h <= 1.0 ? box.h * 100 : (box.h / 1100) * 100;
+                        } else if (Array.isArray(box) && box.length === 4) {
+                          const [b0, b1, b2, b3] = box;
+                          if (Math.max(b0, b1, b2, b3) <= 1.0) {
+                            top = b0 * 100;
+                            left = b1 * 100;
+                            height = (b2 - b0) * 100;
+                            width = (b3 - b1) * 100;
+                          }
+                        }
+                        return (
+                          <div
+                            className="pointer-events-none absolute rounded border-2 border-[#005dac] bg-[#005dac]/15 shadow-sm transition-all"
+                            style={{
+                              top: `${Math.max(0, top)}%`,
+                              left: `${Math.max(0, left)}%`,
+                              width: `${Math.min(100, width)}%`,
+                              height: `${Math.min(100, height)}%`,
+                            }}
+                          >
+                            <span className="absolute -top-4 left-0 rounded bg-[#005dac] px-1 py-0.2 text-[8px] font-bold text-white shadow-2xs">
+                              {formatQNo(selectedReviewItem.q_no)}
+                            </span>
+                          </div>
+                        );
+                      })()
+                    )}
+                  </div>
+                </div>
               </div>
 
-              {/* Checked Questions */}
-              <div>
-                <div className="text-xs font-bold text-[#196b22] mb-1.5">
-                  Checked & Auto-Verified ({checked.length})
-                </div>
-                <div className="space-y-1">
-                  {checked.map((item) => (
-                    <div
-                      key={item.q_no}
-                      onClick={() => setActiveReview(item)}
-                      className="p-2 rounded border border-[#c8e6c9] bg-[#e8f5e9] text-xs flex items-center justify-between cursor-pointer hover:bg-[#dcedc8]"
-                    >
-                      <div className="flex items-center gap-1">
-                        <span className="font-semibold">{formatQNo(item.q_no)}</span>
-                        {!item.isCounted && (
-                          <span className="ml-1 rounded bg-[#fff3e0] border border-[#ffe0b2] px-1.5 py-0.2 text-[9px] font-bold text-[#b26a00]">
-                            Not Counted
-                          </span>
-                        )}
-                      </div>
-                      <span className="font-bold text-[#196b22]">{item.finalMarks} / {item.max_marks}M</span>
+              {/* PANE 3 (RIGHT): Selected Question Evaluation Card */}
+              {selectedReviewItem ? (
+                <div className="rounded-xl border border-[#e2e8f0] bg-white p-3.5 shadow-xs space-y-3">
+                  {/* Header */}
+                  <div className="flex items-center justify-between border-b border-[#f1f5f9] pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <span className="rounded bg-[#005dac] px-2 py-0.5 text-xs font-bold text-white">
+                        {formatQNo(selectedReviewItem.q_no)}
+                      </span>
+                      <span className="text-xs font-bold text-[#1e293b]">
+                        {selectedReviewItem.section_name || 'General'}
+                      </span>
+                      <span className="rounded bg-[#f1f5f9] px-2 py-0.5 text-[10px] font-bold text-[#64748b]">
+                        {selectedReviewItem.max_marks} Marks
+                      </span>
                     </div>
-                  ))}
+
+                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                      selectedReviewItem.resolved
+                        ? 'bg-[#e8f5e9] text-[#1b5e20]'
+                        : 'bg-[#ffdad6] text-[#93000a]'
+                    }`}>
+                      {selectedReviewItem.resolved ? 'Checked' : 'Flagged'}
+                    </span>
+                  </div>
+
+                  {/* Flag Reason Alert */}
+                  {!selectedReviewItem.resolved && selectedReviewItem.reason && (
+                    <div className="rounded-lg border border-[#ba1a1a] bg-[#ffdad6] p-2.5 text-xs text-[#93000a] space-y-1">
+                      <div className="font-bold flex items-center gap-1.5">
+                        <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                        <span>Flag Reason:</span>
+                      </div>
+                      <p className="text-[11px] leading-snug">{selectedReviewItem.reason}</p>
+                    </div>
+                  )}
+
+                  {/* Cropped Handwriting Image */}
+                  <div className="rounded-lg border border-[#c1c6d4]/70 bg-[#f8fafc] p-2 space-y-1">
+                    <span className="block text-[10px] font-bold uppercase tracking-wider text-[#526071]">
+                      Handwriting Snippet (Page {(selectedReviewItem.page_numbers?.[0] ?? 0) + 1})
+                    </span>
+                    <div className="max-h-36 overflow-auto rounded bg-white border border-[#e2e8f0] p-1 flex items-center justify-center">
+                      <img
+                        src={`/api/sheets/${currentSheetId}/crop/${selectedReviewItem.eval_id}`}
+                        alt="Handwriting crop"
+                        className="max-h-32 max-w-full object-contain mx-auto"
+                        onError={(e) => {
+                          (e.target as HTMLElement).style.display = 'none';
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Verbatim Transcript (Editable) */}
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-[#1e293b] flex items-center justify-between">
+                      <span>Raw Character-by-Character Transcript (Editable)</span>
+                      <span className="text-[10px] text-[#64748b] font-normal">Edit typos below</span>
+                    </label>
+                    <textarea
+                      value={editTranscript}
+                      onChange={(e) => setEditTranscript(e.target.value)}
+                      rows={3}
+                      className="w-full rounded border border-[#c1c6d4] p-2 text-xs font-mono bg-white focus:ring-1 focus:ring-[#005dac]"
+                    />
+                  </div>
+
+                  {/* Verified Evidence Quote */}
+                  {selectedReviewItem.evidence_quote && (
+                    <div className="rounded-lg border border-[#c8e6c9] bg-[#e8f5e9] p-2 text-xs text-[#196b22] space-y-0.5">
+                      <div className="font-bold flex items-center gap-1 text-[11px]">
+                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> Verified Evidence Quote:
+                      </div>
+                      <blockquote className="italic text-[11px] font-serif bg-white/70 p-1.5 rounded border border-[#c8e6c9]/50">
+                        "{selectedReviewItem.evidence_quote}"
+                      </blockquote>
+                    </div>
+                  )}
+
+                  {/* Rubric Key-Point Breakdown */}
+                  {selectedReviewItem.key_points && selectedReviewItem.key_points.length > 0 && (
+                    <div className="rounded-lg border border-[#e2e8f0] bg-[#fafcff] p-2.5 space-y-1.5">
+                      <span className="text-[11px] font-bold text-[#005dac] block">
+                        Rubric Breakdown ({selectedReviewItem.max_marks} M)
+                      </span>
+                      <div className="space-y-1">
+                        {selectedReviewItem.key_points.map((kp, kpIdx) => (
+                          <div key={kpIdx} className="rounded border border-[#e2e8f0] bg-white p-1.5 text-[11px] space-y-0.5">
+                            <div className="flex items-center justify-between gap-1">
+                              <span className="font-medium text-[#1e293b] flex-1 leading-snug">{kp.text}</span>
+                              <span className="rounded bg-[#eff4ff] px-1.5 py-0.2 text-[10px] font-bold text-[#005dac] shrink-0">
+                                {kp.marks} M
+                              </span>
+                            </div>
+                            {kp.accept_if && (
+                              <div className="text-[10px] text-[#196b22]"><strong className="text-[#2e7d32]">Accept:</strong> {kp.accept_if}</div>
+                            )}
+                            {kp.reject_if && (
+                              <div className="text-[10px] text-[#ba1a1a]"><strong className="text-[#c62828]">Reject:</strong> {kp.reject_if}</div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Teacher Override Controls */}
+                  <div className="rounded-lg border border-[#c1c6d4] bg-[#f8fbff] p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-[#1e293b]">Final Marks (0.5 steps)</label>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setOverrideMarks((m) => Math.max(0, Number((m - 0.5).toFixed(1))))}
+                          className="rounded border border-[#c1c6d4] bg-white p-1 hover:bg-[#e2e8f0]"
+                          title="Decrease 0.5M"
+                        >
+                          <Minus className="w-3 h-3 text-[#005dac]" />
+                        </button>
+                        <input
+                          type="number"
+                          min={0}
+                          max={selectedReviewItem.max_marks}
+                          step={0.5}
+                          value={overrideMarks}
+                          onChange={(e) => setOverrideMarks(Number(e.target.value) || 0)}
+                          className="w-14 text-center font-bold text-[#005dac] text-sm border border-[#005dac] rounded py-0.5 bg-white"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setOverrideMarks((m) => Math.min(selectedReviewItem.max_marks, Number((m + 0.5).toFixed(1))))}
+                          className="rounded border border-[#c1c6d4] bg-white p-1 hover:bg-[#e2e8f0]"
+                          title="Increase 0.5M"
+                        >
+                          <Plus className="w-3 h-3 text-[#005dac]" />
+                        </button>
+                        <span className="text-xs font-semibold text-[#64748b]">/ {selectedReviewItem.max_marks}</span>
+                      </div>
+                    </div>
+
+                    {/* Required reason when marks differ from AI suggested marks */}
+                    {overrideMarks !== (selectedReviewItem.suggested_marks ?? selectedReviewItem.finalMarks) && (
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold text-[#ba1a1a] block">
+                          Teacher Override Reason (Required):
+                        </label>
+                        <input
+                          value={overrideReason}
+                          onChange={(e) => setOverrideReason(e.target.value)}
+                          placeholder="e.g. Accurate system call explanation provided"
+                          className="w-full rounded border border-[#ba1a1a] px-2 py-1 text-xs bg-white"
+                        />
+                      </div>
+                    )}
+
+                    {/* Count in Total Toggle */}
+                    <div className="flex items-center justify-between pt-1 border-t border-[#d4e3ff]">
+                      <div>
+                        <span className="text-xs font-semibold text-[#004786] block">Count in Final Total</span>
+                        <span className="text-[10px] text-[#64748b]">
+                          {isCountedOverride ? 'Included in student score' : 'Optional / Extra answer excluded'}
+                        </span>
+                      </div>
+                      <label className="flex items-center gap-1.5 cursor-pointer text-xs font-bold text-[#005dac]">
+                        <input
+                          type="checkbox"
+                          checked={isCountedOverride}
+                          onChange={(e) => handleToggleCounted(selectedReviewItem, e.target.checked)}
+                          className="w-4 h-4 rounded text-[#005dac]"
+                        />
+                        <span>{isCountedOverride ? 'Counted' : 'Not Counted'}</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => handleAcceptCurrent(selectedReviewItem)}
+                      className="flex-1 rounded-lg border border-[#196b22] bg-[#e8f5e9] py-2 text-xs font-bold text-[#196b22] hover:bg-[#c8e6c9] flex items-center justify-center gap-1 shadow-2xs"
+                      title="Accept AI suggested marks and move to next question [A]"
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                      <span>Accept AI ({selectedReviewItem.suggested_marks ?? selectedReviewItem.finalMarks}M) [A]</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleOverrideCurrent(selectedReviewItem)}
+                      className="flex-1 rounded-lg bg-[#005dac] py-2 text-xs font-bold text-white hover:bg-[#004786] flex items-center justify-center gap-1 shadow-2xs"
+                      title="Save teacher overridden marks with required reason"
+                    >
+                      <span>Save Override</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleLiveRecheck(selectedReviewItem)}
+                      className="rounded-lg border border-[#c1c6d4] bg-white p-2 text-[#005dac] hover:bg-[#eff4ff]"
+                      title="Live AI Recheck with edited transcript"
+                    >
+                      <RefreshCw className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
-              </div>
-
-              {/* Generate Report Card Button */}
-              <button
-                type="button"
-                disabled={flagged.length > 0}
-                onClick={() => {
-                  setStep('report');
-                  loadReports();
-                }}
-                className="w-full rounded-lg bg-[#005dac] py-2.5 text-xs font-bold text-white hover:bg-[#004786] disabled:opacity-40 shadow-xs cursor-pointer"
-              >
-                Proceed to Reports
-              </button>
-
-              {/* Delete Current Sheet Button */}
-              <button
-                type="button"
-                onClick={() => currentSheetId && handleDeleteSheet(currentSheetId)}
-                className="w-full rounded-lg border border-[#ba1a1a] bg-white py-2 text-xs font-bold text-[#ba1a1a] hover:bg-[#ffdad6] transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
-              >
-                <Trash2 className="w-3.5 h-3.5" /> Delete this sheet
-              </button>
-            </aside>
+              ) : (
+                <div className="rounded-xl border border-[#e2e8f0] bg-white p-6 text-center text-xs text-[#64748b]">
+                  Select a question from the left pane to review evaluation details.
+                </div>
+              )}
+            </div>
           </section>
         )}
 

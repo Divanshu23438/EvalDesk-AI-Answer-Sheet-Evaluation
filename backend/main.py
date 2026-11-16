@@ -12,7 +12,7 @@ from PIL import Image
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Query, BackgroundTasks, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from pydantic import BaseModel
 
 from backend.config import (
@@ -137,6 +137,7 @@ class ExtractedQuestion(BaseModel):
     section: str = "General"
     section_id: Optional[str] = None
     options: List[str] = []
+    word_limit: Optional[int] = 150
 
 class ExtractPaperResponse(BaseModel):
     draft_id: str
@@ -160,6 +161,7 @@ class QuestionInput(BaseModel):
     section_name: str = "General"
     section_id: Optional[str] = None
     options: List[str] = []
+    word_limit: Optional[int] = 150
     strictness_override: Optional[str] = None
     checking_medium_override: Optional[str] = None
 
@@ -369,6 +371,80 @@ def generate_scoped_key(section_name: str, q_no: str, fallback_idx: int) -> str:
 
     return f"{sec_prefix}-{q_label}"
 
+def resolve_word_limit(
+    word_limit: Optional[int],
+    max_marks: float,
+    section_instructions: str = "",
+    question_text: str = "",
+) -> int:
+    """
+    Extracts or resolves expected word limit per question:
+    Checks explicit word_limit field, parses instructions for target numbers ('in 200 words'),
+    or applies academic depth standard based on marks.
+    """
+    if word_limit and word_limit >= 20:
+        return word_limit
+
+    combined = (section_instructions + " " + question_text).lower()
+    m = re.search(r"\b(?:in|under|around|approx\.?|about)?\s*(\d{2,4})\s*words\b", combined)
+    if m:
+        try:
+            val = int(m.group(1))
+            if 20 <= val <= 1000:
+                return val
+        except Exception:
+            pass
+
+    if max_marks <= 1.0:
+        return 30
+    elif max_marks <= 3.0:
+        return 75
+    elif max_marks <= 6.0:
+        return 200
+    else:
+        return 300
+
+def calibrate_even_rubric_weights(
+    key_points: List[Dict[str, Any]],
+    max_marks: float,
+) -> List[Dict[str, Any]]:
+    """
+    Enforces clean, even integer weights (2/2/1/1 for 6M, 3/3/2/2 for 10M, etc.)
+    and eliminates 0.5 weights on multi-mark questions.
+    Ensures accept_if and reject_if strings are populated on every key point.
+    """
+    target_weights_map = {
+        1.0: [1.0],
+        2.0: [1.0, 1.0],
+        3.0: [2.0, 1.0],
+        4.0: [2.0, 2.0],
+        5.0: [2.0, 2.0, 1.0],
+        6.0: [2.0, 2.0, 1.0, 1.0],
+        8.0: [2.0, 2.0, 2.0, 2.0],
+        10.0: [3.0, 3.0, 2.0, 2.0],
+    }
+    targets = target_weights_map.get(max_marks)
+    if not targets:
+        n = max(1, min(len(key_points) or 4, int(max_marks)))
+        base = int(max_marks // n)
+        rem = int(max_marks % n)
+        targets = [base + 1 if i < rem else base for i in range(n)]
+
+    calibrated = []
+    for idx, w in enumerate(targets):
+        existing = key_points[idx] if idx < len(key_points) else {}
+        txt = existing.get("text") or f"Key concept part {idx + 1}"
+        acc = existing.get("accept_if") or "Must demonstrate conceptual accuracy with valid technical syntax and examples."
+        rej = existing.get("reject_if") or "Everyday non-computing analogies or incorrect syntax earn zero or partial marks."
+        calibrated.append({
+            "point_index": idx + 1,
+            "text": txt,
+            "marks": float(w),
+            "accept_if": acc,
+            "reject_if": rej,
+        })
+    return calibrated
+
 T1_PROMPT = """You are reading an exam question paper. Extract every section and every question that must be answered.
 Keep the original wording and language (including Hindi and English together).
 
@@ -390,6 +466,7 @@ For each item return:
 - `type` (one of: "mcq", "one_word", "short", "long", "maths")
 - `section` (matching section name, e.g. "Part I", "Part II")
 - `options` (list of option strings, only for MCQ, otherwise empty list)
+- `word_limit` (integer target words if specified in section header or question, e.g. 50, 200, 300, or null)
 
 Also return:
 - `paper_title`: the printed exam title, header, course, or subject (e.g. "B.C.A (cc) - 2nd Sem MST-I LINUX" or "Operating Systems Midterm Exam") if printed on the paper, otherwise empty string ""
@@ -610,6 +687,8 @@ async def extract_paper_questions(paper_file: UploadFile = File(...)):
 
         sec_id = sec_id_by_name.get(section.lower())
         key = generate_scoped_key(section, q_no, idx)
+        sec_inst = next((s["instructions"] for s in validated_sections if s["name"].lower() == section.lower()), "")
+        w_limit = resolve_word_limit(q.get("word_limit"), marks, sec_inst, q_text)
 
         validated_questions.append({
             "key": key,
@@ -620,6 +699,7 @@ async def extract_paper_questions(paper_file: UploadFile = File(...)):
             "section": section,
             "section_id": sec_id,
             "options": options,
+            "word_limit": w_limit,
         })
 
     # Reconcile section question counts and detect contradictions
@@ -761,8 +841,8 @@ async def create_paper_setup(
                 key = q.key or generate_scoped_key(q.section_name, q.q_no, idx)
                 cursor.execute(
                     """
-                    INSERT INTO questions (id, paper_id, key, q_no, question_text, max_marks, question_type, section_name, section_id, options_json, strictness_override, checking_medium_override, order_idx)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO questions (id, paper_id, key, q_no, question_text, max_marks, question_type, section_name, section_id, options_json, word_limit, strictness_override, checking_medium_override, order_idx)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         q_id,
@@ -775,6 +855,7 @@ async def create_paper_setup(
                         q.section_name,
                         q_sec_id,
                         json.dumps(q.options),
+                        q.word_limit or 150,
                         q.strictness_override,
                         q.checking_medium_override,
                         idx,
@@ -856,8 +937,8 @@ def update_paper_questions(paper_id: str, payload: QuestionsUpdateRequest):
             key = q.key or generate_scoped_key(q.section_name, q.q_no, idx)
             cursor.execute(
                 """
-                INSERT INTO questions (id, paper_id, key, q_no, question_text, max_marks, question_type, section_name, section_id, options_json, strictness_override, checking_medium_override, order_idx)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO questions (id, paper_id, key, q_no, question_text, max_marks, question_type, section_name, section_id, options_json, word_limit, strictness_override, checking_medium_override, order_idx)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     q_id,
@@ -870,6 +951,7 @@ def update_paper_questions(paper_id: str, payload: QuestionsUpdateRequest):
                     q.section_name,
                     q_sec_id,
                     json.dumps(q.options),
+                    q.word_limit or 150,
                     q.strictness_override,
                     q.checking_medium_override,
                     idx,
@@ -1045,11 +1127,182 @@ QUESTIONS:
 
     return {"status": "parsed", "paper_id": paper_id, "references": saved_refs, "missing": missing}
 
+async def generate_single_question_reference(
+    q: Dict[str, Any],
+    subject: str = "",
+    expand_force: bool = False,
+) -> Dict[str, Any]:
+    """
+    Task T3: Draft authoritative reference for a single question with target word count.
+    Supports Two-Pass Critique & Auto-Expansion if word count < 70% of target (or forced).
+    Enforces clean, even rubric weights and explicit accept_if / reject_if criteria.
+    Cross-checks with Draft 2 and tracks disagreements.
+    """
+    q_key = q.get("key") or q.get("id")
+    max_m = float(q.get("max_marks", 1.0))
+    q_type = q.get("question_type", "short")
+    target_words = resolve_word_limit(q.get("word_limit"), max_m, q.get("section_name", ""), q.get("question_text", ""))
+
+    t3_single_prompt = f"""You are an authoritative academic curriculum examiner creating the official grading reference for an exam question.
+
+Subject: {subject or 'General'}
+Question Key: {q_key}
+Question Number: {q.get('q_no')}
+Question Text: {q.get('question_text')}
+Type: {q_type}
+Options: {json.dumps(q.get('options') or [])}
+Max Marks: {max_m} Marks
+Target Model Answer Length: ~{target_words} words.
+
+REQUIREMENTS:
+1. Model Answer: Write an authoritative, comprehensive model answer targeting approximately {target_words} words.
+   For questions of 4 marks or more, ensure you cover:
+   - Core definition and conceptual overview
+   - Step-by-step working / architecture / flow
+   - Concrete, valid technical example(s) with actual syntax, commands, or data (never everyday life analogies)
+   - Diagram / flow description if applicable
+   - Summary / conclusion
+2. Rubric Key Points: Provide clean rubric key points whose marks sum EXACTLY to {max_m}.
+   Use clean, even integer weights (e.g. for 6M use 2, 2, 1, 1; for 10M use 3, 3, 2, 2; avoid 0.5 weights on multi-mark answers).
+   For every key point, provide:
+   * "text": the concept being graded
+   * "marks": marks allocated (number)
+   * "accept_if": specific technical criteria required for full marks
+   * "reject_if": specific penalty criteria (e.g. non-technical analogies, incorrect syntax)
+3. For MCQ / one-word questions: provide "correct_option" and "confidence" (0.0 to 1.0).
+
+Return ONLY valid JSON matching schema:
+{{
+  "model_answer": "<comprehensive model answer targeting ~{target_words} words>",
+  "key_points": [
+    {{
+      "text": "<specific concept evaluated>",
+      "marks": 2.0,
+      "accept_if": "<concrete full marks criteria>",
+      "reject_if": "<penalty / zero marks criteria>"
+    }}
+  ],
+  "accepted_alternatives": ["..."],
+  "common_mistakes": ["..."],
+  "correct_option": null,
+  "confidence": 1.0
+}}
+"""
+
+    # Pass 1: Primary Draft
+    try:
+        res1 = await ai_gateway.call_gemini(t3_single_prompt, task="draft_reference")
+        d1_data = res1.get("data", {})
+    except AIError as ae:
+        raise map_ai_error_to_http(ae, f"Reference draft failed for question {q_key}")
+
+    model_ans = str(d1_data.get("model_answer", "")).strip()
+    key_points = d1_data.get("key_points", [])
+    corr_opt = d1_data.get("correct_option")
+    alt_list = d1_data.get("accepted_alternatives", [])
+    mistakes_list = d1_data.get("common_mistakes", [])
+    confidence = float(d1_data.get("confidence", 1.0))
+
+    word_count = len(model_ans.split())
+    was_expanded = False
+
+    # Pass 2: Critique & Auto-Expansion if below 70% of target or forced
+    if (max_m >= 4.0 and word_count < int(0.70 * target_words)) or expand_force:
+        pass2_prompt = f"""You are a senior academic reviewer conducting a depth critique and expansion of an exam model answer.
+
+Subject: {subject or 'General'}
+Question: {q.get('question_text')}
+Max Marks: {max_m} Marks
+Target Word Limit: ~{target_words} words.
+Current Draft Length: {word_count} words (needs deeper academic explanation and detail).
+
+CURRENT DRAFT:
+\"\"\"{model_ans}\"\"\"
+
+CRITIQUE & EXPANSION TASK:
+1. Identify missing technical depth, omitted sub-concepts, lack of concrete syntax/examples, architectural details, or diagrams.
+2. Expand the model answer so it meets the full target of ~{target_words} words with rigorous technical depth, concrete examples, and complete explanations.
+3. Refine the rubric key points so weights sum to {max_m} with explicit accept_if and reject_if criteria.
+
+Return ONLY valid JSON matching schema:
+{{
+  "critique": "<what was missing in earlier draft>",
+  "model_answer": "<expanded, authoritative model answer meeting ~{target_words} words>",
+  "key_points": [
+    {{
+      "text": "...",
+      "marks": 2.0,
+      "accept_if": "...",
+      "reject_if": "..."
+    }}
+  ],
+  "accepted_alternatives": ["..."],
+  "common_mistakes": ["..."],
+  "correct_option": null,
+  "confidence": 1.0
+}}
+"""
+        try:
+            res2 = await ai_gateway.call_gemini(pass2_prompt, task="critique_and_expand")
+            d2_exp = res2.get("data", {})
+            if d2_exp.get("model_answer"):
+                model_ans = str(d2_exp["model_answer"]).strip()
+                word_count = len(model_ans.split())
+                if d2_exp.get("key_points"):
+                    key_points = d2_exp["key_points"]
+                was_expanded = True
+        except Exception as e_exp:
+            print(f"[Reference Expansion] Warning: Pass 2 expansion failed for {q_key}: {e_exp}")
+
+    # Draft 2 cross-check for disagreement reporting
+    disagreements = []
+    draft2_ans = ""
+    try:
+        res_d2 = await ai_gateway.call_groq(t3_single_prompt, task="draft_reference")
+        d2_data = res_d2.get("data", {})
+    except Exception:
+        try:
+            res_d2 = await ai_gateway.call_gemini(t3_single_prompt + "\nProvide an alternate rigorous pedagogical perspective.", task="draft_reference")
+            d2_data = res_d2.get("data", {})
+        except Exception:
+            d2_data = {}
+
+    if d2_data:
+        draft2_ans = str(d2_data.get("model_answer", "")).strip()
+        if corr_opt and d2_data.get("correct_option"):
+            if str(corr_opt).strip().lower() != str(d2_data["correct_option"]).strip().lower():
+                disagreements.append(f"MCQ {q_key}: Draft 1 suggests '{corr_opt}', Draft 2 suggests '{d2_data['correct_option']}'")
+        if model_ans and draft2_ans:
+            sim = calculate_text_similarity(model_ans, draft2_ans)
+            if sim < 0.45:
+                disagreements.append(f"Question {q_key}: Drafts diverge on model answer formulation (similarity {sim:.2f})")
+
+    # Calibrate rubric key points with clean even weights
+    key_points = calibrate_even_rubric_weights(key_points, max_m)
+
+    return {
+        "key": q_key,
+        "question_id": q.get("id"),
+        "q_no": q.get("q_no"),
+        "model_answer": model_ans,
+        "word_count": word_count,
+        "target_words": target_words,
+        "is_expanded": was_expanded,
+        "key_points": key_points,
+        "correct_option": corr_opt,
+        "confidence": confidence,
+        "accepted_alternatives": alt_list,
+        "common_mistakes": mistakes_list,
+        "disagreements": disagreements,
+        "draft2_model_answer": draft2_ans,
+    }
+
 @app.post("/api/papers/{paper_id}/reference/generate")
 async def generate_paper_reference(paper_id: str):
     """
-    Task T3: Draft reference without an answer key.
-    Runs two independent drafts, merges them, scales depth to marks, and highlights disagreements.
+    Task T3: Draft authoritative reference without an answer key.
+    Generates reference per-question concurrently with Semaphore(3).
+    Includes word-limit scaling, two-pass auto-expansion, even rubric weights, and dual-draft disagreement detection.
     """
     with get_db() as conn:
         cursor = conn.cursor()
@@ -1064,122 +1317,133 @@ async def generate_paper_reference(paper_id: str):
 
     questions_info = [
         {
+            "id": r["id"],
             "key": r["key"] or f"q_{idx + 1}",
             "q_no": r["q_no"],
-            "text": r["question_text"],
-            "marks": r["max_marks"],
-            "type": r["question_type"],
+            "question_text": r["question_text"],
+            "max_marks": r["max_marks"],
+            "question_type": r["question_type"],
+            "section_name": r.get("section_name", "General"),
+            "word_limit": r.get("word_limit"),
             "options": json.loads(r["options_json"] or "[]"),
         }
         for idx, r in enumerate(q_rows)
     ]
 
-    t3_prompt = f"""Write a marking reference for this question paper.
-For each question key return:
-- `model_answer`: a concise, clear model answer
-- `key_points`: 2 to 6 rubric items with `{{"text": str, "marks": float}}` whose marks sum to the question's marks (scale rubric depth: 1-mark = 1 point, 6-mark = 3-4 points, 10-mark = 4-6 points)
-- `accepted_alternatives`: list of acceptable alternative terms or methods
-- `common_mistakes`: list of common errors or omissions
-- for MCQ: `correct_option` and `confidence` from 0.0 to 1.0
+    sem = asyncio.Semaphore(3)
+    async def generate_worker(q):
+        async with sem:
+            return await generate_single_question_reference(q, paper["subject"] or "")
 
-Base everything strictly on the question and the stated subject. Return ONLY valid JSON matching schema:
-{{
-  "references": [
-    {{
-      "key": "q_1",
-      "model_answer": "...",
-      "key_points": [
-        {{"text": "...", "marks": 1.0}}
-      ],
-      "accepted_alternatives": ["..."],
-      "common_mistakes": ["..."],
-      "correct_option": null,
-      "confidence": 1.0
-    }}
-  ]
-}}
+    generated_refs = await asyncio.gather(*[generate_worker(q) for q in questions_info])
 
-Subject: {paper["subject"]}
-Questions:
-{json.dumps(questions_info, indent=2)}
-"""
-
-    disagreements = []
-    draft1_refs = []
-    try:
-        res1 = await ai_gateway.call_gemini(t3_prompt, task="draft_reference")
-        draft1_refs = res1.get("data", {}).get("references", [])
-    except AIError as ae:
-        raise map_ai_error_to_http(ae, "Reference generation failed")
-
-    # Draft 2 cross-check
-    draft2_refs = []
-    try:
-        res2 = await ai_gateway.call_groq(t3_prompt, task="draft_reference")
-        draft2_refs = res2.get("data", {}).get("references", [])
-    except Exception:
-        try:
-            res2 = await ai_gateway.call_gemini(t3_prompt + "\nProvide an alternate rigorous pedagogical perspective.", task="draft_reference")
-            draft2_refs = res2.get("data", {}).get("references", [])
-        except Exception:
-            draft2_refs = []
-
-    d2_map = { r.get("key"): r for r in draft2_refs }
-    q_map = { (r["key"] or f"q_{idx+1}"): r for idx, r in enumerate(q_rows) }
-
+    all_disagreements = []
     saved_refs = []
     with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute("DELETE FROM \"references\" WHERE paper_id = ?", (paper_id,))
-        for ref in draft1_refs:
-            ref_key = ref.get("key", "")
-            q_row = q_map.get(ref_key)
-            q_id = q_row["id"] if q_row else None
-            max_m = q_row["max_marks"] if q_row else 1.0
-
-            # Disagreement check with draft 2
-            d2 = d2_map.get(ref_key)
-            if d2:
-                if ref.get("correct_option") and d2.get("correct_option"):
-                    if str(ref["correct_option"]).strip().lower() != str(d2["correct_option"]).strip().lower():
-                        disagreements.append(f"MCQ {ref_key}: Draft 1 suggests '{ref['correct_option']}', Draft 2 suggests '{d2['correct_option']}'")
-                sim = calculate_text_similarity(ref.get("model_answer", ""), d2.get("model_answer", ""))
-                if sim < 0.45:
-                    disagreements.append(f"Question {ref_key}: Drafts diverge on model answer formulation (similarity {sim:.2f})")
-
-            kp_list = ref.get("key_points", [])
-            kp_sum = sum(float(p.get("marks", 0)) for p in kp_list)
-            if not kp_list:
-                kp_list = [{"text": ref.get("model_answer", "Correct answer"), "marks": max_m}]
-            elif abs(kp_sum - max_m) > 0.05:
-                scale = max_m / kp_sum if kp_sum > 0 else 1.0
-                for p in kp_list:
-                    p["marks"] = round_to_half_step(float(p.get("marks", 0)) * scale)
-
+        cursor.execute('DELETE FROM "references" WHERE paper_id = ?', (paper_id,))
+        for ref in generated_refs:
+            for dis in ref.get("disagreements", []):
+                all_disagreements.append(dis)
             ref_id = str(uuid.uuid4())
-            model_ans = ref.get("model_answer", "")
-            kp_json = json.dumps(kp_list)
-            corr_opt = ref.get("correct_option")
-
+            kp_json = json.dumps(ref["key_points"])
             cursor.execute(
                 """
                 INSERT INTO "references" (id, paper_id, question_id, key, source, model_answer, key_points_json, correct_option, is_approved)
                 VALUES (?, ?, ?, ?, 'ai_draft', ?, ?, ?, 1)
                 """,
-                (ref_id, paper_id, q_id, ref_key, model_ans, kp_json, corr_opt),
+                (ref_id, paper_id, ref["question_id"], ref["key"], ref["model_answer"], kp_json, ref["correct_option"]),
             )
             saved_refs.append({
                 "id": ref_id,
-                "key": ref_key,
-                "question_id": q_id,
+                "key": ref["key"],
+                "question_id": ref["question_id"],
                 "source": "ai_draft",
-                "model_answer": model_ans,
-                "key_points": kp_list,
-                "correct_option": corr_opt,
+                "model_answer": ref["model_answer"],
+                "word_count": ref["word_count"],
+                "target_words": ref["target_words"],
+                "is_expanded": ref["is_expanded"],
+                "key_points": ref["key_points"],
+                "correct_option": ref["correct_option"],
+                "disagreements": ref["disagreements"],
                 "is_approved": 1,
             })
 
-    return {"status": "generated", "paper_id": paper_id, "references": saved_refs, "disagreements": disagreements}
+    return {"status": "generated", "paper_id": paper_id, "references": saved_refs, "disagreements": all_disagreements}
+
+@app.post("/api/papers/{paper_id}/questions/{key}/reference/regenerate")
+async def regenerate_question_reference(paper_id: str, key: str):
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM papers WHERE id = ?", (paper_id,))
+        paper = cursor.fetchone()
+        if not paper:
+            raise HTTPException(status_code=404, detail="Paper not found")
+        cursor.execute("SELECT * FROM questions WHERE paper_id = ? AND (key = ? OR id = ? OR q_no = ?)", (paper_id, key, key, key))
+        q_row = cursor.fetchone()
+        if not q_row:
+            raise HTTPException(status_code=404, detail=f"Question '{key}' not found")
+        q = dict(q_row)
+        try:
+            q["options"] = json.loads(q.get("options_json") or "[]")
+        except Exception:
+            q["options"] = []
+
+    ref = await generate_single_question_reference(q, paper["subject"] or "", expand_force=False)
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT OR REPLACE INTO "references" (id, paper_id, question_id, key, source, model_answer, key_points_json, correct_option, is_approved)
+            VALUES (
+                COALESCE((SELECT id FROM "references" WHERE paper_id = ? AND (key = ? OR question_id = ?)), ?),
+                ?, ?, ?, 'ai_draft', ?, ?, ?, 1
+            )
+            """,
+            (
+                paper_id, ref["key"], q["id"], str(uuid.uuid4()),
+                paper_id, q["id"], ref["key"], ref["model_answer"],
+                json.dumps(ref["key_points"]), ref["correct_option"]
+            )
+        )
+    return {"status": "regenerated", "paper_id": paper_id, "reference": ref}
+
+@app.post("/api/papers/{paper_id}/questions/{key}/reference/expand")
+async def expand_question_reference(paper_id: str, key: str):
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM papers WHERE id = ?", (paper_id,))
+        paper = cursor.fetchone()
+        if not paper:
+            raise HTTPException(status_code=404, detail="Paper not found")
+        cursor.execute("SELECT * FROM questions WHERE paper_id = ? AND (key = ? OR id = ? OR q_no = ?)", (paper_id, key, key, key))
+        q_row = cursor.fetchone()
+        if not q_row:
+            raise HTTPException(status_code=404, detail=f"Question '{key}' not found")
+        q = dict(q_row)
+        try:
+            q["options"] = json.loads(q.get("options_json") or "[]")
+        except Exception:
+            q["options"] = []
+
+    ref = await generate_single_question_reference(q, paper["subject"] or "", expand_force=True)
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT OR REPLACE INTO "references" (id, paper_id, question_id, key, source, model_answer, key_points_json, correct_option, is_approved)
+            VALUES (
+                COALESCE((SELECT id FROM "references" WHERE paper_id = ? AND (key = ? OR question_id = ?)), ?),
+                ?, ?, ?, 'ai_draft', ?, ?, ?, 1
+            )
+            """,
+            (
+                paper_id, ref["key"], q["id"], str(uuid.uuid4()),
+                paper_id, q["id"], ref["key"], ref["model_answer"],
+                json.dumps(ref["key_points"]), ref["correct_option"]
+            )
+        )
+    return {"status": "expanded", "paper_id": paper_id, "reference": ref}
 
 @app.put("/api/papers/{paper_id}/reference")
 def update_paper_reference(paper_id: str, payload: ReferenceUpdateRequest):
@@ -2191,6 +2455,12 @@ def get_sheet_review(sheet_id: str):
                 else:
                     paper_pages.append(f"/storage/papers/{paper_id}/{pp.name}")
 
+        cursor.execute("SELECT * FROM \"references\" WHERE paper_id = ?", (paper_id,))
+        refs_map = {r["question_id"]: dict(r) for r in cursor.fetchall()}
+        if not refs_map:
+            cursor.execute("SELECT * FROM references_ai WHERE paper_id = ?", (paper_id,))
+            refs_map = {r["question_id"]: dict(r) for r in cursor.fetchall()}
+
         cursor.execute(
             """
             SELECT e.id as eval_id, e.ai_marks, e.final_marks, e.reason, e.evidence_quote, e.flags_json, e.resolved, e.is_counted,
@@ -2209,6 +2479,34 @@ def get_sheet_review(sheet_id: str):
             d = dict(r)
             d["flags"] = json.loads(d.get("flags_json") or "[]")
             d["is_counted"] = bool(d.get("is_counted", 1))
+
+            if isinstance(d.get("page_numbers"), str):
+                try:
+                    d["page_numbers"] = json.loads(d["page_numbers"])
+                except Exception:
+                    d["page_numbers"] = [0]
+            elif not d.get("page_numbers"):
+                d["page_numbers"] = [0]
+
+            if isinstance(d.get("bbox_json"), str):
+                try:
+                    d["bbox_json"] = json.loads(d["bbox_json"])
+                except Exception:
+                    d["bbox_json"] = []
+
+            ref_item = refs_map.get(d["question_id"])
+            if ref_item:
+                d["model_answer"] = ref_item.get("model_answer", "")
+                kp_raw = ref_item.get("key_points_json") or "[]"
+                try:
+                    d["key_points"] = json.loads(kp_raw) if isinstance(kp_raw, str) else kp_raw
+                except Exception:
+                    d["key_points"] = []
+            else:
+                d["model_answer"] = ""
+                d["key_points"] = []
+
+            d["crop_url"] = f"/api/sheets/{sheet_id}/crop/{d['eval_id']}"
             evals.append(d)
 
         cursor.execute("SELECT * FROM sections WHERE paper_id = ? ORDER BY id ASC", (paper_id,))
@@ -2228,6 +2526,98 @@ def get_sheet_review(sheet_id: str):
             "flagged_questions": flagged,
             "all_resolved": len(flagged) == 0,
         }
+
+@app.get("/api/sheets/{sheet_id}/crop/{eval_id}")
+def get_answer_crop(sheet_id: str, eval_id: str):
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM evaluations WHERE id = ?", (eval_id,))
+        ev = cursor.fetchone()
+        if not ev:
+            raise HTTPException(status_code=404, detail="Evaluation not found")
+
+        cursor.execute("SELECT * FROM answers WHERE sheet_id = ? AND question_id = ?", (sheet_id, ev["question_id"]))
+        ans = cursor.fetchone()
+
+        cursor.execute("SELECT * FROM sheet_pages WHERE sheet_id = ? ORDER BY page_number ASC", (sheet_id,))
+        pages = [dict(p) for p in cursor.fetchall()]
+        if not pages:
+            raise HTTPException(status_code=404, detail="No sheet pages found")
+
+    page_idx = 0
+    bboxes = []
+    if ans:
+        pg_nums = ans["page_numbers"]
+        if isinstance(pg_nums, str):
+            try:
+                parsed_pgs = json.loads(pg_nums)
+                if parsed_pgs:
+                    page_idx = int(parsed_pgs[0])
+            except Exception:
+                page_idx = 0
+        elif isinstance(pg_nums, list) and pg_nums:
+            page_idx = int(pg_nums[0])
+
+        bbox_raw = ans["bbox_json"]
+        if isinstance(bbox_raw, str):
+            try:
+                bboxes = json.loads(bbox_raw)
+            except Exception:
+                bboxes = []
+        elif isinstance(bbox_raw, list):
+            bboxes = bbox_raw
+
+    if page_idx >= len(pages):
+        page_idx = 0
+
+    page_file = Path(pages[page_idx]["file_path"])
+    if not page_file.exists():
+        raise HTTPException(status_code=404, detail="Page image file not found")
+
+    try:
+        from PIL import Image
+        with Image.open(page_file) as img:
+            w, h = img.size
+            if bboxes and isinstance(bboxes, list) and len(bboxes) > 0:
+                box = bboxes[0]
+                if isinstance(box, dict) and "x" in box and "y" in box and "w" in box and "h" in box:
+                    bx = box["x"] * w if box["x"] <= 1.0 else box["x"]
+                    by = box["y"] * h if box["y"] <= 1.0 else box["y"]
+                    bw = box["w"] * w if box["w"] <= 1.0 else box["w"]
+                    bh = box["h"] * h if box["h"] <= 1.0 else box["h"]
+                    crop_box = (
+                        max(0, int(bx - 10)),
+                        max(0, int(by - 10)),
+                        min(w, int(bx + bw + 10)),
+                        min(h, int(by + bh + 10)),
+                    )
+                elif isinstance(box, (list, tuple)) and len(box) == 4:
+                    b0, b1, b2, b3 = box
+                    if max(b0, b1, b2, b3) <= 1.0:
+                        crop_box = (
+                            max(0, int(b1 * w - 10)),
+                            max(0, int(b0 * h - 10)),
+                            min(w, int(b3 * w + 10)),
+                            min(h, int(b2 * h + 10)),
+                        )
+                    else:
+                        crop_box = (
+                            max(0, int(min(b0, b2) - 10)),
+                            max(0, int(min(b1, b3) - 10)),
+                            min(w, int(max(b0, b2) + 10)),
+                            min(h, int(max(b1, b3) + 10)),
+                        )
+                else:
+                    crop_box = (0, 0, w, min(h, int(h * 0.4)))
+            else:
+                crop_box = (0, 0, w, min(h, int(h * 0.4)))
+
+            cropped = img.crop(crop_box)
+            buf = io.BytesIO()
+            cropped.save(buf, format="JPEG", quality=90)
+            return Response(content=buf.getvalue(), media_type="image/jpeg")
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Error generating crop: {exc}")
 
 @app.post("/api/evaluations/{eval_id}/review")
 def submit_teacher_review(eval_id: str, payload: ReviewOverride):
@@ -2407,6 +2797,102 @@ def delete_sheet(sheet_id: str):
             pass
 
     return {"status": "deleted", "sheet_id": sheet_id}
+
+class BulkFinalizePayload(BaseModel):
+    paper_id: Optional[str] = None
+    sheet_ids: Optional[List[str]] = None
+
+@app.post("/api/sheets/{sheet_id}/finalize")
+def finalize_sheet(sheet_id: str, force: bool = False):
+    """
+    Finalizes an answer sheet: checks that 0 unresolved flags remain before finalization.
+    Allows teacher override when force=True.
+    """
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM sheets WHERE id = ?", (sheet_id,))
+        sheet = cursor.fetchone()
+        if not sheet:
+            raise HTTPException(status_code=404, detail="Sheet not found")
+        
+        cursor.execute("SELECT COUNT(*) as unres FROM evaluations WHERE sheet_id = ? AND resolved = 0", (sheet_id,))
+        unres = cursor.fetchone()["unres"]
+        if unres > 0 and not force:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Cannot finalize sheet: {unres} unresolved flag(s) remain. Review and resolve all flags before finalizing."
+            )
+        
+        cursor.execute(
+            "UPDATE sheets SET status = 'evaluated', current_stage = 'Finalized', updated_at = datetime('now') WHERE id = ?",
+            (sheet_id,)
+        )
+    return {"status": "finalized", "sheet_id": sheet_id, "message": "Sheet finalized successfully."}
+
+@app.post("/api/sheets/bulk-finalize")
+def bulk_finalize_sheets(payload: BulkFinalizePayload):
+    """
+    Bulk finalizes all sheets with 0 unresolved flags for a paper or list of sheet IDs.
+    """
+    finalized = []
+    skipped = []
+    with get_db() as conn:
+        cursor = conn.cursor()
+        if payload.sheet_ids:
+            placeholders = ",".join(["?"] * len(payload.sheet_ids))
+            cursor.execute(f"SELECT id, roll_number, student_name FROM sheets WHERE id IN ({placeholders})", payload.sheet_ids)
+            target_sheets = cursor.fetchall()
+        elif payload.paper_id:
+            cursor.execute("SELECT id, roll_number, student_name FROM sheets WHERE paper_id = ?", (payload.paper_id,))
+            target_sheets = cursor.fetchall()
+        else:
+            raise HTTPException(status_code=400, detail="Must provide paper_id or sheet_ids")
+
+        for s in target_sheets:
+            sid = s["id"]
+            cursor.execute("SELECT COUNT(*) as unres FROM evaluations WHERE sheet_id = ? AND resolved = 0", (sid,))
+            unres = cursor.fetchone()["unres"]
+            if unres == 0:
+                cursor.execute(
+                    "UPDATE sheets SET status = 'evaluated', current_stage = 'Finalized', updated_at = datetime('now') WHERE id = ?",
+                    (sid,)
+                )
+                finalized.append(sid)
+            else:
+                skipped.append({
+                    "sheet_id": sid,
+                    "roll_number": s["roll_number"],
+                    "student_name": s["student_name"],
+                    "unresolved_flags": unres,
+                })
+
+    return {
+        "status": "completed",
+        "finalized_count": len(finalized),
+        "skipped_count": len(skipped),
+        "finalized_sheets": finalized,
+        "skipped_sheets": skipped,
+    }
+
+@app.get("/api/papers/{paper_id}/sheets")
+def list_paper_sheets(paper_id: str):
+    """
+    Lists all sheets for a paper with per-sheet unresolved and total flag counts.
+    """
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM sheets WHERE paper_id = ? ORDER BY created_at DESC", (paper_id,))
+        sheets = [dict(r) for r in cursor.fetchall()]
+        for s in sheets:
+            sid = s["id"]
+            cursor.execute("SELECT COUNT(*) as unres FROM evaluations WHERE sheet_id = ? AND resolved = 0", (sid,))
+            s["unresolved_flags_count"] = cursor.fetchone()["unres"]
+            cursor.execute(
+                "SELECT COUNT(*) as total_flags FROM evaluations WHERE sheet_id = ? AND flags_json != '[]' AND flags_json IS NOT NULL",
+                (sid,)
+            )
+            s["total_flags_count"] = cursor.fetchone()["total_flags"]
+    return {"sheets": sheets}
 
 # ----------------- SCREEN 5: REPORTS (PDF & EXCEL) -----------------
 

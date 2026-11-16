@@ -81,6 +81,7 @@ def init_db():
                 question_type TEXT NOT NULL DEFAULT 'short', -- 'mcq', 'one_word', 'short', 'long', 'maths'
                 section_name TEXT DEFAULT 'General',
                 options_json TEXT DEFAULT '[]',
+                word_limit INTEGER DEFAULT 150,
                 strictness_override TEXT, -- NULL or 'strict', 'lenient', 'maths'
                 checking_medium_override TEXT, -- NULL or 'answer_key', 'ai_reference'
                 order_idx INTEGER NOT NULL DEFAULT 0
@@ -277,6 +278,7 @@ def init_db():
         add_column_if_missing("questions", "key TEXT", "key")
         add_column_if_missing("questions", "section_id TEXT", "section_id")
         add_column_if_missing("questions", "options_json TEXT DEFAULT '[]'", "options_json")
+        add_column_if_missing("questions", "word_limit INTEGER DEFAULT 150", "word_limit")
         add_column_if_missing("evaluations", "is_counted INTEGER NOT NULL DEFAULT 1", "is_counted")
         add_column_if_missing("sheets", "failed_stage TEXT", "failed_stage")
         add_column_if_missing("answers", "page_numbers TEXT DEFAULT '[]'", "page_numbers")
