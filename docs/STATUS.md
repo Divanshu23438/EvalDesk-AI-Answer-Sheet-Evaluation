@@ -1,7 +1,9 @@
 # STATUS (update at the end of every session)
-Date / author (agent or model name): 2026-11-15 / Antigravity (Gemini 3.8 Flash)
-Current phase and task: Phase 7 Completed (Live Production Hardening & Full E2E Live Verification Verified)
+Date / author (agent or model name): 2026-11-16 / Antigravity (Gemini 3.8 Flash)
+Current phase and task: Phase A & Phase B Completed and Verified (Section Rules, Scoped Keys, Auto-Orientation, Command Whitelist, Dual-Judge, and Gold Benchmark)
 Done (task id, commit, proof file):
+- Task PlanV2.A: Section rules & scoped question keys (Added `sections` table, `section_id` in questions, `is_counted` in evaluations; T1 section rule extraction with contradiction warning; section-scoped keys `P1-Q1`, `P2-Q1`, `P3-Q1` preventing label collisions; UI Section Rules card per Part with contradiction alert; real sections wired into `calculate_section_choice_totals` supporting 'best_n' and 'first_n_answered' policies; verified under both attempt_n = 4 (54M) and attempt_n = 5 (60M)) | commit db6db98 | docs/proof/phase_a_sections_proof.txt
+- Task PlanV2.B: Two-stage transcription, command token checker, dual-judge & auto-orientation (`auto_orient_image_bytes` testing 0°/90°/180°/270° orientations automatically rotating scans upright; Task T5 verbatim character-by-character transcription prompt preventing AI auto-correction of errors; newline multi-page continuation merging; Task T6 `accept_if` & `reject_if` rubric criteria penalizing non-computing everyday analogies; deterministic `check_command_tokens` detecting wrong tokens like 'ch' instead of 'cd' with 1.0M penalty and plain-English flag; dual-judge verification on long answers; teacher-verified gold benchmark `scripts/eval_gold.py` passing on Kanak Patel SGSU250489) | commit pending | docs/proof/plan_v2_ab_proof.txt
 - Task P0.1: Rotate-keys note, ignore secrets/dist/caches/data | commit 8e0f32e | docs/proof/rotate_keys_note.md
 - Task P0.2: Back up database & clean database initialization | commit 30e66b6 | data/app.db.bak
 - Task P0.3: Remove banned strings & empty React initial state | commit 30e66b6 | docs/proof/p0_check_all.txt
@@ -30,11 +32,11 @@ Done (task id, commit, proof file):
 - Task P7.5: Marking Concurrency & Screen 3 Polling Fix (instant skip for unattempted answers, asyncio.Semaphore(3) concurrent grading with 25s timeout, startup resume for marking sheets, continuous 2s frontend polling with auto-advance and Retry button) | commit 7f8c34a | `docs/proof/p3_marking_concurrency_fix.txt`
 - Task P7.6: Grading Engine & Report Card Formatting Fixes (deterministic MCQ routing, robust punctuation/whitespace normalized quote verification, open-ended/conceptual Task T6 grading prompt, clean Q-numbering without Q.Q., and unattempted indicator in evidence quote) | commit 8bc5d44 | `docs/proof/p7_grading_report_fixes.txt`
 - Task P7.7: Evaluation Accuracy Calibration & Executive UI/UX Upgrade (zero marks for unattempted/empty answers, rigorous factual checks penalizing wrong technical claims like ls as internal, depth checks penalizing everyday analogies for 6M/10M questions, printed exam header extraction, clean single-line PDF layout, executive 5-step stepper navigation, KPI summary cards, and Split-View zoom controls) | docs/proof/p7_evaluation_calibration_and_ui_upgrade.txt
-In progress / failing (exact error): None. All tasks from Phase 0 through Phase 7 pass 100%. System is fully calibrated, verified, and ready for live production use.
+In progress / failing (exact error): None. Phase A (Section Rules & Scoped Keys) and Phase B (Grading Accuracy & Gold Benchmark) are fully verified and passing all gates.
 Next three actions:
-1. Final commit of Phase 7 (P7.4).
-2. Present full final verification report to user.
-3. System ready for live evaluation runs.
+1. Stop for user review of Phase A & Phase B verification proofs.
+2. Upon user review/approval, proceed to Phase C (Better References without Answer Key).
+3. Implement Phase D (Teacher Review Workspace) and Phase E (Class Analytics & Report Card Layout).
 Known issues and decisions (link to docs/DECISIONS.md):
 - On Windows, `check_all.py` calls `npx.cmd` when on win32 to prevent `[WinError 2]`.
 - Groq Vision requires images to be at least 32x32 pixels; `health_check_providers` generates a 64x64 patterned test JPEG.

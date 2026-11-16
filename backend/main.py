@@ -37,7 +37,7 @@ from backend.storage import (
     to_relative_posix,
     from_relative_posix,
 )
-from backend.pdf_tools import process_pdf_bytes, normalize_image_bytes, process_pdf
+from backend.pdf_tools import process_pdf_bytes, normalize_image_bytes, process_pdf, auto_orient_image_bytes
 from backend.line_tools import segment_text_lines
 from backend.ai_gateway import (
     ai_gateway,
@@ -52,6 +52,7 @@ from backend.marking_engine import (
     round_to_half_step,
     verify_evidence_quote,
     build_task_t6_grading_prompt,
+    check_command_tokens,
 )
 from backend.reports_generator import (
     generate_student_report_card_pdf,
@@ -481,6 +482,7 @@ async def extract_paper_questions(paper_file: UploadFile = File(...)):
             if not pdf_info["page_images_bytes"]:
                 raise HTTPException(status_code=400, detail="Scanned PDF contains no renderable pages.")
             page_img = pdf_info["page_images_bytes"][0]
+            page_img = await auto_orient_image_bytes(page_img)
             try:
                 res = await ai_gateway.call_gemini(T1_PROMPT, image_bytes=page_img, mime_type="image/jpeg", task="extract_paper")
                 data = res.get("data", {})
@@ -490,7 +492,9 @@ async def extract_paper_questions(paper_file: UploadFile = File(...)):
         # Standard image (JPEG, PNG, etc.)
         source = "vision"
         try:
-            res = await ai_gateway.call_gemini(T1_PROMPT, image_bytes=content, mime_type=paper_file.content_type, task="extract_paper")
+            content = await auto_orient_image_bytes(content)
+            saved_paper_path.write_bytes(content)
+            res = await ai_gateway.call_gemini(T1_PROMPT, image_bytes=content, mime_type="image/jpeg", task="extract_paper")
             data = res.get("data", {})
         except AIError as ae:
             raise map_ai_error_to_http(ae, "Question extraction failed")
@@ -1362,6 +1366,7 @@ async def upload_answer_sheet(
                 pdf_res = process_pdf_bytes(content)
                 for p_bytes in pdf_res["page_images_bytes"]:
                     norm_bytes, _ = normalize_image_bytes(p_bytes)
+                    norm_bytes = await auto_orient_image_bytes(norm_bytes)
                     page_path = sheet_dir / "original" / f"page_{page_counter:02d}.jpg"
                     with open(page_path, "wb") as out:
                         out.write(norm_bytes)
@@ -1369,6 +1374,7 @@ async def upload_answer_sheet(
                     page_counter += 1
             else:
                 norm_bytes, _ = normalize_image_bytes(content)
+                norm_bytes = await auto_orient_image_bytes(norm_bytes)
                 page_path = sheet_dir / "original" / f"page_{page_counter:02d}.jpg"
                 with open(page_path, "wb") as out:
                     out.write(norm_bytes)
@@ -1657,9 +1663,11 @@ async def run_sheet_evaluation_pipeline(sheet_id: str):
             {q_list_text}
 
             CRITICAL ACCURACY & INTEGRITY RULES:
+            - Transcribe student handwriting verbatim character-by-character. Never auto-correct spelling, syntax, or commands (for example, keep 'ch' as 'ch', never change to 'cd'). Mark illegible tokens [?].
             - ONLY include questions for which the student actually attempted and wrote an answer on this page.
             - If a question or sub-question was NOT attempted, omitted, or left blank by the student (e.g. no sub-question written, blank line, stray paper speck, stray ruling dot), do NOT include it in answers! Never guess or hallucinate an answer based on question options.
             - For multiple choice / one-word questions: the student MUST have explicitly written either the sub-question label (e.g. 'v)', '(v)') or the option letter (e.g. '(a)', '(b)', 'B') or the option answer text. Stray dots, stray punctuation, or notebook ruling dots alone without explicit student writing is NOT an answer and must be omitted.
+            - If an answer starts on this page and continues onto the next page, or is a continuation from the previous page, set "continues": true, and transcribe everything written on this page for this question.
 
             For each question key that has an actual handwritten answer written on this page:
             - key: exact internal question key from the list above
@@ -1752,7 +1760,7 @@ async def run_sheet_evaluation_pipeline(sheet_id: str):
 
                 entry = transcriptions_by_key.get(k, {})
                 texts = entry.get("texts", [])
-                final_text = " ".join(texts).strip()
+                final_text = "\n".join(texts).strip()
                 pages_answered = entry.get("pages", [])
                 legibility_scores = entry.get("legibility_scores", [])
                 avg_legibility = (sum(legibility_scores) / len(legibility_scores)) if legibility_scores else (1.0 if final_text else 0.0)
@@ -1869,6 +1877,52 @@ async def run_sheet_evaluation_pipeline(sheet_id: str):
                             awarded_marks = round_to_half_step(awarded_marks)
                             reason = " | ".join(pt_reasons) if pt_reasons else "Graded against rubric."
                             evidence_quote = " ; ".join(quotes)
+
+                            # Dual-judge verification on long answers (max_m >= 6.0 or type == 'long')
+                            is_long_question = (max_m >= 6.0 or q_type.lower() in ["long", "essay"])
+                            if is_long_question:
+                                sec_eval_list = []
+                                try:
+                                    g_sec = await asyncio.wait_for(
+                                        ai_gateway.call_groq(prompt_grade, task="grade_secondary"),
+                                        timeout=20.0,
+                                    )
+                                    sec_eval_list = g_sec.get("data", {}).get("evaluations", [])
+                                    if not sec_eval_list and isinstance(g_sec.get("data"), list):
+                                        sec_eval_list = g_sec.get("data")
+                                except Exception:
+                                    try:
+                                        g_sec = await asyncio.wait_for(
+                                            ai_gateway.call_gemini(prompt_grade, task="grade_secondary"),
+                                            timeout=20.0,
+                                        )
+                                        sec_eval_list = g_sec.get("data", {}).get("evaluations", [])
+                                        if not sec_eval_list and isinstance(g_sec.get("data"), list):
+                                            sec_eval_list = g_sec.get("data")
+                                    except Exception:
+                                        sec_eval_list = []
+
+                                if sec_eval_list:
+                                    sec_total = 0.0
+                                    for idx, kp in enumerate(key_points):
+                                        pt_alloc = float(kp.get("marks", max_m / len(key_points)))
+                                        match_ev = next((ev for ev in sec_eval_list if ev.get("point_index") == idx + 1), None)
+                                        if not match_ev and idx < len(sec_eval_list):
+                                            match_ev = sec_eval_list[idx]
+                                        if match_ev:
+                                            s_verdict = str(match_ev.get("verdict", "none")).lower()
+                                            s_quote = str(match_ev.get("quote", "")).strip()
+                                            if s_quote and not verify_evidence_quote(s_quote, final_text):
+                                                s_verdict = "none"
+                                            if s_verdict == "full":
+                                                sec_total += pt_alloc
+                                            elif s_verdict == "partial":
+                                                sec_total += round_to_half_step(pt_alloc * 0.5)
+
+                                    sec_awarded = min(max_m, max(0.0, round_to_half_step(sec_total)))
+                                    mark_diff = abs(awarded_marks - sec_awarded)
+                                    if mark_diff > 1.0:
+                                        flags.append(f"Dual-judge disagreement: Judge 1 awarded {awarded_marks}M, Judge 2 awarded {sec_awarded}M (diff > 1.0M)")
                         except (asyncio.TimeoutError, TimeoutError):
                             awarded_marks = 0.0
                             reason = "Grading call timed out after 25s."
@@ -1884,6 +1938,23 @@ async def run_sheet_evaluation_pipeline(sheet_id: str):
                             else:
                                 flags.append("call_failed")
                                 reason = f"Grading call failed: {ae.message}"
+
+                # Deterministic Command Token Checker
+                if is_attempted and final_text.strip():
+                    cmd_res = check_command_tokens(
+                        student_text=final_text,
+                        question_text=q.get("question_text", ""),
+                        reference_text=ref_data.get("model_answer", "") if ref_data else "",
+                    )
+                    if not cmd_res["valid"]:
+                        for cf in cmd_res["flags"]:
+                            if cf not in flags:
+                                flags.append(cf)
+                        if cmd_res["penalty_marks"] > 0:
+                            awarded_marks = max(0.0, awarded_marks - cmd_res["penalty_marks"])
+                            awarded_marks = round_to_half_step(awarded_marks)
+                            if cmd_res["reason_note"]:
+                                reason = f"{reason} | {cmd_res['reason_note']}" if reason else cmd_res["reason_note"]
 
                 completed_marking += 1
                 try:

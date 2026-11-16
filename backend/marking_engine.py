@@ -213,14 +213,21 @@ def build_task_t6_grading_prompt(
     Builds the Task T6 rubric grading prompt:
     - Enforces academic rigor and factual accuracy (penalizes wrong claims like 'ls is internal')
     - Calibrates depth for 6-mark & 10-mark questions (everyday analogies earn partial marks)
+    - Supports accept_if and reject_if criteria per key point
     - Respects open-ended questions ('any N features/examples')
     - Emits clean plain-text remarks without raw LaTeX '$' symbols
     - Instructs extraction of verbatim evidence quotes
     """
-    formatted_points = "\n".join([
-        f"- Point {idx+1} ({kp.get('marks', 1.0)}M): {kp.get('text', '')}"
-        for idx, kp in enumerate(key_points)
-    ])
+    formatted_points_list = []
+    for idx, kp in enumerate(key_points):
+        lines = [f"- Point {idx+1} ({kp.get('marks', 1.0)}M): {kp.get('text', '')}"]
+        if kp.get("accept_if"):
+            lines.append(f"  * accept_if: {kp.get('accept_if')}")
+        if kp.get("reject_if"):
+            lines.append(f"  * reject_if: {kp.get('reject_if')}")
+        formatted_points_list.append("\n".join(lines))
+
+    formatted_points = "\n".join(formatted_points_list)
     return f"""You are an expert, fair, and objective academic evaluator grading a student's answer against an assessment rubric.
 
 Question: {question_text} (Max: {max_marks} marks)
@@ -239,23 +246,28 @@ GRADING PRINCIPLES:
 
 2. DEPTH & TECHNICAL RELEVANCE (6-MARK & 10-MARK QUESTIONS):
    - For medium and long questions (>= 4 marks), a brief 1-line definition without technical explanation or valid OS/computing examples earns only partial marks (50%–70%), never full 100% marks.
-   - Non-computing everyday analogies (such as "eating and studying" for multitasking or "ATM password" for security) do NOT count as valid technical UNIX examples. Full marks require valid technical/computing examples (e.g., background job execution with `&` or process IDs for multitasking; file permissions `file permissions` or root privileges for security).
+   - Non-computing everyday analogies (such as "eating and studying" for multitasking, "a phone calculator" for internal commands, "YouTube application" for external commands, or "ATM password" for security) do NOT count as valid technical UNIX examples. Full marks require valid technical/computing examples (e.g., background job execution with `&` or process IDs for multitasking; file permissions or root privileges for security).
+   - Real-life analogies without valid OS examples earn at most 50% of the key point's marks.
 
-3. OPEN-ENDED QUESTIONS ("any N features / examples / types"):
+3. RUBRIC ACCEPT_IF & REJECT_IF RULES:
+   - accept_if: When specified, verify that the student answer satisfies the required technical criteria (e.g. real UNIX commands, actual file paths, correct syntax).
+   - reject_if: When specified, strictly apply deductions or award zero for non-computing analogies, syntax errors, or invalid technical classifications.
+
+4. OPEN-ENDED QUESTIONS ("any N features / examples / types"):
    - When a question asks for "any N features/examples" (e.g. "Write any four features of UNIX with examples"), accept ANY factually valid, correct subject features with examples, even if the specific feature or example differs from the specific items in the reference rubric key points.
 
-4. CONCEPTUAL ACCURACY:
+5. CONCEPTUAL ACCURACY:
    - When the student's explanation is conceptually accurate and technically sound, award appropriate marks without demanding exact textbook buzzwords (e.g., describing the shell as a "bridge between user and kernel that takes input from user to kernel" satisfies the shell interface criterion).
 
-5. FORMATTING & REMARKS:
+6. FORMATTING & REMARKS:
    - Write clean plain text in reasons and remarks. NEVER output raw LaTeX math symbols or `$` signs (e.g. write `(0.5 / 0.5 M)` or `(1.0 / 2.0 M)`, never write LaTeX dollar expressions).
 
-6. VERDICT DEFINITIONS:
+7. VERDICT DEFINITIONS:
    - "full": The student demonstrated conceptual understanding and provided a valid, factually accurate explanation with appropriate technical examples.
    - "partial": The student gave a partially correct answer, missed depth/technical examples, used non-computing analogies, or made a minor error.
    - "none": The student did not address the key point, provided factually incorrect information, or the answer is unattempted.
 
-7. EVIDENCE QUOTE:
+8. EVIDENCE QUOTE:
    - "quote": Copy the exact verbatim text segment from the student's answer that supports your verdict. If the point was not addressed or is completely incorrect, return "".
 
 Return JSON strictly matching schema:
@@ -270,6 +282,122 @@ Return JSON strictly matching schema:
   ]
 }}
 """
+
+def check_command_tokens(
+    student_text: str,
+    question_text: str = "",
+    reference_text: str = "",
+    expected_commands: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    """
+    Deterministic UNIX / programming command-token syntax checker.
+    Extracts expected commands from question/reference or explicit list.
+    Detects invalid tokens, common syntax errors, or wrong command names:
+      - 'ch' used instead of 'cd' (e.g. 'ch directoryname', 'ch Linux', 'ch ..')
+      - 'md' used instead of 'mkdir'
+      - 'rd' used instead of 'rmdir'
+      - 'dir' used instead of 'ls'
+    Deducts command-syntax marks and raises plain-English flags.
+    """
+    if not student_text or not student_text.strip():
+        return {
+            "valid": True,
+            "mismatches": [],
+            "flags": [],
+            "penalty_marks": 0.0,
+            "reason_note": "",
+        }
+
+    mismatches = []
+    flags = []
+    penalty_marks = 0.0
+
+    # 1. Check for 'ch' used instead of 'cd'
+    # Matches patterns like 'ch dirname', 'ch Linux', 'ch ..', '- ch directoryname', etc.
+    # Excludes valid commands starting with ch (e.g. chown, chgrp, chroot, chsh, etc.)
+    ch_matches = re.findall(
+        r"(?:^|[\s\-\*\•])ch(?:\s+([A-Za-z0-9_./~-]+)|\.\.)",
+        student_text,
+        re.MULTILINE | re.IGNORECASE,
+    )
+    if ch_matches:
+        arg = ch_matches[0] or ".."
+        msg = "Command syntax mismatch: wrote 'ch' instead of 'cd'"
+        mismatches.append({
+            "expected": "cd",
+            "actual": "ch",
+            "context": f"ch {arg}".strip(),
+            "message": msg,
+        })
+        if msg not in flags:
+            flags.append(msg)
+        penalty_marks += 1.0
+
+    # 2. Check for 'md' used instead of 'mkdir'
+    md_matches = re.findall(
+        r"(?:^|[\s\-\*\•])md\s+([A-Za-z0-9_./~-]+)",
+        student_text,
+        re.MULTILINE | re.IGNORECASE,
+    )
+    if md_matches:
+        arg = md_matches[0]
+        if not arg.lower().endswith(".md"):
+            msg = "Command syntax mismatch: wrote 'md' instead of 'mkdir'"
+            mismatches.append({
+                "expected": "mkdir",
+                "actual": "md",
+                "context": f"md {arg}".strip(),
+                "message": msg,
+            })
+            if msg not in flags:
+                flags.append(msg)
+            penalty_marks += 1.0
+
+    # 3. Check for 'rd' used instead of 'rmdir'
+    rd_matches = re.findall(
+        r"(?:^|[\s\-\*\•])rd\s+([A-Za-z0-9_./~-]+)",
+        student_text,
+        re.MULTILINE | re.IGNORECASE,
+    )
+    if rd_matches:
+        arg = rd_matches[0]
+        msg = "Command syntax mismatch: wrote 'rd' instead of 'rmdir'"
+        mismatches.append({
+            "expected": "rmdir",
+            "actual": "rd",
+            "context": f"rd {arg}".strip(),
+            "message": msg,
+        })
+        if msg not in flags:
+            flags.append(msg)
+        penalty_marks += 1.0
+
+    # 4. Check for DOS 'dir' instead of 'ls' when 'ls' is expected
+    combined_ctx = (question_text + " " + reference_text).lower()
+    if ("ls" in combined_ctx or "list" in combined_ctx) and re.search(r"(?:^|[\s\-\*\•])dir(?:\s+|$)", student_text, re.MULTILINE | re.IGNORECASE):
+        if not re.search(r"\bdirector(?:y|ies)\b", student_text, re.IGNORECASE):
+            msg = "Command syntax mismatch: wrote 'dir' instead of 'ls'"
+            mismatches.append({
+                "expected": "ls",
+                "actual": "dir",
+                "context": "dir",
+                "message": msg,
+            })
+            if msg not in flags:
+                flags.append(msg)
+            penalty_marks += 1.0
+
+    reason_note = ""
+    if flags:
+        reason_note = f"Command syntax penalty (-{penalty_marks:.1f}M): {'; '.join(flags)}."
+
+    return {
+        "valid": len(mismatches) == 0,
+        "mismatches": mismatches,
+        "flags": flags,
+        "penalty_marks": penalty_marks,
+        "reason_note": reason_note,
+    }
 
 def evaluate_rubric_point(
     point_text: str,

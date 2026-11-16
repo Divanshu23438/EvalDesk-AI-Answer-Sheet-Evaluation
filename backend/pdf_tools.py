@@ -113,6 +113,47 @@ def normalize_image_bytes(
     rgb_img.save(out_buf, format="JPEG", quality=90)
     return out_buf.getvalue(), "image/jpeg"
 
+async def auto_orient_image_bytes(image_bytes: bytes) -> bytes:
+    """
+    Tests 0°, 90°, 180°, and 270° orientations on a thumbnail:
+    Detects sideways/upside-down document scans and rotates upright automatically.
+    """
+    if not image_bytes or len(image_bytes) < 100:
+        return image_bytes
+
+    try:
+        img = Image.open(io.BytesIO(image_bytes))
+        img.load()
+        img = ImageOps.exif_transpose(img)
+    except Exception:
+        return image_bytes
+
+    thumb = img.copy()
+    thumb.thumbnail((512, 512))
+    buf = io.BytesIO()
+    thumb.convert("RGB").save(buf, format="JPEG", quality=80)
+    thumb_bytes = buf.getvalue()
+
+    prompt = """Analyze this document image orientation.
+Determine how many degrees clockwise it must be rotated (0, 90, 180, or 270) so that the printed or handwritten text is upright and legible from left-to-right, top-to-bottom.
+Return ONLY valid JSON:
+{"rotation_degrees_clockwise": 0}"""
+
+    try:
+        from backend.ai_gateway import ai_gateway
+        res = await ai_gateway.call_gemini(prompt, image_bytes=thumb_bytes, mime_type="image/jpeg", task="detect_orientation")
+        data = res.get("data", {})
+        rotation = int(data.get("rotation_degrees_clockwise") or 0)
+        if rotation in [90, 180, 270]:
+            rotated_img = img.rotate(-rotation, expand=True)
+            out_buf = io.BytesIO()
+            rotated_img.convert("RGB").save(out_buf, format="JPEG", quality=92)
+            return out_buf.getvalue()
+    except Exception as e:
+        print(f"[Auto-Orientation] Warning: orientation detection skipped: {e}")
+
+    return image_bytes
+
 def convert_single_image_to_standard_jpeg(
     image_path: Path,
     output_path: Path,
