@@ -117,6 +117,16 @@ def map_ai_error_to_http(ae: AIError, prefix: str = "") -> HTTPException:
     return HTTPException(status_code=status_code, detail=msg)
 
 # Pydantic Request & Response Models
+class SectionItem(BaseModel):
+    id: Optional[str] = None
+    name: str
+    instructions: Optional[str] = ""
+    attempt_n: int = 0
+    total_questions: int = 0
+    marks_each: float = 0.0
+    section_marks: float = 0.0
+    policy: str = "best_n"  # 'best_n' or 'first_n_answered'
+
 class ExtractedQuestion(BaseModel):
     key: str
     q_no: str
@@ -124,12 +134,14 @@ class ExtractedQuestion(BaseModel):
     marks: float
     type: str = "short"
     section: str = "General"
+    section_id: Optional[str] = None
     options: List[str] = []
 
 class ExtractPaperResponse(BaseModel):
     draft_id: str
     paper_title: Optional[str] = ""
     questions: List[ExtractedQuestion]
+    sections: List[SectionItem] = []
     total_marks: float
     instructions: str = ""
     warnings: List[str] = []
@@ -145,6 +157,7 @@ class QuestionInput(BaseModel):
     max_marks: float
     question_type: str = "short"
     section_name: str = "General"
+    section_id: Optional[str] = None
     options: List[str] = []
     strictness_override: Optional[str] = None
     checking_medium_override: Optional[str] = None
@@ -157,10 +170,15 @@ class PaperCreateRequest(BaseModel):
     checking_medium: str = "ai_reference"
     total_marks: Optional[float] = None
     instructions: Optional[str] = ""
+    sections: Optional[List[SectionItem]] = []
     questions: List[QuestionInput]
 
 class QuestionsUpdateRequest(BaseModel):
     questions: List[QuestionInput]
+    sections: Optional[List[SectionItem]] = None
+
+class SectionsUpdateRequest(BaseModel):
+    sections: List[SectionItem]
 
 class KeyPoint(BaseModel):
     text: str
@@ -202,11 +220,13 @@ class PaperSetupUpdate(BaseModel):
     checking_medium: str = "ai_reference"
     is_locked: bool = False
     questions: List[QuestionUpdate]
+    sections: Optional[List[SectionItem]] = None
 
 class ReviewOverride(BaseModel):
     teacher_marks: float
     comment: str = ""
     accept_ai: bool = False
+    is_counted: Optional[bool] = None
 
 class RecheckRequest(BaseModel):
     edited_text: str
@@ -297,21 +317,77 @@ def get_paper(paper_id: str):
         cursor.execute("SELECT * FROM sheets WHERE paper_id = ? ORDER BY created_at DESC", (paper_id,))
         sheets = [dict(r) for r in cursor.fetchall()]
 
+        cursor.execute("SELECT * FROM sections WHERE paper_id = ? ORDER BY id ASC", (paper_id,))
+        sections = [dict(r) for r in cursor.fetchall()]
+
         return {
             "paper": dict(paper),
             "questions": questions,
+            "sections": sections,
             "references": references,
             "sheets": sheets,
         }
 
-T1_PROMPT = """You are reading an exam question paper. List every question that must be answered.
+def generate_scoped_key(section_name: str, q_no: str, fallback_idx: int) -> str:
+    """
+    Generates unambiguous section-scoped keys like P1-Q1, P2-Q1, P3-Q1,
+    so repeated Q.1 / Q.2 numbers across parts never collide.
+    """
+    sec = (section_name or "").strip()
+    sec_prefix = ""
+    part_match = re.search(r"Part\s*([IVXLCDM]+|\d+)", sec, re.IGNORECASE)
+    if part_match:
+        val = part_match.group(1).upper()
+        roman_to_num = {"I": "1", "II": "2", "III": "3", "IV": "4", "V": "5", "VI": "6"}
+        p_num = roman_to_num.get(val, val)
+        sec_prefix = f"P{p_num}"
+    elif re.search(r"Section\s*([A-Z]|\d+)", sec, re.IGNORECASE):
+        s_val = re.search(r"Section\s*([A-Z]|\d+)", sec, re.IGNORECASE).group(1).upper()
+        sec_prefix = f"S{s_val}"
+    else:
+        cleaned_sec = re.sub(r"[^A-Za-z0-9]", "", sec)
+        sec_prefix = cleaned_sec[:4].upper() if cleaned_sec else f"S{fallback_idx + 1}"
+
+    clean_q = str(q_no or "").strip()
+    q_parts = re.findall(r"[A-Za-z0-9]+", clean_q)
+    if not q_parts:
+        q_label = f"Q{fallback_idx + 1}"
+    else:
+        if q_parts[0].lower() in ["q", "question"] and len(q_parts) > 1:
+            q_label = f"Q{q_parts[1]}"
+            sub_parts = q_parts[2:]
+        elif q_parts[0].lower().startswith("q") and len(q_parts[0]) > 1:
+            q_label = q_parts[0].upper()
+            sub_parts = q_parts[1:]
+        else:
+            q_label = f"Q{q_parts[0]}"
+            sub_parts = q_parts[1:]
+
+        if sub_parts:
+            q_label += "-" + "-".join(sub_parts)
+
+    return f"{sec_prefix}-{q_label}"
+
+T1_PROMPT = """You are reading an exam question paper. Extract every section and every question that must be answered.
 Keep the original wording and language (including Hindi and English together).
+
+First, extract the exam sections / parts with their rules:
+For each section return:
+- `name`: section name as printed, e.g. "Part I", "Part II", "Section A", or "General"
+- `instructions`: printed instructions for this section, e.g. "All questions are compulsory", "Attempt any four questions"
+- `attempt_n`: number of questions student is required or allowed to attempt in this section (e.g. 4 for "Attempt any 4", or total questions if all compulsory)
+- `total_questions`: total number of questions printed in this section
+- `marks_each`: marks per question in this section (e.g. 2.0, 6.0, 10.0)
+- `section_marks`: total marks allocated for this section (e.g. 20.0, 24.0, 30.0)
+- `policy`: "best_n" (default) or "first_n_answered"
+
+Then, list every question that must be answered:
 For each item return:
-- `q_no` as printed (e.g. "1", "Q.1 (A) (i)")
-- `text` (the question text)
-- `marks` as a number (if marks are shown per section or group, calculate or divide and apply to each question, must be > 0)
+- `q_no` as printed (e.g. "1", "Q.1 (A) (i)", "Q.2")
+- `text` (the question text verbatim)
+- `marks` as a number (must be > 0)
 - `type` (one of: "mcq", "one_word", "short", "long", "maths")
-- `section` (section name as printed, e.g. "Section A", "Part I", or "General")
+- `section` (matching section name, e.g. "Part I", "Part II")
 - `options` (list of option strings, only for MCQ, otherwise empty list)
 
 Also return:
@@ -323,18 +399,38 @@ Also return:
 Return ONLY a valid JSON object matching this schema:
 {
   "paper_title": "...",
+  "total_marks": 60.0,
+  "instructions": "...",
+  "sections": [
+    {
+      "name": "Part I",
+      "instructions": "All questions are compulsory",
+      "attempt_n": 10,
+      "total_questions": 10,
+      "marks_each": 2.0,
+      "section_marks": 20.0,
+      "policy": "best_n"
+    },
+    {
+      "name": "Part II",
+      "instructions": "Attempt any four questions",
+      "attempt_n": 4,
+      "total_questions": 6,
+      "marks_each": 6.0,
+      "section_marks": 30.0,
+      "policy": "best_n"
+    }
+  ],
   "questions": [
     {
       "q_no": "1",
       "text": "...",
       "marks": 2.0,
       "type": "short",
-      "section": "Section A",
+      "section": "Part I",
       "options": []
     }
   ],
-  "total_marks": 50.0,
-  "instructions": "...",
   "warnings": []
 }
 Do not invent questions that are not on the page. If something is unreadable, add it to `warnings`.
@@ -417,8 +513,79 @@ async def extract_paper_questions(paper_file: UploadFile = File(...)):
     except (ValueError, TypeError):
         printed_total = 0.0
 
+    # Extract or synthesize structured sections
+    raw_sections = data.get("sections", [])
+    validated_sections = []
+    sec_id_by_name = {}
+
+    if isinstance(raw_sections, list) and len(raw_sections) > 0:
+        for s_idx, s in enumerate(raw_sections):
+            if not isinstance(s, dict):
+                continue
+            s_name = str(s.get("name") or f"Section {s_idx + 1}").strip()
+            s_inst = str(s.get("instructions") or "").strip()
+            try:
+                att_n = int(s.get("attempt_n") or 0)
+            except (ValueError, TypeError):
+                att_n = 0
+            try:
+                tot_q = int(s.get("total_questions") or 0)
+            except (ValueError, TypeError):
+                tot_q = 0
+            try:
+                m_each = float(s.get("marks_each") or 0.0)
+            except (ValueError, TypeError):
+                m_each = 0.0
+            try:
+                s_marks = float(s.get("section_marks") or 0.0)
+            except (ValueError, TypeError):
+                s_marks = 0.0
+            policy = str(s.get("policy") or "best_n").strip()
+
+            s_id = str(uuid.uuid4())
+            sec_id_by_name[s_name.lower()] = s_id
+            validated_sections.append({
+                "id": s_id,
+                "name": s_name,
+                "instructions": s_inst,
+                "attempt_n": att_n,
+                "total_questions": tot_q,
+                "marks_each": m_each,
+                "section_marks": s_marks,
+                "policy": policy,
+            })
+
+    # If LLM didn't return structured sections, synthesize them from question sections and paper instructions
+    if not validated_sections:
+        seen_secs = []
+        for q in raw_questions:
+            sn = str(q.get("section") or q.get("section_name") or "General").strip()
+            if sn not in seen_secs:
+                seen_secs.append(sn)
+
+        for s_name in seen_secs:
+            s_id = str(uuid.uuid4())
+            sec_id_by_name[s_name.lower()] = s_id
+            att_n = 0
+            m = re.search(r"attempt\s+(?:any\s+)?(\d+|one|two|three|four|five|six|seven|eight|nine|ten)", instructions + " " + s_name, re.IGNORECASE)
+            num_words = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10}
+            if m:
+                token = m.group(1).lower()
+                att_n = int(token) if token.isdigit() else num_words.get(token, 0)
+
+            validated_sections.append({
+                "id": s_id,
+                "name": s_name,
+                "instructions": instructions if len(seen_secs) == 1 else "",
+                "attempt_n": att_n,
+                "total_questions": 0,
+                "marks_each": 0.0,
+                "section_marks": 0.0,
+                "policy": "best_n",
+            })
+
+    # Validate questions and assign section-scoped keys
     for idx, q in enumerate(raw_questions):
-        key = f"q_{idx + 1}"
         q_no = str(q.get("q_no") or (idx + 1)).strip()
         q_text = str(q.get("text") or q.get("question_text") or "").strip()
         try:
@@ -437,6 +604,9 @@ async def extract_paper_questions(paper_file: UploadFile = File(...)):
         raw_options = q.get("options", [])
         options = [str(opt).strip() for opt in raw_options] if isinstance(raw_options, list) else []
 
+        sec_id = sec_id_by_name.get(section.lower())
+        key = generate_scoped_key(section, q_no, idx)
+
         validated_questions.append({
             "key": key,
             "q_no": q_no,
@@ -444,8 +614,39 @@ async def extract_paper_questions(paper_file: UploadFile = File(...)):
             "marks": marks,
             "type": q_type,
             "section": section,
+            "section_id": sec_id,
             "options": options,
         })
+
+    # Reconcile section question counts and detect contradictions
+    for s in validated_sections:
+        s_qs = [q for q in validated_questions if q["section"].lower() == s["name"].lower()]
+        if not s["total_questions"] or s["total_questions"] <= 0:
+            s["total_questions"] = len(s_qs)
+        if (not s["marks_each"] or s["marks_each"] <= 0) and s_qs:
+            s["marks_each"] = s_qs[0]["marks"]
+        if not s["attempt_n"] or s["attempt_n"] <= 0:
+            s["attempt_n"] = s["total_questions"]
+        if (not s["section_marks"] or s["section_marks"] <= 0) and s["attempt_n"] > 0 and s["marks_each"] > 0:
+            s["section_marks"] = round(s["attempt_n"] * s["marks_each"], 2)
+
+        # Contradiction Check 1: attempt_n * marks_each != section_marks
+        if s["attempt_n"] > 0 and s["marks_each"] > 0 and s["section_marks"] > 0:
+            calc_marks = round(s["attempt_n"] * s["marks_each"], 2)
+            if abs(calc_marks - s["section_marks"]) > 0.01:
+                warn_msg = (
+                    f"Contradiction in {s['name']}: '{s['instructions']}' states attempt {s['attempt_n']} questions "
+                    f"at {s['marks_each']:g} marks each (= {calc_marks:g} marks), but section marks is listed as {s['section_marks']:g} marks."
+                )
+                warnings.append(warn_msg)
+
+        # Contradiction Check 2: total_questions < attempt_n
+        if s["total_questions"] > 0 and s["total_questions"] < s["attempt_n"]:
+            warn_msg = (
+                f"Contradiction in {s['name']}: '{s['instructions']}' specifies attempting {s['attempt_n']} questions, "
+                f"but only {s['total_questions']} questions are printed in this section."
+            )
+            warnings.append(warn_msg)
 
     sum_of_marks = sum(q["marks"] for q in validated_questions)
     if printed_total > 0 and abs(printed_total - sum_of_marks) > 0.01:
@@ -460,6 +661,7 @@ async def extract_paper_questions(paper_file: UploadFile = File(...)):
         "draft_id": draft_id,
         "paper_title": paper_title,
         "questions": validated_questions,
+        "sections": validated_sections,
         "total_marks": total_marks,
         "instructions": instructions,
         "warnings": warnings,
@@ -526,13 +728,37 @@ async def create_paper_setup(
                 (paper_id, payload.title, payload.subject, total_marks, payload.strictness, payload.checking_medium, 0, payload.instructions or "", str(paper_path) if paper_path else None),
             )
 
-            for idx, q in enumerate(payload.questions):
-                q_id = str(uuid.uuid4())
-                key = q.key or f"q_{idx + 1}"
+            # Insert sections
+            sec_id_map = {}
+            for s in (payload.sections or []):
+                s_id = s.id or str(uuid.uuid4())
+                sec_id_map[s.name.lower().strip()] = s_id
                 cursor.execute(
                     """
-                    INSERT INTO questions (id, paper_id, key, q_no, question_text, max_marks, question_type, section_name, options_json, strictness_override, checking_medium_override, order_idx)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO sections (id, paper_id, name, instructions, attempt_n, total_questions, marks_each, section_marks, policy)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        s_id,
+                        paper_id,
+                        s.name,
+                        s.instructions or "",
+                        s.attempt_n,
+                        s.total_questions,
+                        s.marks_each,
+                        s.section_marks,
+                        s.policy or "best_n",
+                    ),
+                )
+
+            for idx, q in enumerate(payload.questions):
+                q_id = str(uuid.uuid4())
+                q_sec_id = q.section_id or sec_id_map.get(q.section_name.lower().strip())
+                key = q.key or generate_scoped_key(q.section_name, q.q_no, idx)
+                cursor.execute(
+                    """
+                    INSERT INTO questions (id, paper_id, key, q_no, question_text, max_marks, question_type, section_name, section_id, options_json, strictness_override, checking_medium_override, order_idx)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         q_id,
@@ -543,13 +769,14 @@ async def create_paper_setup(
                         q.max_marks,
                         q.question_type,
                         q.section_name,
+                        q_sec_id,
                         json.dumps(q.options),
                         q.strictness_override,
                         q.checking_medium_override,
                         idx,
                     ),
                 )
-        return {"status": "created", "paper_id": paper_id, "questions_count": len(payload.questions), "total_marks": total_marks}
+        return {"status": "created", "paper_id": paper_id, "questions_count": len(payload.questions), "sections_count": len(payload.sections or []), "total_marks": total_marks}
     else:
         # Form-data backward compatibility
         paper_id = str(uuid.uuid4())
@@ -591,14 +818,42 @@ def update_paper_questions(paper_id: str, payload: QuestionsUpdateRequest):
         if row["is_locked"]:
             raise HTTPException(status_code=400, detail="Paper is locked. Unlock paper before editing questions.")
 
+        sec_id_map = {}
+        if payload.sections is not None:
+            cursor.execute("DELETE FROM sections WHERE paper_id = ?", (paper_id,))
+            for s in payload.sections:
+                s_id = s.id or str(uuid.uuid4())
+                sec_id_map[s.name.lower().strip()] = s_id
+                cursor.execute(
+                    """
+                    INSERT INTO sections (id, paper_id, name, instructions, attempt_n, total_questions, marks_each, section_marks, policy)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        s_id,
+                        paper_id,
+                        s.name,
+                        s.instructions or "",
+                        s.attempt_n,
+                        s.total_questions,
+                        s.marks_each,
+                        s.section_marks,
+                        s.policy or "best_n",
+                    ),
+                )
+        else:
+            cursor.execute("SELECT id, name FROM sections WHERE paper_id = ?", (paper_id,))
+            sec_id_map = {r["name"].lower().strip(): r["id"] for r in cursor.fetchall()}
+
         cursor.execute("DELETE FROM questions WHERE paper_id = ?", (paper_id,))
         for idx, q in enumerate(payload.questions):
             q_id = str(uuid.uuid4())
-            key = q.key or f"q_{idx + 1}"
+            q_sec_id = q.section_id or sec_id_map.get(q.section_name.lower().strip())
+            key = q.key or generate_scoped_key(q.section_name, q.q_no, idx)
             cursor.execute(
                 """
-                INSERT INTO questions (id, paper_id, key, q_no, question_text, max_marks, question_type, section_name, options_json, strictness_override, checking_medium_override, order_idx)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO questions (id, paper_id, key, q_no, question_text, max_marks, question_type, section_name, section_id, options_json, strictness_override, checking_medium_override, order_idx)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     q_id,
@@ -609,6 +864,7 @@ def update_paper_questions(paper_id: str, payload: QuestionsUpdateRequest):
                     q.max_marks,
                     q.question_type,
                     q.section_name,
+                    q_sec_id,
                     json.dumps(q.options),
                     q.strictness_override,
                     q.checking_medium_override,
@@ -622,6 +878,44 @@ def update_paper_questions(paper_id: str, payload: QuestionsUpdateRequest):
             (total_marks, paper_id),
         )
     return {"status": "updated", "questions_count": len(payload.questions), "total_marks": total_marks}
+
+@app.put("/api/papers/{paper_id}/sections")
+def update_paper_sections(paper_id: str, payload: SectionsUpdateRequest):
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT is_locked FROM papers WHERE id = ?", (paper_id,))
+        row = cursor.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Paper not found")
+        if row["is_locked"]:
+            raise HTTPException(status_code=400, detail="Paper is locked. Unlock paper before editing section rules.")
+
+        cursor.execute("DELETE FROM sections WHERE paper_id = ?", (paper_id,))
+        for s in payload.sections:
+            s_id = s.id or str(uuid.uuid4())
+            cursor.execute(
+                """
+                INSERT INTO sections (id, paper_id, name, instructions, attempt_n, total_questions, marks_each, section_marks, policy)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    s_id,
+                    paper_id,
+                    s.name,
+                    s.instructions or "",
+                    s.attempt_n,
+                    s.total_questions,
+                    s.marks_each,
+                    s.section_marks,
+                    s.policy or "best_n",
+                ),
+            )
+            # Link matching questions to this section_id
+            cursor.execute(
+                "UPDATE questions SET section_id = ? WHERE paper_id = ? AND lower(trim(section_name)) = lower(trim(?))",
+                (s_id, paper_id, s.name),
+            )
+    return {"status": "updated", "sections_count": len(payload.sections)}
 
 @app.post("/api/papers/{paper_id}/answer-key")
 async def upload_and_parse_answer_key(
@@ -1635,8 +1929,9 @@ async def run_sheet_evaluation_pipeline(sheet_id: str):
         current_stage = "flagging"
         with get_db() as conn:
             conn.execute("UPDATE sheets SET current_stage = 'Checking review flags & calculating totals', updated_at = datetime('now') WHERE id = ?", (sheet_id,))
+            paper_sections = [dict(s) for s in conn.execute("SELECT * FROM sections WHERE paper_id = ?", (sheet["paper_id"],)).fetchall()]
 
-        total_res = calculate_section_choice_totals(evaluated_questions, [], paper["total_marks"])
+        total_res = calculate_section_choice_totals(evaluated_questions, paper_sections, paper["total_marks"])
         total_score = total_res["total_score"]
         percentage = total_res["percentage"]
         grade = total_res["grade"]
@@ -1672,8 +1967,8 @@ async def run_sheet_evaluation_pipeline(sheet_id: str):
                 eval_id = str(uuid.uuid4())
                 cursor.execute(
                     """
-                    INSERT INTO evaluations (id, sheet_id, question_id, ai_marks, final_marks, reason, evidence_quote, flags_json, resolved)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO evaluations (id, sheet_id, question_id, ai_marks, final_marks, reason, evidence_quote, flags_json, resolved, is_counted)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         eval_id,
@@ -1685,6 +1980,7 @@ async def run_sheet_evaluation_pipeline(sheet_id: str):
                         eq["evidence_quote"],
                         json.dumps(eq["flags"]),
                         1 if eq["resolved"] else 0,
+                        1 if eq.get("is_counted", True) else 0,
                     ),
                 )
 
@@ -1826,7 +2122,7 @@ def get_sheet_review(sheet_id: str):
 
         cursor.execute(
             """
-            SELECT e.id as eval_id, e.ai_marks, e.final_marks, e.reason, e.evidence_quote, e.flags_json, e.resolved,
+            SELECT e.id as eval_id, e.ai_marks, e.final_marks, e.reason, e.evidence_quote, e.flags_json, e.resolved, e.is_counted,
                    q.id as question_id, q.key as question_key, q.q_no, q.question_text, q.max_marks, q.section_name,
                    a.extracted_text, a.legibility_score, a.page_numbers, a.bbox_json
             FROM evaluations e
@@ -1841,7 +2137,11 @@ def get_sheet_review(sheet_id: str):
         for r in cursor.fetchall():
             d = dict(r)
             d["flags"] = json.loads(d.get("flags_json") or "[]")
+            d["is_counted"] = bool(d.get("is_counted", 1))
             evals.append(d)
+
+        cursor.execute("SELECT * FROM sections WHERE paper_id = ? ORDER BY id ASC", (paper_id,))
+        sections = [dict(s) for s in cursor.fetchall()]
 
         checked = [e for e in evals if e["resolved"]]
         flagged = [e for e in evals if not e["resolved"]]
@@ -1849,6 +2149,7 @@ def get_sheet_review(sheet_id: str):
         return {
             "sheet": dict(sheet),
             "paper": dict(paper),
+            "sections": sections,
             "pages": sheet_pages,
             "sheet_pages": sheet_pages,
             "paper_pages": paper_pages,
@@ -1873,14 +2174,25 @@ def submit_teacher_review(eval_id: str, payload: ReviewOverride):
         final_m = ev["ai_marks"] if payload.accept_ai else payload.teacher_marks
         final_m = min(max_m, max(0.0, round_to_half_step(final_m)))
 
-        cursor.execute(
-            """
-            UPDATE evaluations
-            SET final_marks = ?, resolved = 1
-            WHERE id = ?
-            """,
-            (final_m, eval_id),
-        )
+        if payload.is_counted is not None:
+            is_cnt_val = 1 if payload.is_counted else 0
+            cursor.execute(
+                """
+                UPDATE evaluations
+                SET final_marks = ?, resolved = 1, is_counted = ?
+                WHERE id = ?
+                """,
+                (final_m, is_cnt_val, eval_id),
+            )
+        else:
+            cursor.execute(
+                """
+                UPDATE evaluations
+                SET final_marks = ?, resolved = 1
+                WHERE id = ?
+                """,
+                (final_m, eval_id),
+            )
 
         rev_id = str(uuid.uuid4())
         cursor.execute(
@@ -1891,11 +2203,11 @@ def submit_teacher_review(eval_id: str, payload: ReviewOverride):
             (rev_id, eval_id, final_m, payload.comment),
         )
 
-        # Recalculate sheet total
+        # Recalculate sheet total counting only is_counted = 1
         cursor.execute("SELECT sheet_id FROM evaluations WHERE id = ?", (eval_id,))
         sheet_id = cursor.fetchone()["sheet_id"]
 
-        cursor.execute("SELECT SUM(final_marks) as total FROM evaluations WHERE sheet_id = ?", (sheet_id,))
+        cursor.execute("SELECT SUM(final_marks) as total FROM evaluations WHERE sheet_id = ? AND is_counted = 1", (sheet_id,))
         new_total = cursor.fetchone()["total"] or 0.0
 
         cursor.execute("SELECT max_marks FROM sheets WHERE id = ?", (sheet_id,))
@@ -1964,7 +2276,7 @@ async def recheck_evaluation(eval_id: str, payload: RecheckRequest):
             (marks, marks, data.get("reason", "Re-checked by AI"), data.get("evidence", ""), eval_id),
         )
 
-        cursor.execute("SELECT SUM(final_marks) as total FROM evaluations WHERE sheet_id = ?", (ev["sheet_id"],))
+        cursor.execute("SELECT SUM(final_marks) as total FROM evaluations WHERE sheet_id = ? AND is_counted = 1", (ev["sheet_id"],))
         new_total = cursor.fetchone()["total"] or 0.0
 
         cursor.execute("SELECT max_marks FROM sheets WHERE id = ?", (ev["sheet_id"],))

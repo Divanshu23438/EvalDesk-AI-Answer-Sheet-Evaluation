@@ -248,7 +248,7 @@ GRADING PRINCIPLES:
    - When the student's explanation is conceptually accurate and technically sound, award appropriate marks without demanding exact textbook buzzwords (e.g., describing the shell as a "bridge between user and kernel that takes input from user to kernel" satisfies the shell interface criterion).
 
 5. FORMATTING & REMARKS:
-   - Write clean plain text in reasons and remarks. NEVER output raw LaTeX math symbols or `$` signs (e.g. write `(0.5 / 0.5 M)` or `(1.0 / 2.0 M)`, never write `$(0.5 / 0.5 \text{{M}})\$`).
+   - Write clean plain text in reasons and remarks. NEVER output raw LaTeX math symbols or `$` signs (e.g. write `(0.5 / 0.5 M)` or `(1.0 / 2.0 M)`, never write LaTeX dollar expressions).
 
 6. VERDICT DEFINITIONS:
    - "full": The student demonstrated conceptual understanding and provided a valid, factually accurate explanation with appropriate technical examples.
@@ -334,38 +334,91 @@ def calculate_section_choice_totals(
 ) -> Dict[str, Any]:
     """
     Enforces 'Attempt any N questions' choice rules per section:
-    Counts the top N highest-scoring answers, marking unattempted/extra questions cleanly.
+    Supports policy:
+      - 'best_n': Counts top N highest-scoring attempted answers in section.
+      - 'first_n_answered': Counts the first N attempted answers in section order.
+    Honors teacher explicit override (teacher_is_counted) when present.
+    Marks excluded optional/extra questions as 'Optional / Extra — Not Counted'.
     """
     total_score = 0.0
     evaluated_questions = []
 
-    # Map questions to sections
-    sec_map: Dict[str, List[Dict[str, Any]]] = {}
+    # Map section rules by id, name, section_name
+    sec_rule_map: Dict[str, Dict[str, Any]] = {}
+    effective_max_marks_calc = 0.0
+    for s in sections:
+        if s.get("id"):
+            sec_rule_map[str(s["id"]).lower()] = s
+        if s.get("name"):
+            sec_rule_map[str(s["name"]).lower().strip()] = s
+        if s.get("section_name"):
+            sec_rule_map[str(s["section_name"]).lower().strip()] = s
+        att = s.get("attempt_n", 0) or s.get("attempt_limit", 0)
+        each = s.get("marks_each", 0.0)
+        sec_m = s.get("section_marks", 0.0)
+        if att > 0 and each > 0:
+            effective_max_marks_calc += float(att) * float(each)
+        elif sec_m > 0:
+            effective_max_marks_calc += float(sec_m)
+
+    # Group questions by section
+    sec_groups: Dict[str, List[Dict[str, Any]]] = {}
     for q in questions:
-        sec = q.get("section_name", "General")
-        sec_map.setdefault(sec, []).append(q)
+        sec_key = q.get("section_id") or q.get("section_name", "General")
+        sec_groups.setdefault(sec_key, []).append(q)
 
-    for sec_name, q_list in sec_map.items():
-        sec_rule = next((s for s in sections if s.get("section_name", "").lower() == sec_name.lower()), None)
-        attempt_limit = sec_rule.get("attempt_limit", len(q_list)) if sec_rule else len(q_list)
+    for sec_key, q_list in sec_groups.items():
+        sec_name = q_list[0].get("section_name", "General") if q_list else "General"
+        sec_rule = (
+            sec_rule_map.get(str(sec_key).lower())
+            or sec_rule_map.get(str(sec_name).lower().strip())
+        )
 
-        # Sort attempted questions by marks descending
-        attempted = [q for q in q_list if q.get("attempted", False)]
-        unattempted = [q for q in q_list if not q.get("attempted", False)]
-
-        attempted.sort(key=lambda x: x.get("final_marks", 0.0), reverse=True)
+        attempt_limit = len(q_list)
+        policy = "best_n"
+        if sec_rule:
+            att = sec_rule.get("attempt_n") or sec_rule.get("attempt_limit")
+            if att and int(att) > 0:
+                attempt_limit = int(att)
+            policy = str(sec_rule.get("policy") or "best_n").lower().strip()
 
         is_choice = len(q_list) > attempt_limit
 
-        for i, q in enumerate(attempted):
-            if is_choice and i >= attempt_limit:
-                q["is_counted"] = False
-                q["status_label"] = "Optional / Extra — Not Counted"
+        attempted = [q for q in q_list if q.get("attempted", False)]
+        unattempted = [q for q in q_list if not q.get("attempted", False)]
+
+        # Check if teacher explicitly set teacher_is_counted on any question in this section
+        has_teacher_override = any(q.get("teacher_is_counted") is not None for q in attempted)
+
+        if has_teacher_override:
+            for q in attempted:
+                if q.get("teacher_is_counted") is not None:
+                    q["is_counted"] = bool(q["teacher_is_counted"])
+                else:
+                    q["is_counted"] = True
+                if q["is_counted"]:
+                    q["status_label"] = "Checked" if q.get("resolved", True) else "Flagged for Review"
+                    total_score += q.get("final_marks", 0.0)
+                else:
+                    q["status_label"] = "Optional / Extra — Not Counted"
+                evaluated_questions.append(q)
+        else:
+            if policy == "first_n_answered":
+                # First N answered in chronological order
+                attempted.sort(key=lambda x: x.get("order_idx", 0))
             else:
-                q["is_counted"] = True
-                q["status_label"] = "Checked" if q.get("resolved", True) else "Flagged for Review"
-                total_score += q.get("final_marks", 0.0)
-            evaluated_questions.append(q)
+                # Default: 'best_n' (highest scoring first)
+                attempted.sort(key=lambda x: x.get("final_marks", 0.0), reverse=True)
+
+            for i, q in enumerate(attempted):
+                if is_choice and i >= attempt_limit:
+                    q["is_counted"] = False
+                    q["status_label"] = "Optional / Extra — Not Counted"
+                else:
+                    q["is_counted"] = True
+                    q["status_label"] = "Checked" if q.get("resolved", True) else "Flagged for Review"
+                    total_score += q.get("final_marks", 0.0)
+                evaluated_questions.append(q)
 
         for q in unattempted:
             q["is_counted"] = False
@@ -374,12 +427,23 @@ def calculate_section_choice_totals(
             q["resolved"] = True
             evaluated_questions.append(q)
 
-    percentage = min(100.0, round((total_score / (paper_max_marks or 1.0)) * 100.0, 1))
-    grade = "A+" if percentage >= 90 else "A" if percentage >= 80 else "B" if percentage >= 70 else "C" if percentage >= 60 else "Needs Support"
+    # Preserve natural question order
+    evaluated_questions.sort(key=lambda x: x.get("order_idx", 0))
+
+    effective_paper_max = effective_max_marks_calc if effective_max_marks_calc > 0 else (paper_max_marks or 1.0)
+    percentage = min(100.0, round((total_score / (effective_paper_max or 1.0)) * 100.0, 1))
+    grade = (
+        "A+" if percentage >= 90 else
+        "A" if percentage >= 80 else
+        "B" if percentage >= 70 else
+        "C" if percentage >= 60 else
+        "Needs Support"
+    )
 
     return {
         "total_score": round_to_half_step(total_score),
         "paper_max_marks": paper_max_marks,
+        "effective_max_marks": effective_paper_max,
         "percentage": percentage,
         "grade": grade,
         "questions": evaluated_questions,

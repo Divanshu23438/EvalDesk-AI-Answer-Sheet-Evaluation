@@ -54,6 +54,21 @@ def init_db():
             )
         """)
 
+        # 1c. sections (structured section rules and attempt limits)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS sections (
+                id TEXT PRIMARY KEY,
+                paper_id TEXT NOT NULL REFERENCES papers(id) ON DELETE CASCADE,
+                name TEXT NOT NULL,
+                instructions TEXT DEFAULT '',
+                attempt_n INTEGER NOT NULL DEFAULT 0,
+                total_questions INTEGER NOT NULL DEFAULT 0,
+                marks_each REAL NOT NULL DEFAULT 0.0,
+                section_marks REAL NOT NULL DEFAULT 0.0,
+                policy TEXT NOT NULL DEFAULT 'best_n'
+            )
+        """)
+
         # 2. questions
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS questions (
@@ -260,7 +275,9 @@ def init_db():
 
         add_column_if_missing("papers", "instructions TEXT DEFAULT ''", "instructions")
         add_column_if_missing("questions", "key TEXT", "key")
+        add_column_if_missing("questions", "section_id TEXT", "section_id")
         add_column_if_missing("questions", "options_json TEXT DEFAULT '[]'", "options_json")
+        add_column_if_missing("evaluations", "is_counted INTEGER NOT NULL DEFAULT 1", "is_counted")
         add_column_if_missing("sheets", "failed_stage TEXT", "failed_stage")
         add_column_if_missing("answers", "page_numbers TEXT DEFAULT '[]'", "page_numbers")
         add_column_if_missing("answers", "bbox_json TEXT DEFAULT '{}'", "bbox_json")

@@ -1,0 +1,16 @@
+PHASE A VERIFICATION PROOF: SECTION RULES, SCOPED QUESTION KEYS & REAL TOTALS
+================================================================================
+
+============================= test session starts =============================
+platform win32 -- Python 3.13.2, pytest-9.2.0, pluggy-1.7.0 -- F:\PYTHON\python.exe
+cachedir: .pytest_cache
+rootdir: F:\EvalDesk-AI-Answer-Sheet-Evaluation-main
+configfile: pytest.ini
+plugins: anyio-4.16.0
+collecting ... collected 3 items
+
+tests/test_phase_a_sections.py::test_scoped_key_generation PASSED        [ 33%]
+tests/test_phase_a_sections.py::test_bilingual_linux_totals_attempt_4_and_5 PASSED [ 66%]
+tests/test_phase_a_sections.py::test_contradiction_warning_detection PASSED [100%]
+
+============================== 3 passed in 3.72s ==============================

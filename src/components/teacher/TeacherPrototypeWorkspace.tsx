@@ -77,6 +77,17 @@ interface TrainingLine {
   roll_number?: string;
 }
 
+interface UISectionRule {
+  id?: string;
+  name: string;
+  instructions?: string;
+  attempt_n: number;
+  total_questions: number;
+  marks_each: number;
+  section_marks: number;
+  policy: 'best_n' | 'first_n_answered';
+}
+
 interface UIQuestion {
   key: string;
   q_no: string;
@@ -84,6 +95,7 @@ interface UIQuestion {
   max_marks: number;
   question_type: string;
   section_name: string;
+  section_id?: string;
   options: string[];
 }
 
@@ -124,6 +136,7 @@ export function TeacherPrototypeWorkspace() {
 
   // Editable Question Setup Table (empty initial state)
   const [editableQuestions, setEditableQuestions] = useState<UIQuestion[]>([]);
+  const [sections, setSections] = useState<UISectionRule[]>([]);
   const [draftId, setDraftId] = useState<string>('');
   const [extractionWarnings, setExtractionWarnings] = useState<string[]>([]);
   const [extractionSource, setExtractionSource] = useState<string>('');
@@ -272,6 +285,7 @@ export function TeacherPrototypeWorkspace() {
       setExtractionWarnings(data.warnings || []);
       setInstructions(data.instructions || '');
       setPaperTotalMarks(data.total_marks || 0);
+      setSections(data.sections || []);
       if (!paperTitle) {
         setPaperTitle(file.name.replace(/\.[^/.]+$/, ''));
       }
@@ -283,6 +297,7 @@ export function TeacherPrototypeWorkspace() {
         max_marks: Number(q.marks) || 1,
         question_type: q.type || 'short',
         section_name: q.section || 'General',
+        section_id: q.section_id,
         options: q.options || [],
       }));
       setEditableQuestions(mapped);
@@ -320,6 +335,16 @@ export function TeacherPrototypeWorkspace() {
         checking_medium: answerKeyFile ? 'answer_key' : 'ai_reference',
         total_marks: paperTotalMarks || calculatedQuestionTotal,
         instructions: instructions,
+        sections: sections.map((s) => ({
+          id: s.id,
+          name: s.name,
+          instructions: s.instructions || '',
+          attempt_n: Number(s.attempt_n) || 0,
+          total_questions: Number(s.total_questions) || 0,
+          marks_each: Number(s.marks_each) || 0,
+          section_marks: Number(s.section_marks) || 0,
+          policy: s.policy || 'best_n',
+        })),
         questions: editableQuestions.map((q) => ({
           key: q.key,
           q_no: q.q_no,
@@ -327,6 +352,7 @@ export function TeacherPrototypeWorkspace() {
           max_marks: q.max_marks,
           question_type: q.question_type,
           section_name: q.section_name,
+          section_id: q.section_id,
           options: q.options,
           strictness_override: overrides[q.q_no] || undefined,
         })),
@@ -494,6 +520,10 @@ export function TeacherPrototypeWorkspace() {
         setPaperPages(revData.paper_pages);
       }
 
+      if (revData.sections && Array.isArray(revData.sections) && revData.sections.length > 0) {
+        setSections(revData.sections);
+      }
+
       const allEvals = [...(revData.checked_questions || []), ...(revData.flagged_questions || [])];
       if (allEvals.length > 0) {
         const mapped: EvaluatedReviewItem[] = allEvals.map((e: any) => ({
@@ -511,8 +541,10 @@ export function TeacherPrototypeWorkspace() {
           reason: Array.isArray(e.flags) && e.flags.length > 0 ? e.flags.join('; ') : (e.reason || ''),
           resolved: Boolean(e.resolved),
           attempted: Boolean(e.attempted ?? true),
-          isCounted: true,
-          statusLabel: e.resolved ? 'Checked' : 'Flagged',
+          isCounted: e.is_counted !== undefined ? Boolean(e.is_counted) : true,
+          statusLabel: (e.is_counted === 0 || e.is_counted === false)
+            ? 'Optional / Extra — Not Counted'
+            : (e.resolved ? 'Checked' : 'Flagged'),
           evidence_quote: e.evidence_quote || '',
         }));
         setReviewItems(mapped);
@@ -823,6 +855,7 @@ export function TeacherPrototypeWorkspace() {
             teacher_marks: finalVal,
             comment: teacherComment || '',
             accept_ai: overrideMarks !== undefined,
+            is_counted: item.isCounted,
           }),
         });
         if (!res.ok) {
@@ -890,13 +923,19 @@ export function TeacherPrototypeWorkspace() {
         if (data.questions && data.questions.length > 0) {
           setEditableQuestions(
             data.questions.map((q: any) => ({
+              key: q.key,
               q_no: String(q.q_no),
               question_text: q.question_text,
               max_marks: Number(q.max_marks) || 5,
               question_type: q.question_type || 'short',
               section_name: q.section_name || 'General',
+              section_id: q.section_id,
+              options: q.options || [],
             }))
           );
+        }
+        if (data.sections && Array.isArray(data.sections)) {
+          setSections(data.sections);
         }
         setIsLocked(Boolean(data.paper.is_locked));
         setSetupSaved(true);
@@ -1276,6 +1315,154 @@ export function TeacherPrototypeWorkspace() {
               {instructions && (
                 <div className="mt-3 rounded-lg border border-[#90caf9] bg-[#e3f2fd] p-2.5 text-xs text-[#0d47a1]">
                   <strong>Paper Instructions:</strong> {instructions}
+                </div>
+              )}
+
+              {/* Section Rules Cards */}
+              {sections.length > 0 && (
+                <div className="mt-5 border-t border-[#f1f5f9] pt-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <h2 className="text-xs font-bold uppercase tracking-wider text-[#005dac] flex items-center gap-1.5">
+                        <Settings className="w-4 h-4 text-[#005dac]" />
+                        Section Choice Rules & Attempt Limits ({sections.length} Sections)
+                      </h2>
+                      <p className="text-[11px] text-[#64748b]">
+                        Configure attempt limits, per-question marks, and choice policies for each exam section.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                    {sections.map((sec, sIdx) => {
+                      const isContradiction =
+                        sec.attempt_n > 0 &&
+                        sec.marks_each > 0 &&
+                        sec.section_marks > 0 &&
+                        Math.abs(sec.attempt_n * sec.marks_each - sec.section_marks) > 0.01;
+                      const isCountMismatch =
+                        sec.total_questions > 0 && sec.total_questions < sec.attempt_n;
+
+                      return (
+                        <div
+                          key={sec.id || sIdx}
+                          className={`rounded-xl border p-3.5 text-xs transition-all ${
+                            isContradiction || isCountMismatch
+                              ? 'border-[#f57c00] bg-[#fff8e1]'
+                              : 'border-[#d4e3ff] bg-[#f8f9ff]'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="font-bold text-[#005dac] text-sm">{sec.name}</span>
+                            <span className="text-[10px] font-semibold text-[#64748b]">
+                              {sec.total_questions} Questions Total
+                            </span>
+                          </div>
+
+                          {sec.instructions && (
+                            <p className="text-[11px] italic text-[#64748b] mb-2.5 bg-white/70 p-1.5 rounded border border-[#e2e8f0]">
+                              "{sec.instructions}"
+                            </p>
+                          )}
+
+                          {/* Contradiction Warning Banner */}
+                          {isContradiction && (
+                            <div className="mb-2.5 rounded-lg border border-[#f57c00] bg-[#fff3e0] p-2 text-[11px] font-bold text-[#b26a00] flex items-start gap-1.5">
+                              <AlertTriangle className="w-4 h-4 text-[#f57c00] shrink-0 mt-0.5" />
+                              <div>
+                                <strong>Contradiction Warning:</strong> Attempt {sec.attempt_n} × {sec.marks_each}M = {sec.attempt_n * sec.marks_each}M, but section marks is listed as {sec.section_marks}M!
+                              </div>
+                            </div>
+                          )}
+                          {isCountMismatch && (
+                            <div className="mb-2.5 rounded-lg border border-[#ba1a1a] bg-[#ffdad6] p-2 text-[11px] font-bold text-[#93000a] flex items-start gap-1.5">
+                              <AlertTriangle className="w-4 h-4 text-[#ba1a1a] shrink-0 mt-0.5" />
+                              <div>
+                                <strong>Count Warning:</strong> Attempt {sec.attempt_n} specified, but only {sec.total_questions} questions exist in this section!
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="text-[10px] font-bold uppercase text-[#64748b] block mb-0.5">
+                                Attempt Limit (N)
+                              </label>
+                              <input
+                                type="number"
+                                min={0}
+                                disabled={isLocked}
+                                value={sec.attempt_n}
+                                onChange={(e) => {
+                                  const copy = [...sections];
+                                  copy[sIdx].attempt_n = Number(e.target.value) || 0;
+                                  setSections(copy);
+                                }}
+                                className="w-full rounded border border-[#c1c6d4] bg-white px-2 py-1 text-xs font-bold text-[#005dac] disabled:bg-[#f1f5f9]"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="text-[10px] font-bold uppercase text-[#64748b] block mb-0.5">
+                                Marks Each
+                              </label>
+                              <input
+                                type="number"
+                                step={0.5}
+                                min={0.5}
+                                disabled={isLocked}
+                                value={sec.marks_each}
+                                onChange={(e) => {
+                                  const copy = [...sections];
+                                  copy[sIdx].marks_each = Number(e.target.value) || 1;
+                                  setSections(copy);
+                                }}
+                                className="w-full rounded border border-[#c1c6d4] bg-white px-2 py-1 text-xs font-bold disabled:bg-[#f1f5f9]"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="text-[10px] font-bold uppercase text-[#64748b] block mb-0.5">
+                                Section Marks
+                              </label>
+                              <input
+                                type="number"
+                                step={0.5}
+                                min={0.5}
+                                disabled={isLocked}
+                                value={sec.section_marks}
+                                onChange={(e) => {
+                                  const copy = [...sections];
+                                  copy[sIdx].section_marks = Number(e.target.value) || 0;
+                                  setSections(copy);
+                                }}
+                                className="w-full rounded border border-[#c1c6d4] bg-white px-2 py-1 text-xs font-bold disabled:bg-[#f1f5f9]"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="text-[10px] font-bold uppercase text-[#64748b] block mb-0.5">
+                                Choice Policy
+                              </label>
+                              <select
+                                disabled={isLocked}
+                                value={sec.policy || 'best_n'}
+                                onChange={(e) => {
+                                  const copy = [...sections];
+                                  copy[sIdx].policy = e.target.value as 'best_n' | 'first_n_answered';
+                                  setSections(copy);
+                                }}
+                                className="w-full rounded border border-[#c1c6d4] bg-white px-1.5 py-1 text-[11px] font-semibold text-[#005dac] disabled:bg-[#f1f5f9]"
+                              >
+                                <option value="best_n">Best N (Highest)</option>
+                                <option value="first_n_answered">First N Answered</option>
+                              </select>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
 
@@ -2073,6 +2260,11 @@ export function TeacherPrototypeWorkspace() {
                         <div className="font-bold flex items-center justify-between">
                           <span className="flex items-center gap-1">
                             <Flag className="w-3.5 h-3.5 text-[#ba1a1a]" /> {formatQNo(item.q_no)}
+                            {!item.isCounted && (
+                              <span className="ml-1 rounded bg-[#fff3e0] border border-[#ffe0b2] px-1.5 py-0.2 text-[9px] font-bold text-[#b26a00]">
+                                Not Counted
+                              </span>
+                            )}
                           </span>
                           <span className="text-[#93000a]">{item.suggested_marks ?? 0} / {item.max_marks}M</span>
                         </div>
@@ -2097,7 +2289,14 @@ export function TeacherPrototypeWorkspace() {
                       onClick={() => setActiveReview(item)}
                       className="p-2 rounded border border-[#c8e6c9] bg-[#e8f5e9] text-xs flex items-center justify-between cursor-pointer hover:bg-[#dcedc8]"
                     >
-                      <span className="font-semibold">{formatQNo(item.q_no)}</span>
+                      <div className="flex items-center gap-1">
+                        <span className="font-semibold">{formatQNo(item.q_no)}</span>
+                        {!item.isCounted && (
+                          <span className="ml-1 rounded bg-[#fff3e0] border border-[#ffe0b2] px-1.5 py-0.2 text-[9px] font-bold text-[#b26a00]">
+                            Not Counted
+                          </span>
+                        )}
+                      </div>
                       <span className="font-bold text-[#196b22]">{item.finalMarks} / {item.max_marks}M</span>
                     </div>
                   ))}
@@ -2480,6 +2679,27 @@ export function TeacherPrototypeWorkspace() {
                   Range: 0 to {activeReview.max_marks} marks
                 </span>
               </div>
+            </div>
+
+            {/* Count in Total Score Toggle */}
+            <div className="flex items-center justify-between p-3 rounded-lg border border-[#e2e8f0] bg-[#f8f9ff]">
+              <div>
+                <span className="text-xs font-bold text-[#005dac] block">Count in Final Total Score</span>
+                <span className="text-[11px] text-[#64748b]">
+                  {activeReview.isCounted
+                    ? "Question marks are included in the student's final total score."
+                    : 'Optional / Extra answer excluded from total score calculation.'}
+                </span>
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer font-bold text-xs text-[#005dac]">
+                <input
+                  type="checkbox"
+                  checked={activeReview.isCounted}
+                  onChange={(e) => setActiveReview({ ...activeReview, isCounted: e.target.checked })}
+                  className="w-4 h-4 rounded text-[#005dac] focus:ring-0"
+                />
+                <span>{activeReview.isCounted ? 'Counted' : 'Not Counted'}</span>
+              </label>
             </div>
 
             {/* Teacher Comment */}
