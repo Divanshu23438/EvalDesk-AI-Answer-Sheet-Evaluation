@@ -36,6 +36,7 @@ from backend.storage import (
     create_data_backup,
     to_relative_posix,
     from_relative_posix,
+    get_or_create_answer_crop_path,
 )
 from backend.pdf_tools import process_pdf_bytes, normalize_image_bytes, process_pdf, auto_orient_image_bytes
 from backend.line_tools import segment_text_lines
@@ -2574,50 +2575,17 @@ def get_answer_crop(sheet_id: str, eval_id: str):
     if not page_file.exists():
         raise HTTPException(status_code=404, detail="Page image file not found")
 
-    try:
-        from PIL import Image
-        with Image.open(page_file) as img:
-            w, h = img.size
-            if bboxes and isinstance(bboxes, list) and len(bboxes) > 0:
-                box = bboxes[0]
-                if isinstance(box, dict) and "x" in box and "y" in box and "w" in box and "h" in box:
-                    bx = box["x"] * w if box["x"] <= 1.0 else box["x"]
-                    by = box["y"] * h if box["y"] <= 1.0 else box["y"]
-                    bw = box["w"] * w if box["w"] <= 1.0 else box["w"]
-                    bh = box["h"] * h if box["h"] <= 1.0 else box["h"]
-                    crop_box = (
-                        max(0, int(bx - 10)),
-                        max(0, int(by - 10)),
-                        min(w, int(bx + bw + 10)),
-                        min(h, int(by + bh + 10)),
-                    )
-                elif isinstance(box, (list, tuple)) and len(box) == 4:
-                    b0, b1, b2, b3 = box
-                    if max(b0, b1, b2, b3) <= 1.0:
-                        crop_box = (
-                            max(0, int(b1 * w - 10)),
-                            max(0, int(b0 * h - 10)),
-                            min(w, int(b3 * w + 10)),
-                            min(h, int(b2 * h + 10)),
-                        )
-                    else:
-                        crop_box = (
-                            max(0, int(min(b0, b2) - 10)),
-                            max(0, int(min(b1, b3) - 10)),
-                            min(w, int(max(b0, b2) + 10)),
-                            min(h, int(max(b1, b3) + 10)),
-                        )
-                else:
-                    crop_box = (0, 0, w, min(h, int(h * 0.4)))
-            else:
-                crop_box = (0, 0, w, min(h, int(h * 0.4)))
+    crop_path = get_or_create_answer_crop_path(
+        sheet_id=sheet_id,
+        eval_id=eval_id,
+        page_file_path=page_file,
+        bbox_raw=ans["bbox_json"] if ans else None,
+        page_idx=page_idx,
+    )
+    if crop_path and crop_path.exists():
+        return FileResponse(crop_path, media_type="image/jpeg")
 
-            cropped = img.crop(crop_box)
-            buf = io.BytesIO()
-            cropped.save(buf, format="JPEG", quality=90)
-            return Response(content=buf.getvalue(), media_type="image/jpeg")
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Error generating crop: {exc}")
+    raise HTTPException(status_code=500, detail="Error generating crop")
 
 @app.post("/api/evaluations/{eval_id}/review")
 def submit_teacher_review(eval_id: str, payload: ReviewOverride):
@@ -2944,11 +2912,15 @@ async def build_paper_reports_data(paper_id: str) -> Dict[str, Any]:
             cursor = conn.cursor()
             cursor.execute(
                 """
-                SELECT q.id as question_id, q.q_no, q.question_text, q.max_marks,
-                       e.ai_marks, e.final_marks, e.reason, e.evidence_quote, e.flags_json, e.resolved,
-                       CASE WHEN e.resolved = 1 THEN 'Checked' ELSE 'Flagged' END as status_label
+                SELECT q.id as question_id, q.q_no, q.question_text, q.max_marks, q.section_name,
+                       e.id as eval_id, e.ai_marks, e.final_marks, e.reason, e.evidence_quote, e.flags_json, e.resolved, e.is_counted,
+                       CASE WHEN e.resolved = 1 THEN 'Checked' ELSE 'Flagged' END as status_label,
+                       a.extracted_text, a.bbox_json, a.page_numbers, a.is_attempted,
+                       r.teacher_marks, (CASE WHEN r.id IS NOT NULL THEN 1 ELSE 0 END) as is_overridden
                 FROM evaluations e
                 JOIN questions q ON e.question_id = q.id
+                LEFT JOIN answers a ON a.sheet_id = e.sheet_id AND a.question_id = e.question_id
+                LEFT JOIN reviews r ON r.evaluation_id = e.id
                 WHERE e.sheet_id = ?
                 ORDER BY q.order_idx ASC
                 """,
@@ -2956,11 +2928,42 @@ async def build_paper_reports_data(paper_id: str) -> Dict[str, Any]:
             )
             q_evals = [dict(r) for r in cursor.fetchall()]
 
+            cursor.execute(
+                "SELECT * FROM sheet_pages WHERE sheet_id = ? ORDER BY page_number ASC",
+                (sheet_id,),
+            )
+            sheet_pages_list = [dict(p) for p in cursor.fetchall()]
+
+        # Attach crop image path to each evaluation
         for qe in q_evals:
+            p_idx = 0
+            if qe.get("page_numbers"):
+                try:
+                    parsed_pgs = json.loads(qe["page_numbers"]) if isinstance(qe["page_numbers"], str) else qe["page_numbers"]
+                    if parsed_pgs:
+                        p_idx = int(parsed_pgs[0]) - 1
+                except Exception:
+                    p_idx = 0
+            if p_idx < 0 or p_idx >= len(sheet_pages_list):
+                p_idx = 0
+            page_file = Path(sheet_pages_list[p_idx]["file_path"]) if sheet_pages_list else None
+            crop = get_or_create_answer_crop_path(
+                sheet_id=sheet_id,
+                eval_id=qe["eval_id"],
+                page_file_path=page_file,
+                bbox_raw=qe.get("bbox_json"),
+                page_idx=p_idx,
+            )
+            qe["crop_image_path"] = str(crop) if crop and crop.exists() else None
+
             question_eval_map[qe["question_id"]].append(qe)
             flags = json.loads(qe.get("flags_json") or "[]")
             if flags or not qe["resolved"]:
                 total_flagged_count += 1
+
+        s_unresolved = sum(1 for qe in q_evals if not qe.get("resolved"))
+        s_resolved = sum(1 for qe in q_evals if qe.get("resolved") and (qe.get("flags_json") and qe.get("flags_json") != "[]"))
+        s_overrides = sum(1 for qe in q_evals if qe.get("is_overridden"))
 
         # Task T7: Generate strengths and areas to improve from DB marks and key points
         student_strengths = []
@@ -3036,6 +3039,11 @@ async def build_paper_reports_data(paper_id: str) -> Dict[str, Any]:
             grade=s["grade"] or "N/A",
             strengths=student_strengths,
             improvements=student_improvements,
+            quality_stats={
+                "unresolved_flags": s_unresolved,
+                "resolved_flags": s_resolved,
+                "overrides": s_overrides,
+            },
         )
 
         rel_pdf = f"/storage/reports/{paper_id}/{pdf_name}"

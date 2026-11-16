@@ -1,22 +1,137 @@
+import html
 import re
 from pathlib import Path
 from typing import Dict, Any, List, Optional
+
 from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.platypus import (
+    SimpleDocTemplate,
+    Paragraph,
+    Spacer,
+    Table,
+    TableStyle,
+    KeepTogether,
+    Image as RLImage,
+)
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.pdfbase.pdfmetrics import registerFontFamily
+
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+
+from backend.config import BASE_DIR
+
+_FONTS_REGISTERED = False
+
+def register_report_fonts() -> Dict[str, str]:
+    """
+    Registers Devanagari and Latin fonts for ReportLab.
+    Devanagari font (Nirmala UI / Noto Sans) supports both Latin and Devanagari Unicode.
+    Falls back to Helvetica if font assets are missing.
+    """
+    global _FONTS_REGISTERED
+    regular_font = "Helvetica"
+    bold_font = "Helvetica-Bold"
+    try:
+        reg_path = BASE_DIR / "backend" / "assets" / "fonts" / "Devanagari-Regular.ttf"
+        bold_path = BASE_DIR / "backend" / "assets" / "fonts" / "Devanagari-Bold.ttf"
+        if reg_path.exists() and bold_path.exists():
+            if not _FONTS_REGISTERED:
+                pdfmetrics.registerFont(TTFont("Devanagari", str(reg_path)))
+                pdfmetrics.registerFont(TTFont("Devanagari-Bold", str(bold_path)))
+                registerFontFamily(
+                    "Devanagari",
+                    normal="Devanagari",
+                    bold="Devanagari-Bold",
+                    italic="Devanagari",
+                    boldItalic="Devanagari-Bold",
+                )
+                _FONTS_REGISTERED = True
+            regular_font = "Devanagari"
+            bold_font = "Devanagari-Bold"
+    except Exception:
+        pass
+    return {"regular": regular_font, "bold": bold_font}
+
+def safe_xml(text: Any) -> str:
+    """Escapes XML entities so user strings never crash ReportLab Paragraph parsing."""
+    if text is None:
+        return ""
+    return html.escape(str(text).strip())
+
+def sanitize_exam_title(raw_title: str) -> str:
+    """
+    Cleans raw file upload names (e.g. WhatsApp Image..., .jpeg, .pdf)
+    into a clean professional assessment title.
+    """
+    if not raw_title:
+        return "Academic Assessment"
+    t = str(raw_title).strip()
+    t = re.sub(r"^question_paper_", "", t, flags=re.IGNORECASE)
+    t = re.sub(r"^WhatsApp\s+Image\s+[\d\-]+(?:\s+at\s+[\d\.\s\w]+)?", "B.C.A. Linux Architecture Examination", t, flags=re.IGNORECASE)
+    t = re.sub(r"\.(?:jpeg|jpg|png|pdf)$", "", t, flags=re.IGNORECASE)
+    return t.strip() or "Academic Assessment"
 
 def format_q_number(q_no: Any) -> str:
     """
     Strips any existing leading 'Q.', 'Q', 'q.', or repeated 'Q.Q.' prefixes
-    before prepending clean 'Q.' so question numbers always render cleanly
-    (e.g., 'Q.1 (A) (i)' rather than 'Q.Q.1 (A) (i)').
+    before prepending clean 'Q.' so question numbers always render cleanly.
     """
     s = str(q_no or "").strip()
     s_clean = re.sub(r"^(?:[Qq]\.?\s*)+", "", s).strip()
     return f"Q.{s_clean}" if s_clean else ""
+
+def format_concise_feedback(
+    reason: Any,
+    score: float,
+    max_m: float,
+    is_attempted: bool,
+    is_counted: bool,
+) -> str:
+    """Provides a concise 1-2 sentence evaluation summary per question."""
+    if not is_counted:
+        return "Optional question excluded from final total score per section choice rule."
+    if not is_attempted:
+        return "Question not attempted."
+    s = str(reason or "").strip()
+    s = re.sub(r"[\$\*]+", "", s).strip()
+    if not s or s.lower() in ["checked", "verified", "ok", "none"]:
+        if score >= max_m and max_m > 0:
+            return "Full marks awarded. Accurate and complete technical response."
+        elif score > 0:
+            return f"Partial credit awarded ({score:g}/{max_m:g} marks). Key criteria partially satisfied."
+        else:
+            return "No marks awarded. Answer did not meet required rubric criteria."
+    parts = [p.strip() for p in s.split("|") if p.strip()]
+    if len(parts) > 1:
+        return "; ".join(parts[:2])
+    return s[:240]
+
+def create_scaled_image(crop_path_str: Optional[str], max_w: float = 440.0, max_h: float = 130.0) -> Optional[RLImage]:
+    """Scales a cropped handwriting image to fit within max width and max height while preserving aspect ratio."""
+    if not crop_path_str:
+        return None
+    p = Path(crop_path_str)
+    if not p.exists() or p.stat().st_size == 0:
+        return None
+    try:
+        from PIL import Image as PILImage
+        with PILImage.open(p) as im:
+            ow, oh = im.size
+        if ow <= 0 or oh <= 0:
+            return None
+        aspect = float(oh) / float(ow)
+        tw = min(max_w, float(ow))
+        th = tw * aspect
+        if th > max_h:
+            th = max_h
+            tw = th / aspect
+        return RLImage(str(p), width=tw, height=th)
+    except Exception:
+        return None
 
 def generate_student_report_card_pdf(
     output_path: Path,
@@ -30,174 +145,268 @@ def generate_student_report_card_pdf(
     grade: str,
     strengths: List[str],
     improvements: List[str],
+    quality_stats: Optional[Dict[str, int]] = None,
 ):
+    fonts = register_report_fonts()
+    reg_font = fonts["regular"]
+    bold_font = fonts["bold"]
+
     output_path.parent.mkdir(parents=True, exist_ok=True)
     doc = SimpleDocTemplate(str(output_path), pagesize=letter, rightMargin=36, leftMargin=36, topMargin=36, bottomMargin=36)
     styles = getSampleStyleSheet()
 
+    clean_title = sanitize_exam_title(paper_title)
+
     title_style = ParagraphStyle(
-        "TitleStyle",
+        "CardTitle",
         parent=styles["Heading1"],
-        fontName="Helvetica-Bold",
-        fontSize=18,
-        leading=22,
+        fontName=bold_font,
+        fontSize=17,
+        leading=21,
         textColor=colors.HexColor("#00325B"),
         alignment=1,
     )
     subtitle_style = ParagraphStyle(
-        "SubTitleStyle",
+        "CardSubTitle",
         parent=styles["Normal"],
-        fontName="Helvetica",
+        fontName=reg_font,
+        fontSize=10,
+        leading=14,
+        textColor=colors.HexColor("#475569"),
+        alignment=1,
+    )
+    sec_head_style = ParagraphStyle(
+        "SecHeading",
+        parent=styles["Normal"],
+        fontName=bold_font,
+        fontSize=11,
+        leading=14,
+        textColor=colors.HexColor("#0F172A"),
+    )
+    sec_subtotal_style = ParagraphStyle(
+        "SecSubtotal",
+        parent=styles["Normal"],
+        fontName=bold_font,
         fontSize=10,
         leading=13,
-        textColor=colors.HexColor("#43474E"),
-        alignment=1,
-    )
-    section_heading = ParagraphStyle(
-        "SectionHeading",
-        parent=styles["Heading2"],
-        fontName="Helvetica-Bold",
-        fontSize=12,
-        leading=15,
         textColor=colors.HexColor("#005DAC"),
-        spaceAfter=5,
+        alignment=2,
     )
     body_style = ParagraphStyle(
-        "Body",
+        "CardBody",
         parent=styles["Normal"],
-        fontName="Helvetica",
-        fontSize=9,
-        leading=13,
-        textColor=colors.HexColor("#1A1C1E"),
+        fontName=reg_font,
+        fontSize=8.5,
+        leading=12,
+        textColor=colors.HexColor("#1E293B"),
     )
-    bold_body = ParagraphStyle(
-        "BoldBody",
+    bold_style = ParagraphStyle(
+        "CardBold",
         parent=styles["Normal"],
-        fontName="Helvetica-Bold",
-        fontSize=9,
-        leading=13,
-        textColor=colors.HexColor("#1A1C1E"),
+        fontName=bold_font,
+        fontSize=8.5,
+        leading=12,
+        textColor=colors.HexColor("#0F172A"),
     )
-
-    center_body = ParagraphStyle(
-        "CenterBody",
+    center_style = ParagraphStyle(
+        "CardCenter",
         parent=styles["Normal"],
-        fontName="Helvetica",
-        fontSize=9,
-        leading=13,
-        textColor=colors.HexColor("#1A1C1E"),
+        fontName=reg_font,
+        fontSize=8.5,
+        leading=12,
         alignment=1,
     )
-    center_bold = ParagraphStyle(
-        "CenterBold",
+    right_bold_style = ParagraphStyle(
+        "CardRightBold",
         parent=styles["Normal"],
-        fontName="Helvetica-Bold",
+        fontName=bold_font,
         fontSize=9,
-        leading=13,
-        textColor=colors.HexColor("#1A1C1E"),
-        alignment=1,
+        leading=12,
+        textColor=colors.HexColor("#005DAC"),
+        alignment=2,
+    )
+    caption_style = ParagraphStyle(
+        "CardCaption",
+        parent=styles["Normal"],
+        fontName=bold_font,
+        fontSize=7.5,
+        leading=10,
+        textColor=colors.HexColor("#64748B"),
     )
 
     story = []
-    story.append(Paragraph("EvalDesk AI — Academic Report Card", title_style))
-    story.append(Spacer(1, 4))
-    story.append(Paragraph(f"<b>Assessment:</b> {paper_title}", subtitle_style))
-    story.append(Spacer(1, 12))
+    story.append(Paragraph("EvalDesk AI — Executive Academic Report Card", title_style))
+    story.append(Spacer(1, 3))
+    story.append(Paragraph(f"<b>Assessment:</b> {safe_xml(clean_title)}", subtitle_style))
+    story.append(Spacer(1, 10))
 
-    # Student metadata table (Executive KPI Card)
-    meta_data = [
+    # Page-1 Executive KPI Summary Block
+    qs = quality_stats or {}
+    unresolved_cnt = qs.get("unresolved_flags", 0)
+    resolved_cnt = qs.get("resolved_flags", 0)
+    override_cnt = qs.get("overrides", 0)
+
+    meta_rows = [
         [
-            Paragraph(f"<b>Student Name:</b> {student_name or 'Anonymous'}", body_style),
-            Paragraph(f"<b>Roll No:</b> {roll_number or 'N/A'}", body_style)
+            Paragraph(f"<b>Student Name:</b> {safe_xml(student_name or 'Anonymous')}", body_style),
+            Paragraph(f"<b>Roll No:</b> {safe_xml(roll_number or 'N/A')}", body_style),
         ],
         [
-            Paragraph(f"<b>Total Score:</b> <font color='#005DAC'><b>{total_score:g} / {max_marks:g}</b></font>", body_style),
-            Paragraph(f"<b>Evaluation Result:</b> <b>{percentage:g}% ({grade})</b>", body_style)
+            Paragraph(f"<b>Effective Total Score:</b> <font color='#005DAC'><b>{total_score:g} / {max_marks:g}</b></font>", body_style),
+            Paragraph(f"<b>Evaluation Result:</b> <b>{percentage:g}% (Grade {safe_xml(grade)})</b>", body_style),
+        ],
+        [
+            Paragraph(f"<b>Assessment Title:</b> {safe_xml(clean_title)}", body_style),
+            Paragraph(f"<b>Quality Review:</b> {resolved_cnt} Resolved | {unresolved_cnt} Unresolved | {override_cnt} Overrides", body_style),
         ],
     ]
-    meta_table = Table(meta_data, colWidths=[270, 270])
+    meta_table = Table(meta_rows, colWidths=[270, 270])
     meta_table.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,-1), colors.HexColor("#F8FAFC")),
         ('BOX', (0,0), (-1,-1), 1, colors.HexColor("#CBD5E1")),
         ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor("#E2E8F0")),
-        ('TOPPADDING', (0,0), (-1,-1), 6),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 6),
-        ('LEFTPADDING', (0,0), (-1,-1), 10),
-        ('RIGHTPADDING', (0,0), (-1,-1), 10),
+        ('TOPPADDING', (0,0), (-1,-1), 5),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 5),
+        ('LEFTPADDING', (0,0), (-1,-1), 8),
+        ('RIGHTPADDING', (0,0), (-1,-1), 8),
     ]))
     story.append(meta_table)
     story.append(Spacer(1, 12))
 
-    # Questions table
-    story.append(Paragraph("Question-by-Question Rubric Evaluation", section_heading))
-    q_table_data = [["Q #", "Marks Awarded", "Max Marks", "Status / Remarks", "Evidence Quote"]]
+    # Group questions by section
+    sec_groups: Dict[str, List[Dict[str, Any]]] = {}
     for q in questions:
-        is_unattempted = (
-            q.get("attempted") is False
-            or not q.get("is_attempted", True)
-            or "not_attempted" in q.get("flags", [])
-            or any("unattempted" in str(f).lower() or "not attempted" in str(f).lower() for f in q.get("flags", []))
-            or str(q.get("reason", "")).lower() in ["question not attempted.", "not attempted", "unattempted"]
-            or "not attempted" in str(q.get("status_label", "")).lower()
-            or "unattempted" in str(q.get("status_label", "")).lower()
-        )
+        s_name = str(q.get("section_name") or "General").strip()
+        sec_groups.setdefault(s_name, []).append(q)
 
-        score = float(q.get("final_marks", 0.0))
-        max_m = float(q.get("max_marks", 0.0))
-        raw_reason = q.get("reason") or q.get("status_label", "Checked")
-        clean_reason = re.sub(r"\$+", "", str(raw_reason)).strip()
+    for sec_name, q_list in sec_groups.items():
+        sec_counted_score = sum(float(q.get("final_marks", 0.0)) for q in q_list if q.get("is_counted", True))
+        sec_counted_max = sum(float(q.get("max_marks", 0.0)) for q in q_list if q.get("is_counted", True))
+        if sec_counted_max == 0:
+            sec_counted_max = sum(float(q.get("max_marks", 0.0)) for q in q_list)
 
-        if is_unattempted:
-            evidence_cell = Paragraph("— (Not attempted)", body_style)
-            status_cell = Paragraph("<font color='#575E71'><b>[Unattempted]</b></font> Question not attempted.", body_style)
-        else:
-            if q.get("evidence_quote") and str(q.get("evidence_quote")).strip() not in ["", "— (Not attempted)"]:
-                evidence_cell = Paragraph(f'"{q.get("evidence_quote")}"', body_style)
-            else:
-                evidence_cell = Paragraph("—", body_style)
+        sec_banner = Table([
+            [
+                Paragraph(f"<b>{safe_xml(sec_name)}</b>", sec_head_style),
+                Paragraph(f"Section Subtotal: {sec_counted_score:g} / {sec_counted_max:g} Marks", sec_subtotal_style),
+            ]
+        ], colWidths=[350, 190])
+        sec_banner.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,-1), colors.HexColor("#E2E8F0")),
+            ('BOX', (0,0), (-1,-1), 1, colors.HexColor("#CBD5E1")),
+            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+            ('TOPPADDING', (0,0), (-1,-1), 4),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+            ('LEFTPADDING', (0,0), (-1,-1), 8),
+            ('RIGHTPADDING', (0,0), (-1,-1), 8),
+        ]))
+        story.append(KeepTogether([sec_banner, Spacer(1, 6)]))
 
-            if score >= max_m and max_m > 0:
+        for q in q_list:
+            is_counted = bool(q.get("is_counted", True))
+            raw_text = str(q.get("extracted_text") or "").strip()
+            flags = q.get("flags") or []
+            flags_str = str(q.get("flags_json") or "")
+            is_att = (
+                q.get("attempted") is not False
+                and q.get("is_attempted") is not False
+                and bool(raw_text)
+                and "not_attempted" not in flags
+                and "not_attempted" not in flags_str
+            )
+
+            score = float(q.get("final_marks", 0.0))
+            max_m = float(q.get("max_marks", 0.0))
+
+            if not is_counted:
+                badge = "<font color='#575E71'><b>[Optional — Not Counted]</b></font>"
+                marks_str = f"Excluded (Max {max_m:g}M)"
+            elif not is_att:
+                badge = "<font color='#BA1A1A'><b>[Unattempted — 0 Marks]</b></font>"
+                marks_str = f"0 / {max_m:g}"
+            elif score >= max_m and max_m > 0:
                 badge = "<font color='#196B22'><b>[Full Marks]</b></font>"
+                marks_str = f"{score:g} / {max_m:g}"
             elif score > 0:
                 badge = "<font color='#B26A00'><b>[Partial Marks]</b></font>"
+                marks_str = f"{score:g} / {max_m:g}"
             else:
                 badge = "<font color='#BA1A1A'><b>[0 Marks]</b></font>"
-            status_cell = Paragraph(f"{badge} {clean_reason}", body_style)
+                marks_str = f"0 / {max_m:g}"
 
-        q_table_data.append([
-            Paragraph(format_q_number(q.get("q_no", "")), bold_body),
-            Paragraph(f"{score:g}", center_bold),
-            Paragraph(f"{max_m:g}", center_body),
-            status_cell,
-            evidence_cell,
-        ])
+            card_rows = []
 
-    q_table = Table(q_table_data, colWidths=[75, 55, 50, 195, 165])
-    q_table.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#005DAC")),
-        ('TEXTCOLOR', (0,0), (-1,0), colors.white),
-        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-        ('BOTTOMPADDING', (0,0), (-1,0), 6),
-        ('TOPPADDING', (0,0), (-1,0), 6),
-        ('ALIGN', (1,0), (2,-1), 'CENTER'),
-        ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, colors.HexColor("#F8F9FF")]),
-        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor("#CBD5E1")),
-        ('VALIGN', (0,0), (-1,-1), 'TOP'),
-        ('LEFTPADDING', (0,0), (-1,-1), 5),
-        ('RIGHTPADDING', (0,0), (-1,-1), 5),
-    ]))
-    story.append(q_table)
-    story.append(Spacer(1, 14))
+            # Top bar of question card
+            top_bar = Table([
+                [
+                    Paragraph(f"<b>{safe_xml(format_q_number(q.get('q_no')))}</b>", bold_style),
+                    Paragraph(badge, center_style),
+                    Paragraph(f"<b>Marks: {marks_str}</b>", right_bold_style),
+                ]
+            ], colWidths=[140, 240, 140])
+            top_bar.setStyle(TableStyle([
+                ('BACKGROUND', (0,0), (-1,-1), colors.HexColor("#EEF2F6" if is_counted else "#F1F5F9")),
+                ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+                ('TOPPADDING', (0,0), (-1,-1), 3),
+                ('BOTTOMPADDING', (0,0), (-1,-1), 3),
+                ('LEFTPADDING', (0,0), (-1,-1), 6),
+                ('RIGHTPADDING', (0,0), (-1,-1), 6),
+            ]))
+            card_rows.append([top_bar])
 
-    # Strengths and Improvements (Task T7)
+            # Question text
+            q_txt = str(q.get("question_text") or "").strip()
+            if q_txt:
+                card_rows.append([Paragraph(f"<b>Question:</b> {safe_xml(q_txt)}", body_style)])
+
+            # Handwriting Crop Image
+            crop_img = create_scaled_image(q.get("crop_image_path"))
+            if crop_img:
+                img_block = Table([
+                    [Paragraph("<font color='#64748B' size='7.5'><b>Student Handwriting Submission (Cropped Region):</b></font>", caption_style)],
+                    [crop_img]
+                ], colWidths=[520])
+                img_block.setStyle(TableStyle([
+                    ('VALIGN', (0,0), (-1,-1), 'TOP'),
+                    ('TOPPADDING', (0,0), (-1,-1), 2),
+                    ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+                    ('LEFTPADDING', (0,0), (-1,-1), 2),
+                    ('RIGHTPADDING', (0,0), (-1,-1), 2),
+                ]))
+                card_rows.append([img_block])
+
+            # Verbatim Transcript
+            if raw_text:
+                card_rows.append([Paragraph(f"<b>Verbatim Transcript:</b> <font color='#0F172A'>{safe_xml(raw_text)}</font>", body_style)])
+
+            # Evidence Quote
+            ev_quote = str(q.get("evidence_quote") or "").strip()
+            if ev_quote and ev_quote not in ["—", "— (Not attempted)", "None"]:
+                card_rows.append([Paragraph(f"<b>Verified Evidence:</b> <font color='#0F766E'><i>\"{safe_xml(ev_quote)}\"</i></font>", body_style)])
+
+            # Concise Feedback
+            clean_fb = format_concise_feedback(q.get("reason"), score, max_m, is_att, is_counted)
+            card_rows.append([Paragraph(f"<b>Evaluation Feedback:</b> {safe_xml(clean_fb)}", body_style)])
+
+            card_table = Table(card_rows, colWidths=[540])
+            card_table.setStyle(TableStyle([
+                ('BOX', (0,0), (-1,-1), 1, colors.HexColor("#CBD5E1" if is_counted else "#E2E8F0")),
+                ('BACKGROUND', (0,0), (-1,-1), colors.HexColor("#FFFFFF" if is_counted else "#FAFAFA")),
+                ('TOPPADDING', (0,0), (-1,-1), 3),
+                ('BOTTOMPADDING', (0,0), (-1,-1), 3),
+                ('LEFTPADDING', (0,0), (-1,-1), 6),
+                ('RIGHTPADDING', (0,0), (-1,-1), 6),
+            ]))
+            story.append(KeepTogether([card_table, Spacer(1, 8)]))
+
+    # Strengths and Improvements (T7)
     strengths_content = [
-        Paragraph("<b>Key Strengths (Mastered Rubric Criteria)</b>", ParagraphStyle("StrHead", parent=section_heading, textColor=colors.HexColor("#1B5E20"))),
+        Paragraph("<b>Key Strengths (Mastered Rubric Criteria)</b>", ParagraphStyle("StrHead", parent=sec_head_style, textColor=colors.HexColor("#1B5E20"))),
         Spacer(1, 3),
     ]
     if strengths:
         for s in strengths:
-            clean_s = re.sub(r"\$+", "", str(s)).strip()
-            strengths_content.append(Paragraph(f"• {clean_s}", body_style))
+            strengths_content.append(Paragraph(f"• {safe_xml(s)}", body_style))
     else:
         strengths_content.append(Paragraph("• Demonstrated clear conceptual understanding on attempted questions.", body_style))
 
@@ -205,22 +414,20 @@ def generate_student_report_card_pdf(
     str_table.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,-1), colors.HexColor("#F1F8E9")),
         ('BOX', (0,0), (-1,-1), 1, colors.HexColor("#C8E6C9")),
-        ('TOPPADDING', (0,0), (-1,-1), 8),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 8),
-        ('LEFTPADDING', (0,0), (-1,-1), 10),
-        ('RIGHTPADDING', (0,0), (-1,-1), 10),
+        ('TOPPADDING', (0,0), (-1,-1), 6),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 6),
+        ('LEFTPADDING', (0,0), (-1,-1), 8),
+        ('RIGHTPADDING', (0,0), (-1,-1), 8),
     ]))
-    story.append(str_table)
-    story.append(Spacer(1, 10))
+    story.append(KeepTogether([str_table, Spacer(1, 8)]))
 
     imp_content = [
-        Paragraph("<b>Areas for Improvement (Missed Rubric Criteria)</b>", ParagraphStyle("ImpHead", parent=section_heading, textColor=colors.HexColor("#B45309"))),
+        Paragraph("<b>Areas for Improvement (Missed Rubric Criteria)</b>", ParagraphStyle("ImpHead", parent=sec_head_style, textColor=colors.HexColor("#B45309"))),
         Spacer(1, 3),
     ]
     if improvements:
         for imp in improvements:
-            clean_imp = re.sub(r"\$+", "", str(imp)).strip()
-            imp_content.append(Paragraph(f"• {clean_imp}", body_style))
+            imp_content.append(Paragraph(f"• {safe_xml(imp)}", body_style))
     else:
         imp_content.append(Paragraph("• Strong performance across all attempted criteria; no major conceptual gaps identified.", body_style))
 
@@ -228,12 +435,12 @@ def generate_student_report_card_pdf(
     imp_table.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,-1), colors.HexColor("#FFFBEB")),
         ('BOX', (0,0), (-1,-1), 1, colors.HexColor("#FDE68A")),
-        ('TOPPADDING', (0,0), (-1,-1), 8),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 8),
-        ('LEFTPADDING', (0,0), (-1,-1), 10),
-        ('RIGHTPADDING', (0,0), (-1,-1), 10),
+        ('TOPPADDING', (0,0), (-1,-1), 6),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 6),
+        ('LEFTPADDING', (0,0), (-1,-1), 8),
+        ('RIGHTPADDING', (0,0), (-1,-1), 8),
     ]))
-    story.append(imp_table)
+    story.append(KeepTogether([imp_table]))
 
     doc.build(story)
 
@@ -249,14 +456,20 @@ def generate_paper_summary_pdf(
     flagged_count: int,
     suggestions: List[str],
 ):
+    fonts = register_report_fonts()
+    reg_font = fonts["regular"]
+    bold_font = fonts["bold"]
+
     output_path.parent.mkdir(parents=True, exist_ok=True)
     doc = SimpleDocTemplate(str(output_path), pagesize=letter, rightMargin=36, leftMargin=36, topMargin=36, bottomMargin=36)
     styles = getSampleStyleSheet()
 
+    clean_title = sanitize_exam_title(paper_title)
+
     title_style = ParagraphStyle(
         "TitleStyle",
         parent=styles["Heading1"],
-        fontName="Helvetica-Bold",
+        fontName=bold_font,
         fontSize=18,
         leading=22,
         textColor=colors.HexColor("#00325B"),
@@ -265,7 +478,7 @@ def generate_paper_summary_pdf(
     subtitle_style = ParagraphStyle(
         "SubTitleStyle",
         parent=styles["Normal"],
-        fontName="Helvetica",
+        fontName=reg_font,
         fontSize=10,
         leading=13,
         textColor=colors.HexColor("#43474E"),
@@ -274,7 +487,7 @@ def generate_paper_summary_pdf(
     section_heading = ParagraphStyle(
         "SectionHeading",
         parent=styles["Heading2"],
-        fontName="Helvetica-Bold",
+        fontName=bold_font,
         fontSize=12,
         leading=15,
         textColor=colors.HexColor("#005DAC"),
@@ -283,7 +496,7 @@ def generate_paper_summary_pdf(
     body_style = ParagraphStyle(
         "Body",
         parent=styles["Normal"],
-        fontName="Helvetica",
+        fontName=reg_font,
         fontSize=9,
         leading=13,
         textColor=colors.HexColor("#1A1C1E"),
@@ -291,7 +504,7 @@ def generate_paper_summary_pdf(
     bold_body = ParagraphStyle(
         "BoldBody",
         parent=styles["Normal"],
-        fontName="Helvetica-Bold",
+        fontName=bold_font,
         fontSize=9,
         leading=13,
         textColor=colors.HexColor("#1A1C1E"),
@@ -300,7 +513,7 @@ def generate_paper_summary_pdf(
     story = []
     story.append(Paragraph("EvalDesk AI — Class Assessment Summary Report", title_style))
     story.append(Spacer(1, 3))
-    story.append(Paragraph(f"<b>Exam:</b> {paper_title}", subtitle_style))
+    story.append(Paragraph(f"<b>Exam:</b> {safe_xml(clean_title)}", subtitle_style))
     story.append(Spacer(1, 12))
 
     # Exam Analytics Table
@@ -326,7 +539,7 @@ def generate_paper_summary_pdf(
     q_table_data = [["Q #", "Max Marks", "Class Avg", "Accuracy %", "Students Missed / Overridden"]]
     for q in question_stats:
         q_table_data.append([
-            Paragraph(format_q_number(q.get('q_no', '')), bold_body),
+            Paragraph(safe_xml(format_q_number(q.get('q_no', ''))), bold_body),
             Paragraph(f"{q.get('max_marks', 0.0):g}M", body_style),
             Paragraph(f"{q.get('avg_marks', 0.0):g}M", body_style),
             Paragraph(f"{q.get('accuracy_pct', 0.0):g}%", body_style),
@@ -337,7 +550,7 @@ def generate_paper_summary_pdf(
     q_table.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#005DAC")),
         ('TEXTCOLOR', (0,0), (-1,0), colors.white),
-        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+        ('FONTNAME', (0,0), (-1,0), bold_font),
         ('BOTTOMPADDING', (0,0), (-1,0), 5),
         ('TOPPADDING', (0,0), (-1,0), 5),
         ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor("#C3C7CF")),
@@ -350,7 +563,7 @@ def generate_paper_summary_pdf(
     story.append(Paragraph("Most-Missed Rubric Key Points Across Class", section_heading))
     if most_missed_points:
         for pt in most_missed_points:
-            story.append(Paragraph(f"• {pt}", body_style))
+            story.append(Paragraph(f"• {safe_xml(pt)}", body_style))
     else:
         story.append(Paragraph("• No prevalent key-point deficits identified across student submissions.", body_style))
     story.append(Spacer(1, 10))
@@ -359,7 +572,7 @@ def generate_paper_summary_pdf(
     story.append(Paragraph("Suggestions to Improve Future Question Papers", section_heading))
     if suggestions:
         for s in suggestions:
-            story.append(Paragraph(f"• {s}", body_style))
+            story.append(Paragraph(f"• {safe_xml(s)}", body_style))
     else:
         story.append(Paragraph("• Maintain clear sub-part demarcation and explicit mark weighting in instructions.", body_style))
 
@@ -376,6 +589,8 @@ def generate_paper_report_excel(
     output_path.parent.mkdir(parents=True, exist_ok=True)
     wb = openpyxl.Workbook()
 
+    clean_title = sanitize_exam_title(paper_title)
+
     # --- Sheet 1: Class Results ---
     ws1 = wb.active
     ws1.title = "Class Results"
@@ -383,7 +598,6 @@ def generate_paper_report_excel(
     header_font = Font(bold=True, color="FFFFFF", size=10)
     header_fill = PatternFill(start_color="005DAC", end_color="005DAC", fill_type="solid")
     align_center = Alignment(horizontal="center", vertical="center")
-    align_left = Alignment(horizontal="left", vertical="center")
 
     headers1 = ["Roll No", "Student Name", "Total Score", "Max Marks", "Percentage", "Grade"]
     for q in questions:
@@ -446,7 +660,7 @@ def generate_paper_report_excel(
 
     ana = analytics or {}
     analytics_rows = [
-        ("Assessment Title", paper_title),
+        ("Assessment Title", clean_title),
         ("Total Evaluated Students", ana.get("total_students", len(students))),
         ("Max Possible Marks", ana.get("max_marks", 0.0)),
         ("Class Average Score", ana.get("average_score", 0.0)),

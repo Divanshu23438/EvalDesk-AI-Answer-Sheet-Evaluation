@@ -1,6 +1,8 @@
+import json
 import shutil
 import zipfile
 from pathlib import Path
+from typing import Any, Optional
 from datetime import datetime
 from backend.config import (
     BASE_DIR,
@@ -75,3 +77,91 @@ def create_data_backup() -> Path:
                 zf.write(file, arcname)
                 
     return backup_file
+
+def get_or_create_answer_crop_path(
+    sheet_id: str,
+    eval_id: str,
+    page_file_path: Optional[Path] = None,
+    bbox_raw: Any = None,
+    page_idx: int = 0,
+) -> Optional[Path]:
+    """
+    Retrieves or generates a cropped JPEG snippet of the student's handwritten answer.
+    Caches into data/storage/sheets/{sheet_id}/crops/{eval_id}.jpg.
+    Returns the absolute Path if successful, or None.
+    """
+    if not sheet_id or not eval_id:
+        return None
+
+    crop_dir = SHEETS_STORAGE_DIR / sheet_id / "crops"
+    crop_dir.mkdir(parents=True, exist_ok=True)
+    crop_file = crop_dir / f"{eval_id}.jpg"
+
+    if crop_file.exists() and crop_file.stat().st_size > 0:
+        return crop_file
+
+    if not page_file_path or not page_file_path.exists():
+        return None
+
+    try:
+        from PIL import Image
+        with Image.open(page_file_path) as img:
+            w, h = img.size
+            bboxes = []
+            if isinstance(bbox_raw, str):
+                try:
+                    bboxes = json.loads(bbox_raw)
+                except Exception:
+                    bboxes = []
+            elif isinstance(bbox_raw, list):
+                bboxes = bbox_raw
+
+            if bboxes and isinstance(bboxes, list) and len(bboxes) > 0:
+                box = bboxes[0]
+                if isinstance(box, dict) and "x" in box and "y" in box and "w" in box and "h" in box:
+                    bx = box["x"] * w if box["x"] <= 1.0 else (box["x"] / 1000.0 * w if box["x"] <= 1000 and w > 1000 else box["x"])
+                    by = box["y"] * h if box["y"] <= 1.0 else (box["y"] / 1000.0 * h if box["y"] <= 1000 and h > 1000 else box["y"])
+                    bw = box["w"] * w if box["w"] <= 1.0 else (box["w"] / 1000.0 * w if box["w"] <= 1000 and w > 1000 else box["w"])
+                    bh = box["h"] * h if box["h"] <= 1.0 else (box["h"] / 1000.0 * h if box["h"] <= 1000 and h > 1000 else box["h"])
+                    crop_box = (
+                        max(0, int(bx - 12)),
+                        max(0, int(by - 12)),
+                        min(w, int(bx + bw + 12)),
+                        min(h, int(by + bh + 12)),
+                    )
+                elif isinstance(box, (list, tuple)) and len(box) == 4:
+                    b0, b1, b2, b3 = box
+                    if max(b0, b1, b2, b3) <= 1.0:
+                        crop_box = (
+                            max(0, int(b1 * w - 12)),
+                            max(0, int(b0 * h - 12)),
+                            min(w, int(b3 * w + 12)),
+                            min(h, int(b2 * h + 12)),
+                        )
+                    elif max(b0, b1, b2, b3) <= 1000 and (w > 1000 or h > 1000):
+                        crop_box = (
+                            max(0, int((b1 / 1000.0) * w - 12)),
+                            max(0, int((b0 / 1000.0) * h - 12)),
+                            min(w, int((b3 / 1000.0) * w + 12)),
+                            min(h, int((b2 / 1000.0) * h + 12)),
+                        )
+                    else:
+                        crop_box = (
+                            max(0, int(min(b1, b3) - 12)),
+                            max(0, int(min(b0, b2) - 12)),
+                            min(w, int(max(b1, b3) + 12)),
+                            min(h, int(max(b0, b2) + 12)),
+                        )
+                else:
+                    crop_box = (0, 0, w, min(h, int(h * 0.35)))
+            else:
+                crop_box = (0, 0, w, min(h, int(h * 0.35)))
+
+            if crop_box[2] <= crop_box[0] or crop_box[3] <= crop_box[1]:
+                crop_box = (0, 0, w, min(h, int(h * 0.35)))
+
+            cropped = img.crop(crop_box)
+            cropped.save(crop_file, format="JPEG", quality=90)
+            return crop_file
+    except Exception:
+        return None
