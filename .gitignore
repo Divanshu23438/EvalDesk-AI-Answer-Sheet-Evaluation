@@ -13,4 +13,5 @@ __pycache__/
 .reader_cache/
 backups/
 legacy/
+scratch/
 
