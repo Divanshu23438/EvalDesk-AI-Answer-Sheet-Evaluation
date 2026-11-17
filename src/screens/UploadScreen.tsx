@@ -1278,7 +1278,7 @@ export const UploadScreen: React.FC = () => {
                       onSaved={loadSheets}
                     />
                   )}
-                  {((ACTIVE_STATUSES.includes(sheet.status) || sheet.status === 'failed') && sheet.pages && sheet.pages.length > 0) && (
+                  {((ACTIVE_STATUSES.includes(sheet.status) || sheet.status === 'needs_identity' || sheet.status === 'failed') && sheet.pages && sheet.pages.length > 0) && (
                     <PageFlipStrip pages={sheet.pages} />
                   )}
                 </div>

@@ -1,7 +1,23 @@
 # STATUS (update at the end of every session)
 Date / author (agent or model name): 2026-11-17 / Antigravity (Gemini 3.8 Flash)
-Current phase and task: Phase P9.6 complete; starting Phase P9.7 (End-to-End Tests & Verification across two distinct papers).
+Current phase and task: Phase P9.7 complete; starting Phase P9.8 (Hardening and cleanup).
 Done (task id, commit, proof file):
+- Task P9.7: End-to-End Tests & Verification across Two Distinct Papers (`scripts/e2e_ui.py`, `docs/proof/P9.7/`):
+  1. Ran two completely distinct papers end-to-end to prove zero hardcoding:
+     - Paper 1: Computer Science / IT (Database Management Systems, Strictness 3, student Arjun Sharma, roll CS303-012).
+     - Paper 2: Science & Engineering (Engineering Physics II, Strictness 4, student Priya Patel, roll PHY-2026-045).
+  2. Verified entire user journey across both papers:
+     - Upload screen with paper metadata (title, subject, code, exam, domain, strictness 1-5).
+     - PageFlipStrip progress tracking and flip state.
+     - Unreadable header identity workflow with IdentityForm; typing student name and roll, saving, and auto-transition.
+     - Evaluation workspace with 2-column layout, auto-selection of first flagged question, image viewer with crop/full toggle, OCR card, and marks card with per-point verdicts and coded flags.
+     - Recheck with strictness 5: strictness chip updates to 5/5, 'was {prev}M' undo banner appears, and Undo reverts marks.
+     - Finalizing sheet and viewing full Report Screen with score, grade, and question breakdown.
+  3. Captured 12 screenshots and telemetry JSON in `docs/proof/P9.7/`:
+     - Paper 1: `paper1_upload_metadata.png`, `paper1_flip_progress.png`, `paper1_identity_form.png`, `paper1_eval_workspace.png`, `paper1_recheck_strictness5.png`, `paper1_report_screen.png`.
+     - Paper 2: `paper2_upload_metadata.png`, `paper2_flip_progress.png`, `paper2_identity_form.png`, `paper2_eval_workspace.png`, `paper2_recheck_strictness5.png`, `paper2_report_screen.png`.
+     - Data: `e2e_proof.json`.
+  4. Verified `check_all.py` (ALL PASS across banned strings, git secrets, 65 pytest passing, tsc clean, live provider health). | docs/proof/P9.7/
 - Task P9.6: Evaluation Workspace Redesign and Question Panel (`src/components/StrictnessChip.tsx`, `src/components/RecheckPopover.tsx`, `src/components/SheetImageViewer.tsx`, `src/components/QuestionPanel.tsx`, `src/components/MarksCard.tsx`, `src/screens/EvaluateScreen.tsx`, `scripts/verify_p9_6.py`, `docs/proof/P9.6/`):
   1. Implemented Section 5 2-column evaluation workspace layout: Left column = Selected question details (Question card with StrictnessChip, prompt text, MCQ options; SheetImageViewer with Crop/Full toggle, normalized bbox overlay, multi-page continuation chips, zoom/rotate; OcrCard with editable text, legibility score, and reader diff; MarksCard with 0.5M stepper, per-point verdicts, coded flags, Recheck with 1-5 strictness, and Undo banner; collapsible ReferenceCard).
   2. Implemented right QuestionPanel: 280px expanded panel with All / Flagged / Checked tabs, status indicator dots, Q number, score/max, and strictness override badges (`S.{level}`). Collapses to 44px rail (`w-[44px]`) with numbered status dots. State persists across page reloads via `localStorage` key `evaldesk_question_panel_collapsed`.

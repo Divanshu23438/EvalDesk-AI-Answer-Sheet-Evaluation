@@ -1,0 +1,44 @@
+{
+  "start_time": "2026-11-17T10:18:04.818445+00:00",
+  "papers": [
+    {
+      "paper_id": "293ae730-3958-46b6-90d9-b0f7562bb894",
+      "sheet_id": "fbef9fe3-e471-41ed-aec2-704b91ee9341",
+      "title": "Database Management Systems Final",
+      "subject": "Computer Science",
+      "code": "CS-303",
+      "domain": "cs_it",
+      "strictness": 3,
+      "student": "Arjun Sharma",
+      "roll": "CS303-012",
+      "screenshots": [
+        "paper1_upload_metadata.png",
+        "paper1_flip_progress.png",
+        "paper1_identity_form.png",
+        "paper1_eval_workspace.png",
+        "paper1_recheck_strictness5.png",
+        "paper1_report_screen.png"
+      ]
+    },
+    {
+      "paper_id": "bb878cbc-5a4e-4065-9c0f-83601768cd63",
+      "sheet_id": "6ed17726-fc60-4ea4-b500-c90dcb3723cb",
+      "title": "Engineering Physics II Examination",
+      "subject": "Physics",
+      "code": "PHY-102",
+      "domain": "science_engineering",
+      "strictness": 4,
+      "student": "Priya Patel",
+      "roll": "PHY-2026-045",
+      "screenshots": [
+        "paper2_upload_metadata.png",
+        "paper2_flip_progress.png",
+        "paper2_identity_form.png",
+        "paper2_eval_workspace.png",
+        "paper2_recheck_strictness5.png",
+        "paper2_report_screen.png"
+      ]
+    }
+  ],
+  "end_time": "2026-11-17T10:19:13.292176+00:00"
+}
