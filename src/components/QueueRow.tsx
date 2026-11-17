@@ -50,9 +50,6 @@ export const QueueRow: React.FC<QueueRowProps> = ({
   onRefresh,
   onError,
 }) => {
-  const [nameInput, setNameInput] = useState(sheet.student_name || '');
-  const [rollInput, setRollInput] = useState(sheet.roll || '');
-  const [isSavingIdentity, setIsSavingIdentity] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [thumbError, setThumbError] = useState(false);
@@ -112,38 +109,6 @@ export const QueueRow: React.FC<QueueRowProps> = ({
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       handleCardClick();
-    }
-  };
-
-  const handleSaveIdentity = async (e: React.FormEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!nameInput.trim() || !rollInput.trim()) {
-      if (onError) {
-        onError({
-          code: 'VALIDATION_ERROR',
-          message: 'Both student name and roll number are required.',
-        });
-      }
-      return;
-    }
-
-    setIsSavingIdentity(true);
-    try {
-      await apiClient.post(`/api/sheets/${sheet.id}/identity`, {
-        student_name: nameInput.trim(),
-        roll_number: rollInput.trim(),
-      });
-      if (onRefresh) onRefresh();
-    } catch (err: any) {
-      if (onError) {
-        onError({
-          code: err.code || 'IDENTITY_SAVE_FAILED',
-          message: err.message || 'Failed to save student identity.',
-        });
-      }
-    } finally {
-      setIsSavingIdentity(false);
     }
   };
 
@@ -394,50 +359,6 @@ export const QueueRow: React.FC<QueueRowProps> = ({
                 />
               </div>
             </div>
-          )}
-
-          {/* Inline Identity Form for needs_identity */}
-          {sheet.status === 'needs_identity' && (
-            <form
-              onSubmit={handleSaveIdentity}
-              onClick={(e) => e.stopPropagation()}
-              className="mt-2 p-2.5 rounded-lg bg-amber-50/80 border border-amber-200 flex flex-wrap sm:flex-nowrap items-center gap-2"
-            >
-              <div className="flex-1 min-w-[120px]">
-                <label className="sr-only">Student Name</label>
-                <input
-                  type="text"
-                  placeholder="Student Name"
-                  value={nameInput}
-                  onChange={(e) => setNameInput(e.target.value)}
-                  className="w-full px-2.5 py-1 text-xs rounded border border-slate-300 bg-white text-slate-900 focus:outline-none focus:border-indigo-500"
-                  required
-                />
-              </div>
-              <div className="w-24 shrink-0">
-                <label className="sr-only">Roll Number</label>
-                <input
-                  type="text"
-                  placeholder="Roll No"
-                  value={rollInput}
-                  onChange={(e) => setRollInput(e.target.value)}
-                  className="w-full px-2.5 py-1 text-xs rounded border border-slate-300 bg-white text-slate-900 focus:outline-none focus:border-indigo-500 font-mono"
-                  required
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={isSavingIdentity}
-                className="px-3 py-1 text-xs font-semibold rounded bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 transition flex items-center gap-1 shrink-0 shadow-xs"
-              >
-                {isSavingIdentity ? (
-                  <RefreshCw className="w-3 h-3 animate-spin" />
-                ) : (
-                  <Check className="w-3 h-3" />
-                )}
-                Save
-              </button>
-            </form>
           )}
 
           {/* Failure message & Retry */}

@@ -22,6 +22,10 @@ import {
 import { useSheetStore } from '../state/useSheetStore';
 import { apiClient } from '../api/client';
 import { QueueRow, SheetQueueItem } from '../components/QueueRow';
+import { PaperDetailsForm, type PaperMeta } from '../components/PaperDetailsForm';
+import { StrictnessPicker } from '../components/StrictnessPicker';
+import { IdentityForm } from '../components/IdentityForm';
+import { PageFlipStrip, type SheetPageStatus } from '../components/PageFlipStrip';
 
 interface PaperSummary {
   id: string;
@@ -43,7 +47,13 @@ interface QuestionItem {
   model_answer?: string;
   key_points?: any[];
   source?: string;
+  strictness_override?: number | null;
 }
+
+// Per-page OCR status comes from the server (GET /api/papers/{id}/sheets -> sheets[].pages)
+type SheetRow = SheetQueueItem & { pages?: SheetPageStatus[] };
+
+const ACTIVE_STATUSES = ['queued', 'uploaded', 'evaluating', 'reading_identity', 'reading', 'matching', 'marking', 'flagging'];
 
 interface SectionItem {
   id?: string;
@@ -61,7 +71,7 @@ export const UploadScreen: React.FC = () => {
 
   // Papers and sheets list
   const [papers, setPapers] = useState<PaperSummary[]>([]);
-  const [sheets, setSheets] = useState<SheetQueueItem[]>([]);
+  const [sheets, setSheets] = useState<SheetRow[]>([]);
   const [isLoadingSheets, setIsLoadingSheets] = useState(false);
 
   // Card A: Question Paper & Answer Key state
@@ -77,6 +87,7 @@ export const UploadScreen: React.FC = () => {
   const [paperMessage, setPaperMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
   const [newPaperTitle, setNewPaperTitle] = useState('');
   const [isCreatingNewPaper, setIsCreatingNewPaper] = useState(false);
+  const [paperMeta, setPaperMeta] = useState<PaperMeta | null>(null);
 
   // Card B: Student Sheets state
   const [isSheetDragOver, setIsSheetDragOver] = useState(false);
@@ -136,6 +147,7 @@ export const UploadScreen: React.FC = () => {
         max_marks: q.max_marks || q.marks || 1,
         question_type: q.question_type || q.type || 'short',
         section_name: q.section_name || q.section || 'Part I',
+        strictness_override: q.strictness_override ?? null,
       }));
 
       // Match references if present
@@ -171,13 +183,23 @@ export const UploadScreen: React.FC = () => {
         questionCount: enriched.length,
         isLocked: Boolean(paperObj.is_locked),
       });
-    } catch (err) {
-      // Fallback silently if details fetch fails
+
+      setPaperMeta({
+        title: paperObj.title ?? '',
+        subject: paperObj.subject ?? '',
+        subject_code: paperObj.subject_code ?? '',
+        exam_name: paperObj.exam_name ?? '',
+        strictness_level: Number(paperObj.strictness_level) || 3,
+        subject_domain: paperObj.subject_domain || 'general',
+      });
+    } catch (err: any) {
+      setPaperMessage({ type: 'error', text: err.message || 'Could not load paper details.' });
     }
   }, [store]);
 
   useEffect(() => {
     if (state.paperId) {
+      setPaperMeta(null);
       loadPaperDetails(state.paperId);
     }
   }, [state.paperId, loadPaperDetails]);
@@ -187,7 +209,7 @@ export const UploadScreen: React.FC = () => {
     if (!state.paperId) return;
     setIsLoadingSheets(true);
     try {
-      const data = await apiClient.get<{ sheets: SheetQueueItem[] }>(
+      const data = await apiClient.get<{ sheets: SheetRow[] }>(
         `/api/papers/${state.paperId}/sheets`
       );
       const fetched = data.sheets || [];
@@ -211,11 +233,7 @@ export const UploadScreen: React.FC = () => {
   useEffect(() => {
     if (!state.paperId) return;
 
-    const hasActiveJobs = sheets.some((s) =>
-      ['queued', 'uploaded', 'reading_identity', 'reading', 'matching', 'marking', 'flagging'].includes(
-        s.status
-      )
-    );
+    const hasActiveJobs = sheets.some((s) => ACTIVE_STATUSES.includes(s.status));
 
     if (!hasActiveJobs) return;
 
@@ -246,6 +264,24 @@ export const UploadScreen: React.FC = () => {
     }
   };
 
+  const savePaperMeta = async (patch: Partial<PaperMeta>) => {
+    if (!state.paperId || !paperMeta) return;
+    const previous = Object.fromEntries(
+      Object.keys(patch).map((k) => [k, paperMeta[k as keyof PaperMeta]])
+    ) as Partial<PaperMeta>;
+    setPaperMeta((m) => (m ? { ...m, ...patch } : m));
+    try {
+      await apiClient.patch(`/api/papers/${state.paperId}`, patch);
+      if (patch.title) {
+        store.setPaper({ id: state.paperId, title: patch.title });
+        await loadPapers();
+      }
+    } catch (err: any) {
+      setPaperMeta((m) => (m ? { ...m, ...previous } : m));
+      setPaperMessage({ type: 'error', text: err.message || 'Could not save paper details.' });
+    }
+  };
+
   const handleCreatePaper = async () => {
     const title = newPaperTitle.trim();
     if (!title) {
@@ -254,9 +290,10 @@ export const UploadScreen: React.FC = () => {
     }
     try {
       const res = await apiClient.post<any>('/api/papers', {
-        title: title,
-        subject: 'General Assessment',
-        strictness: 'lenient',
+        title,
+        subject: '',
+        strictness_level: 3,
+        subject_domain: 'general',
         checking_medium: 'ai_reference',
       });
       setNewPaperTitle('');
@@ -316,8 +353,9 @@ export const UploadScreen: React.FC = () => {
       if (!targetPaperId) {
         const createRes = await apiClient.post<any>('/api/papers', {
           title: defaultTitle,
-          subject: 'General Assessment',
-          strictness: 'lenient',
+          subject: '',
+          strictness_level: 3,
+          subject_domain: 'general',
           checking_medium: 'ai_reference',
         });
         targetPaperId = String(createRes.paper_id);
@@ -509,6 +547,7 @@ export const UploadScreen: React.FC = () => {
           max_marks: Number(q.max_marks) || 1,
           question_type: q.question_type || 'short',
           section_name: q.section_name || 'Part I',
+          strictness_override: q.strictness_override ?? null,
         })),
         sections: sections.map((s) => ({
           id: s.id,
@@ -664,7 +703,7 @@ export const UploadScreen: React.FC = () => {
         {/* ==================================================================== */}
         {/* LEFT COLUMN: Vertically Divided into Card A & Card B                 */}
         {/* ==================================================================== */}
-        <div className="flex flex-col gap-3 min-h-0 h-full overflow-hidden">
+        <div className="flex flex-col gap-3 min-h-0 h-full overflow-y-auto pr-1">
           
           {/* ------------------------------------------------------------------ */}
           {/* CARD A: Question Paper & Rubric (Collapses when locked)            */}
@@ -776,6 +815,16 @@ export const UploadScreen: React.FC = () => {
                 </div>
               )}
             </div>
+
+            {/* Paper details (title, subject, code, exam) + strictness 1-5 */}
+            {paperMeta && (
+              <PaperDetailsForm
+                key={state.paperId}
+                meta={paperMeta}
+                hasTeacherKey={hasAnswerKey}
+                onSave={savePaperMeta}
+              />
+            )}
 
             {/* When Unlocked: Show 2-Column Upload Grid (QP & AK), Status Chips, Section Summary, and Actions */}
             {!state.paperIsLocked ? (
@@ -1016,7 +1065,7 @@ export const UploadScreen: React.FC = () => {
           {/* ------------------------------------------------------------------ */}
           <section
             aria-label="Student Answer Sheets"
-            className="bg-white rounded-xl border border-slate-200 shadow-2xs p-4 flex flex-col justify-between flex-1 min-h-0"
+            className="bg-white rounded-xl border border-slate-200 shadow-2xs p-4 flex flex-col justify-between shrink-0 min-h-[220px]"
           >
             <div className="flex flex-col gap-2.5 min-h-0 flex-1">
               <div className="flex items-start justify-between gap-2 shrink-0">
@@ -1203,19 +1252,31 @@ export const UploadScreen: React.FC = () => {
               </div>
             ) : (
               sheets.map((sheet) => (
-                <QueueRow
-                  key={sheet.id}
-                  sheet={sheet}
-                  isActive={sheet.id === state.sheetId}
-                  onSelect={() => {
-                    store.setSheet(sheet.id, sheet.student_name, sheet.roll);
-                    store.setStep('evaluate', sheet.id);
-                  }}
-                  onRefresh={loadSheets}
-                  onError={(err) => {
-                    store.setError(err);
-                  }}
-                />
+                <div key={sheet.id} className="space-y-1.5">
+                  <QueueRow
+                    sheet={sheet}
+                    isActive={sheet.id === state.sheetId}
+                    onSelect={() => {
+                      store.setSheet(sheet.id, sheet.student_name, sheet.roll);
+                      store.setStep('evaluate', sheet.id);
+                    }}
+                    onRefresh={loadSheets}
+                    onError={(err) => {
+                      store.setError(err);
+                    }}
+                  />
+                  {sheet.status === 'needs_identity' && (
+                    <IdentityForm
+                      sheetId={sheet.id}
+                      initialName={sheet.student_name || ''}
+                      initialRoll={sheet.roll || ''}
+                      onSaved={loadSheets}
+                    />
+                  )}
+                  {ACTIVE_STATUSES.includes(sheet.status) && sheet.pages && sheet.pages.length > 0 && (
+                    <PageFlipStrip pages={sheet.pages} />
+                  )}
+                </div>
               ))
             )}
           </div>
@@ -1398,6 +1459,21 @@ export const UploadScreen: React.FC = () => {
                     placeholder="Question prompt in English or Hindi..."
                     className="w-full text-xs p-2 rounded border border-slate-200 bg-white text-slate-800 focus:outline-none focus:border-indigo-500 font-sans"
                   />
+
+                  <div className="flex items-center gap-2 text-[11px] text-slate-500">
+                    <span className="shrink-0">Strictness:</span>
+                    <StrictnessPicker
+                      compact
+                      disabled={state.paperIsLocked}
+                      value={q.strictness_override ?? null}
+                      inheritLabel={`Paper (${paperMeta?.strictness_level ?? 3})`}
+                      onChange={(level) => {
+                        const copy = [...questions];
+                        copy[idx] = { ...copy[idx], strictness_override: level };
+                        setQuestions(copy);
+                      }}
+                    />
+                  </div>
 
                   {q.model_answer && (
                     <div className="text-[11px] text-slate-700 bg-white border border-slate-200 p-2 rounded space-y-1">

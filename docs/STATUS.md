@@ -1,7 +1,15 @@
 # STATUS (update at the end of every session)
 Date / author (agent or model name): 2026-11-17 / Antigravity (Gemini 3.8 Flash)
-Current phase and task: Fix Plan Implemented & Verified: Paper Load Accelerated, Nested BBox & Multi-Page Continuation Crops Restored, Duplicate Reviews & Scoring Discrepancies Remediated (100% test pass on pytest, tsc, and verify_fix_plan).
+Current phase and task: Phase P9.0 complete; starting Phase P9.1 (Schema and paper metadata).
 Done (task id, commit, proof file):
+- Task P9.0: Preflight and UI Patching (`src/api/client.ts`, `src/screens/UploadScreen.tsx`, `src/components/QueueRow.tsx`, `src/components/{PaperDetailsForm,StrictnessPicker,IdentityForm,PageFlipStrip}.tsx`, `scripts/check_all.py`, `docs/proof/P9.0/`):
+  1. Ran preflight `check_all.py` baseline (ALL PASS: banned strings, git secrets, 34 pytest passing, tsc clean, live provider health).
+  2. Applied `UploadScreen.diff` cleanly to `src/screens/UploadScreen.tsx`; incorporated `PaperDetailsForm`, `StrictnessPicker`, `IdentityForm`, and `PageFlipStrip`.
+  3. Added `apiClient.patch` method beside `put` in `src/api/client.ts`.
+  4. Verified Vite config proxies `/api` and `/storage` to backend port 8000.
+  5. Removed duplicate inline identity form from `src/components/QueueRow.tsx`.
+  6. Added banned strings (`General Assessment`, `pages_total // 2`, `"met" if`, `get("legibility", 0.95)`) to `scripts/check_all.py`.
+  7. Verified clean compilation with `npx tsc --noEmit` and captured upload UI screenshot with empty/detected paper details at 1366x768. Proof saved to `docs/proof/P9.0/tsc_output.txt` and `docs/proof/P9.0/upload_screen.png`. | docs/proof/P9.0/
 - EvalDesk Fix Plan: Slow Paper Load, Wrong Crops, Missing Continuation Pages & Scoring Bugs (`backend/pdf_tools.py`, `backend/ai_gateway.py`, `backend/storage.py`, `backend/main.py`, `backend/reports_generator.py`, `scripts/verify_fix_plan.py`):
   1. Paper Load & Extraction Acceleration (Step 1):
      - Eliminated separate remote AI orientation call (`pdf_tools.py:116`). Replaced with local `ImageOps.exif_transpose` (sub-millisecond) and integrated rotation detection directly into the T1 extraction prompt (`"rotation_degrees_clockwise": 0 | 90 | 180 | 270`), rotating locally via `apply_rotation_degrees`.

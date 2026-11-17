@@ -126,6 +126,25 @@ export const apiClient = {
     return handleResponse<T>(res);
   },
 
+  async patch<T>(url: string, body?: unknown, headers: HeadersInit = {}): Promise<T> {
+    const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
+    const reqHeaders: Record<string, string> = {
+      Accept: 'application/json',
+      ...(headers as Record<string, string>),
+    };
+
+    if (!isFormData && body !== undefined) {
+      reqHeaders['Content-Type'] = 'application/json';
+    }
+
+    const res = await fetch(url, {
+      method: 'PATCH',
+      headers: reqHeaders,
+      body: isFormData ? (body as FormData) : body !== undefined ? JSON.stringify(body) : undefined,
+    });
+    return handleResponse<T>(res);
+  },
+
   async delete<T>(url: string, headers: HeadersInit = {}): Promise<T> {
     const res = await fetch(url, {
       method: 'DELETE',

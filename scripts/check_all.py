@@ -11,6 +11,7 @@ BANNED = [
     "Sample extracted line text", "Comprehensive model explanation",
     "3ce9faec", "e8b6b996", 'key_ref = "Linux"', "max_m * 0.8",
     "Offline resilience", "Accurately answered all parts",
+    "General Assessment", "pages_total // 2", '"met" if', 'get("legibility", 0.95)',
 ]
 SCAN_EXT = {".py", ".ts", ".tsx", ".js", ".jsx", ".json", ".html", ".css"}
 SKIP_DIRS = {".git", "node_modules", "dist", "__pycache__", ".reader_cache", "data",
