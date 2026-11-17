@@ -1,0 +1,46 @@
+{
+  "timestamp_start": "2026-11-17T09:44:18.913985+00:00",
+  "paper_id": "f416cc4f-fa02-47e2-b9c8-406aca5e78e6",
+  "sheet_id": "34830e5f-df37-4bc2-b4b5-dbaa18e76bca",
+  "events": [
+    {
+      "time": "2026-11-17T09:44:19.198601+00:00",
+      "event": "initial_paper_state",
+      "paper": {
+        "id": "f416cc4f-fa02-47e2-b9c8-406aca5e78e6",
+        "title": "Distributed Systems Final Exam",
+        "subject": "",
+        "total_marks": 30.0,
+        "strictness": "lenient",
+        "checking_medium": "ai_reference",
+        "has_answer_key": 0,
+        "is_locked": 1,
+        "instructions": "",
+        "paper_path": null,
+        "answer_key_path": null,
+        "created_at": "2026-11-17 09:44:18",
+        "updated_at": "2026-11-17 09:44:18",
+        "subject_code": "CS-504",
+        "exam_name": "End Semester",
+        "strictness_level": 4,
+        "subject_domain": "cs_it"
+      }
+    },
+    {
+      "time": "2026-11-17T09:44:29.916984+00:00",
+      "event": "patch_paper_subject_on_blur",
+      "updated_subject": "Distributed Computing & Fault Tolerance"
+    },
+    {
+      "time": "2026-11-17T09:44:31.881696+00:00",
+      "event": "identity_saved_and_evaluation_started",
+      "sheet": {
+        "student_name": "Elena Rostova",
+        "roll_number": "CS-2026-905",
+        "status": "evaluating",
+        "stage_key": "reading"
+      }
+    }
+  ],
+  "timestamp_end": "2026-11-17T09:44:32.338296+00:00"
+}

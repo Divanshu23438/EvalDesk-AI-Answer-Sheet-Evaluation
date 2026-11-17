@@ -1,7 +1,13 @@
 # STATUS (update at the end of every session)
 Date / author (agent or model name): 2026-11-17 / Antigravity (Gemini 3.8 Flash)
-Current phase and task: Phase P9.4 complete; starting Phase P9.5 (Upload screen completion).
+Current phase and task: Phase P9.5 complete; starting Phase P9.6 (Evaluation workspace redesign).
 Done (task id, commit, proof file):
+- Task P9.5: Upload Screen Metadata and Identity Workflow (`src/components/PaperDetailsForm.tsx`, `src/components/IdentityForm.tsx`, `src/screens/UploadScreen.tsx`, `scripts/verify_p9_5.py`, `docs/proof/P9.5/`):
+  1. Paper details: title, subject, subject_code, exam_name, domain, and 1-5 strictness rendered via `PaperDetailsForm`. Empty extracted values show amber "Not detected" tag and amber input highlight. Changes save on blur via `PATCH /api/papers/{id}` even when the paper is locked.
+  2. Strictness Level 4-5 safeguard tip: amber notice appears when strictness >= 4 without a teacher answer key ("Tip: Upload a Teacher Answer Key for exact keyword enforcement at Level {N}...").
+  3. Student identity workflow: unreadable header leaves sheet in `needs_identity`, showing `IdentityForm` requiring both student name and roll number. Submitting calls `POST /api/sheets/{sheet_id}/identity` which saves details, sets status to `queued`, and immediately kicks off the evaluation pipeline.
+  4. Per-question strictness override in the question drawer: `StrictnessPicker` compact mode allows overriding strictness per question or inheriting from paper.
+  5. Verified end-to-end via Playwright script `scripts/verify_p9_5.py`. Proof saved to `docs/proof/P9.5/p9_5_verification.json` and 3 screenshots (`upload_screen_amber_tip_and_identity_form.png`, `identity_form_filled.png`, `identity_saved_evaluation_started.png`). | docs/proof/P9.5/
 - Task P9.4: Real Per-Page OCR Progress & Flip Animation (`backend/main.py`, `src/components/QueueRow.tsx`, `src/screens/UploadScreen.tsx`, `backend/tests/test_p9_4.py`, `scripts/verify_p9_4.py`, `docs/proof/P9.4/`):
   1. Updated `read_page` to record real per-page status in SQLite `sheet_pages`: sets `ocr_status = 'reading'` and clears error at start; sets `ocr_status = 'done'`, average page legibility, and clears error on success; catches any exception and sets `ocr_status = 'failed'` with full error message. Each status change executes in its own short committed transaction.
   2. Maintained `sheets.stage_key` at every stage transition alongside `current_stage`: `'queued'`, `'reading'`, `'matching'`, `'marking'`, `'flagging'`, `'needs_review'`, `'evaluated'`, and `'failed'`.
