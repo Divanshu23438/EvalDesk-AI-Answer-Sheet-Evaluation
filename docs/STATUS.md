@@ -1,7 +1,15 @@
 # STATUS (update at the end of every session)
 Date / author (agent or model name): 2026-11-17 / Antigravity (Gemini 3.8 Flash)
-Current phase and task: Phase P9.1 complete; starting Phase P9.2 (Strictness engine).
+Current phase and task: Phase P9.2 complete; starting Phase P9.3 (One grader for pipeline and recheck).
 Done (task id, commit, proof file):
+- Task P9.2: Strictness Engine & Unit Tests (`backend/strictness.py`, `backend/tests/test_strictness.py`, `docs/proof/P9.2/`):
+  1. Implemented `resolve_level` (question override -> paper level -> default 3) with source tracking ("question" | "paper").
+  2. Implemented `TAU_FLAG = {1:0.45, 2:0.55, 3:0.70, 4:0.80, 5:0.88}` and `PARTIAL_FACTOR = {1:0.75, 2:0.65, 3:0.50, 4:0.40, 5:0.25}` matching specification.
+  3. Implemented `build_strictness_instructions` with deterministic prompts across levels 1..5, 6 academic subject domains, and AI draft safeguards without hardcoded sample strings.
+  4. Implemented `extract_question_anchors` detecting action verbs (English + Hindi), explicit counts ("any 4", "give 2 examples", "तीन अंतर"), and mandatory technical terms.
+  5. Implemented `confidence_gate` using tier tau thresholds and `ai_draft_guardrail` enforcing non-zero partial credit with exact spec message when `reference_source == 'ai_draft'` and `level >= 4`.
+  6. Implemented `calculate_overall_confidence = min(model_confidence, avg_legibility)`.
+  7. Verified 17/17 tests passing in `test_strictness.py` and saved proof to `docs/proof/P9.2/pytest_strictness.txt`. | docs/proof/P9.2/
 - Task P9.1: Schema and Paper Metadata (`backend/db.py`, `backend/main.py`, `backend/tests/test_migration.py`, `backend/tests/test_p9_1.py`, `scripts/verify_p9_1.py`, `docs/proof/P9.1/`):
   1. Implemented idempotent migration in `backend/db.py` adding all 13 columns across `papers`, `questions`, `sheets`, `sheet_pages`, and `evaluations`. Added WAL mode. Backfilled `strictness_level` and `strictness_level_override` from legacy text. Verified migration runs twice without error via `test_migration.py`.
   2. Implemented `PATCH /api/papers/{paper_id}` with strict validation (ranges 1..5 for `strictness_level`, valid subject domain check, non-empty title). Verified updates persist and are permitted even when paper is locked.
