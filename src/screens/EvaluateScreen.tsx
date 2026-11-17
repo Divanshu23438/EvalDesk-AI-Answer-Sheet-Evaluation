@@ -2,11 +2,12 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSheetStore } from '../state/useSheetStore';
 import { apiClient } from '../api/client';
 import { useHotkeys } from '../hooks/useHotkeys';
-import { QuestionSidebar, ReviewQuestionItem } from '../components/QuestionSidebar';
-import { SheetViewer } from '../components/SheetViewer';
+import { QuestionPanel } from '../components/QuestionPanel';
+import { SheetImageViewer } from '../components/SheetImageViewer';
 import { OcrCard } from '../components/OcrCard';
 import { ReferenceCard } from '../components/ReferenceCard';
 import { MarksCard } from '../components/MarksCard';
+import { StrictnessChip } from '../components/StrictnessChip';
 import {
   ChevronLeft,
   ChevronRight,
@@ -17,9 +18,13 @@ import {
   X,
   Sparkles,
   Check,
+  ChevronDown,
+  ChevronUp,
+  FileCheck2,
+  Users,
 } from 'lucide-react';
 
-interface ReviewResponse {
+export interface ReviewResponse {
   sheet: {
     id: string;
     student_name: string;
@@ -34,7 +39,8 @@ interface ReviewResponse {
     id: string;
     title: string;
     total_marks: number;
-    strictness?: string;
+    strictness_level?: number;
+    subject_domain?: string;
   };
   sections: Array<{
     id: string;
@@ -42,8 +48,8 @@ interface ReviewResponse {
     attempt_n: number;
     marks_each: number;
   }>;
-  pages: Array<{ page_number: number; file_path: string }>;
-  questions: ReviewQuestionItem[];
+  pages: Array<{ page_number: number; file_path: string; url?: string }>;
+  questions: any[];
   all_resolved: boolean;
 }
 
@@ -51,13 +57,34 @@ export const EvaluateScreen: React.FC = () => {
   const [state, store] = useSheetStore();
 
   const [reviewData, setReviewData] = useState<ReviewResponse | null>(null);
+  const [paperSheets, setPaperSheets] = useState<Array<{ id: string; student_name: string; roll: string }>>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeKey, setActiveKey] = useState<string | null>(null);
-  const [activePage, setActivePage] = useState<number>(1);
   const [isEditingOcrExternal, setIsEditingOcrExternal] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [showApproveAllModal, setShowApproveAllModal] = useState(false);
   const [isFinishing, setIsFinishing] = useState(false);
+  const [isReferenceExpanded, setIsReferenceExpanded] = useState(false);
+  const [previousFinalMarksMap, setPreviousFinalMarksMap] = useState<Record<string, number>>({});
+
+  // Collapsible Question Panel state with localStorage persistence
+  const [isPanelCollapsed, setIsPanelCollapsed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('evaldesk_question_panel_collapsed') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const togglePanel = useCallback(() => {
+    setIsPanelCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('evaldesk_question_panel_collapsed', String(next));
+      } catch {}
+      return next;
+    });
+  }, []);
 
   // 1. Fetch Review Data from GET /api/sheets/{id}/review
   const loadReviewData = useCallback(async () => {
@@ -69,22 +96,21 @@ export const EvaluateScreen: React.FC = () => {
 
       const qList = data.questions || [];
       if (qList.length > 0) {
-        // Retain current question if valid, or select the first question
+        // Selection rule: select the first flagged question on initial load!
+        // If already selected a valid question, keep it.
         const currentValid = qList.find(
           (q) => (q.question_key || q.key) === (state.activeQuestionKey || activeKey)
         );
-        const targetQ = currentValid || qList[0];
+        const firstFlagged = qList.find(
+          (q) => (q.flags && q.flags.length > 0 && !q.resolved) || q.status === 'flagged' || q.status === 'failed'
+        );
+        const targetQ = currentValid || firstFlagged || qList[0];
         const targetKey = targetQ.question_key || targetQ.key;
         setActiveKey(targetKey);
         store.setActiveQuestionKey(targetKey);
-
-        // Jump viewer to the answer's primary page if available
-        if (targetQ.page_numbers && targetQ.page_numbers.length > 0) {
-          setActivePage(targetQ.page_numbers[0]);
-        }
       }
 
-      // Update paper title & student details in global store
+      // Sync paper & student details
       if (data.paper) {
         store.setPaper({
           id: data.paper.id,
@@ -93,7 +119,20 @@ export const EvaluateScreen: React.FC = () => {
           questionCount: qList.length,
           isLocked: true,
         });
+
+        // Load all sheets for this paper for Prev/Next sheet navigation
+        try {
+          const sheetsRes = await apiClient.get<{ sheets: any[] }>(`/api/papers/${data.paper.id}/sheets`);
+          setPaperSheets(
+            (sheetsRes.sheets || []).map((s: any) => ({
+              id: s.id,
+              student_name: s.student_name,
+              roll: s.roll || s.roll_number,
+            }))
+          );
+        } catch {}
       }
+
       if (data.sheet) {
         store.setSheet(data.sheet.id, data.sheet.student_name, data.sheet.roll_number);
       }
@@ -116,22 +155,29 @@ export const EvaluateScreen: React.FC = () => {
     return questions.findIndex((q) => (q.question_key || q.key) === activeKey);
   }, [questions, activeKey]);
 
-  const activeQuestion: ReviewQuestionItem | null =
-    activeQuestionIndex >= 0 ? questions[activeQuestionIndex] : null;
+  const activeQuestion = activeQuestionIndex >= 0 ? questions[activeQuestionIndex] : null;
 
-  // Jump viewer to active question's page whenever activeQuestion changes
-  useEffect(() => {
-    if (activeQuestion?.page_numbers && activeQuestion.page_numbers.length > 0) {
-      setActivePage(activeQuestion.page_numbers[0]);
+  // Sheet Navigation: Prev / Next Sheet in paper
+  const currentSheetIndex = paperSheets.findIndex((s) => s.id === state.sheetId);
+  const handlePrevSheet = () => {
+    if (currentSheetIndex > 0) {
+      const prevId = paperSheets[currentSheetIndex - 1].id;
+      store.setStep('evaluate', prevId);
     }
-  }, [activeQuestion?.question_key, activeQuestion?.key]);
+  };
+  const handleNextSheet = () => {
+    if (currentSheetIndex >= 0 && currentSheetIndex < paperSheets.length - 1) {
+      const nextId = paperSheets[currentSheetIndex + 1].id;
+      store.setStep('evaluate', nextId);
+    }
+  };
 
   // Compute Review Metrics & sync with store
   const metrics = useMemo(() => {
     const total = questions.length;
     const checked = questions.filter((q) => Boolean(q.resolved) && q.status !== 'failed').length;
     const flagged = questions.filter(
-      (q) => (q.flags && q.flags.length > 0 && !q.resolved) || q.status === 'flagged'
+      (q) => (q.flags && q.flags.length > 0 && !q.resolved) || q.status === 'flagged' || q.status === 'failed'
     ).length;
     const failed = questions.filter((q) => q.status === 'failed').length;
     const allResolved = total > 0 && flagged === 0 && failed === 0 && checked === total;
@@ -150,7 +196,7 @@ export const EvaluateScreen: React.FC = () => {
     store.setReviewMetrics(metrics);
   }, [metrics, store]);
 
-  // Navigation handlers
+  // Navigation handlers (J / K / Arrow)
   const handleNextQuestion = useCallback(() => {
     if (questions.length === 0) return;
     const nextIdx = (activeQuestionIndex + 1) % questions.length;
@@ -171,7 +217,6 @@ export const EvaluateScreen: React.FC = () => {
 
   const handleNextFlagged = useCallback(() => {
     if (questions.length === 0) return;
-    // Find next flagged question starting from current index + 1
     for (let i = 1; i <= questions.length; i++) {
       const idx = (activeQuestionIndex + i) % questions.length;
       const q = questions[idx];
@@ -185,24 +230,50 @@ export const EvaluateScreen: React.FC = () => {
     }
   }, [questions, activeQuestionIndex, store]);
 
-  // Question selection handler from sidebar
   const handleSelectQuestion = (key: string) => {
     setActiveKey(key);
     store.setActiveQuestionKey(key);
-    const q = questions.find((item) => (item.question_key || item.key) === key);
-    if (q?.page_numbers && q.page_numbers.length > 0) {
-      setActivePage(q.page_numbers[0]);
-    }
   };
 
-  // Live AI Recheck handler for active question
-  const handleRecheckActiveQuestion = async () => {
+  // Recheck handler with custom strictness & in-place update (Rule: Data only GET /review, replace in place)
+  const handleRecheckQuestion = async (level?: number, persistOverride?: boolean) => {
     if (!activeQuestion) return;
     try {
-      await apiClient.post(`/api/evaluations/${activeQuestion.eval_id}/recheck`, {
+      const res = await apiClient.post<any>(`/api/evaluations/${activeQuestion.eval_id}/recheck`, {
         edited_text: activeQuestion.ocr_text || activeQuestion.extracted_text,
+        strictness: level,
+        persist_override: persistOverride,
       });
-      await loadReviewData();
+
+      // Save previous marks for Undo
+      if (res.previous_final_marks !== undefined) {
+        setPreviousFinalMarksMap((prev) => ({
+          ...prev,
+          [activeQuestion.eval_id]: res.previous_final_marks,
+        }));
+      }
+
+      // Replace this one evaluation and sheet totals in place (no full reload!)
+      setReviewData((prev) => {
+        if (!prev) return prev;
+        const updatedQuestions = prev.questions.map((q) => {
+          if (q.eval_id === activeQuestion.eval_id) {
+            const evalObj = res.evaluation || res;
+            return { ...q, ...evalObj };
+          }
+          return q;
+        });
+        return {
+          ...prev,
+          sheet: {
+            ...prev.sheet,
+            total_score: res.new_total ?? prev.sheet.total_score,
+            percentage: res.percentage ?? prev.sheet.percentage,
+            grade: res.grade ?? prev.sheet.grade,
+          },
+          questions: updatedQuestions,
+        };
+      });
     } catch (err: any) {
       store.setError({
         code: err.code || 'RECHECK_FAILED',
@@ -212,7 +283,7 @@ export const EvaluateScreen: React.FC = () => {
     }
   };
 
-  // Marks update & approve handler
+  // Marks update & approve handler (in-place replacement)
   const handleMarksChange = (newMarks: number, isCounted: boolean, isResolved: boolean) => {
     if (!activeQuestion) return;
     setReviewData((prev) => {
@@ -224,7 +295,7 @@ export const EvaluateScreen: React.FC = () => {
             final_marks: newMarks,
             is_counted: isCounted,
             resolved: isResolved ? 1 : 0,
-            status: isResolved ? ('approved' as const) : q.status,
+            status: isResolved ? 'approved' : q.status,
           };
         }
         return q;
@@ -236,18 +307,37 @@ export const EvaluateScreen: React.FC = () => {
   // Approve current question via keyboard shortcut 'A'
   const handleApproveCurrent = async () => {
     if (!activeQuestion) return;
+    const currentM = activeQuestion.final_marks !== undefined ? activeQuestion.final_marks : activeQuestion.ai_marks;
     try {
-      await apiClient.post(`/api/evaluations/${activeQuestion.eval_id}/review`, {
-        teacher_marks: activeQuestion.final_marks !== undefined ? activeQuestion.final_marks : activeQuestion.ai_marks,
+      const res = await apiClient.post<any>(`/api/evaluations/${activeQuestion.eval_id}/review`, {
+        teacher_marks: currentM,
         accept_ai: true,
         is_counted: activeQuestion.is_counted !== undefined ? activeQuestion.is_counted : true,
       });
+
       handleMarksChange(
-        activeQuestion.final_marks !== undefined ? activeQuestion.final_marks : activeQuestion.ai_marks,
+        currentM,
         activeQuestion.is_counted !== undefined ? activeQuestion.is_counted : true,
         true
       );
-      // Advance to next question automatically
+
+      // Update sheet score in place
+      if (res.new_total !== undefined) {
+        setReviewData((prev) =>
+          prev
+            ? {
+                ...prev,
+                sheet: {
+                  ...prev.sheet,
+                  total_score: res.new_total,
+                  percentage: res.percentage ?? prev.sheet.percentage,
+                  grade: res.grade ?? prev.sheet.grade,
+                },
+              }
+            : prev
+        );
+      }
+
       handleNextQuestion();
     } catch (err: any) {
       store.setError({
@@ -294,7 +384,7 @@ export const EvaluateScreen: React.FC = () => {
     }
   };
 
-  // Register Keyboard Shortcuts
+  // Register Keyboard Shortcuts (J/K next/prev, A approve, R recheck, [ toggle panel, +/- marks)
   useHotkeys({
     onNext: handleNextQuestion,
     onPrev: handlePrevQuestion,
@@ -306,9 +396,9 @@ export const EvaluateScreen: React.FC = () => {
       const nextVal = Math.min(activeQuestion.max_marks, Math.max(0, currentVal + delta));
       handleMarksChange(nextVal, activeQuestion.is_counted !== undefined ? activeQuestion.is_counted : true, false);
     },
-    onRecheck: handleRecheckActiveQuestion,
+    onRecheck: () => handleRecheckQuestion(),
     onEditOcr: () => setIsEditingOcrExternal((prev) => !prev),
-    onToggleSidebar: () => store.toggleSidebar(),
+    onToggleSidebar: togglePanel,
     onHelp: () => setShowHelpModal((prev) => !prev),
   });
 
@@ -335,162 +425,306 @@ export const EvaluateScreen: React.FC = () => {
     };
   }, [handlePrevQuestion, handleNextQuestion, handleFinishAndProceedToReport]);
 
-  const pageCount = reviewData?.pages ? reviewData.pages.length : 1;
-  const pgs: number[] = activeQuestion?.page_numbers || [];
-  const pageIdx = pgs.indexOf(activePage);
-  let rawBox: any = null;
-  if (pageIdx >= 0 && Array.isArray(activeQuestion?.bbox)) {
-    rawBox = activeQuestion.bbox[pageIdx];
-  } else if (Array.isArray(activeQuestion?.bbox) && activeQuestion.bbox.length === 4 && typeof activeQuestion.bbox[0] === 'number') {
-    rawBox = activeQuestion.bbox;
-  }
-  while (Array.isArray(rawBox) && rawBox.length === 1 && Array.isArray(rawBox[0])) {
-    rawBox = rawBox[0];
-  }
-  const bbox: [number, number, number, number] | null =
-    Array.isArray(rawBox) && rawBox.length === 4 && rawBox.every((n) => typeof n === 'number')
-      ? ([rawBox[1], rawBox[0], rawBox[3], rawBox[2]] as [number, number, number, number])
-      : null;
+  const sheet = reviewData?.sheet;
+  const paper = reviewData?.paper;
   const isNotAttempted =
-    Boolean(activeQuestion?.reason?.includes('not attempted')) ||
-    (activeQuestion?.flags || []).some((f) => f.code === 'not_attempted');
-  const continuesPage =
-    activeQuestion?.page_numbers && activeQuestion.page_numbers.length > 1
-      ? activeQuestion.page_numbers[1]
-      : null;
+    activeQuestion?.status === 'not_attempted' ||
+    Boolean(activeQuestion?.reason?.toLowerCase().includes('not attempted')) ||
+    (activeQuestion?.flags || []).some((f: any) => f.code === 'not_attempted');
 
   return (
-    <section aria-label="Evaluation Workspace" className="h-full flex flex-col min-h-0 relative select-none">
-      {/* 3-Pane Zero-Scroll Layout */}
-      <div
-        className={`flex-1 grid min-h-0 transition-all duration-200 ${
-          state.isSidebarCollapsed
-            ? 'grid-cols-[56px_1fr_420px] 2xl:grid-cols-[56px_1fr_420px]'
-            : 'grid-cols-[280px_1fr_380px] 2xl:grid-cols-[280px_1fr_420px]'
-        }`}
-      >
-        {/* Pane 1 (Left): Question Sidebar */}
-        <QuestionSidebar
+    <section aria-label="Evaluation Workspace" className="h-full flex flex-col min-h-0 bg-slate-50 select-none">
+      {/* ==================================================================== */}
+      {/* 1. TOP HEADER: Paper · Student · Score/Max · Grade · Navigation · Actions */}
+      {/* ==================================================================== */}
+      <header className="px-4 py-2.5 bg-white border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 shrink-0 shadow-2xs z-20">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="min-w-0">
+            <h2 className="text-xs font-bold text-slate-900 truncate flex items-center gap-2">
+              <span>{paper?.title || state.paperTitle || 'Assessment Evaluation'}</span>
+              <span className="text-slate-300 font-normal">|</span>
+              <span className="text-indigo-700 font-semibold truncate">
+                {sheet?.student_name || state.studentName || 'Student Sheet'}
+                {(sheet?.roll_number || state.rollNumber) && (
+                  <span className="text-slate-500 font-mono text-[11px] ml-1">
+                    ({sheet?.roll_number || state.rollNumber})
+                  </span>
+                )}
+              </span>
+            </h2>
+          </div>
+        </div>
+
+        {/* Center: Score & Grade KPI Badge */}
+        {sheet && (
+          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1 rounded-lg font-mono text-xs shadow-2xs">
+            <span className="text-slate-500 text-[11px]">Score:</span>
+            <strong className="text-slate-900 font-bold text-sm">
+              {sheet.total_score}
+            </strong>
+            <span className="text-slate-400">/ {sheet.max_marks} M</span>
+            <span className="w-1 h-1 rounded-full bg-slate-300" />
+            <span className="font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.2 rounded text-[10px]">
+              {sheet.grade || 'Evaluated'}
+            </span>
+          </div>
+        )}
+
+        {/* Right: Prev/Next Sheet Navigation + Action CTAs */}
+        <div className="flex items-center gap-2">
+          {paperSheets.length > 1 && (
+            <div className="flex items-center gap-1 border border-slate-200 rounded-lg p-0.5 bg-slate-50 text-xs">
+              <button
+                type="button"
+                onClick={handlePrevSheet}
+                disabled={currentSheetIndex <= 0}
+                className="p-1 rounded text-slate-600 hover:bg-white disabled:opacity-30 disabled:cursor-not-allowed"
+                title="Previous Student Sheet"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+              </button>
+              <span className="text-[10px] font-mono px-1 font-semibold text-slate-600">
+                {currentSheetIndex + 1}/{paperSheets.length}
+              </span>
+              <button
+                type="button"
+                onClick={handleNextSheet}
+                disabled={currentSheetIndex >= paperSheets.length - 1}
+                className="p-1 rounded text-slate-600 hover:bg-white disabled:opacity-30 disabled:cursor-not-allowed"
+                title="Next Student Sheet"
+              >
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={() => setShowApproveAllModal(true)}
+            className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 transition flex items-center gap-1.5 shadow-2xs"
+            title="Approve all questions without unresolved flags"
+          >
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Approve All Unflagged</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleFinishAndProceedToReport}
+            disabled={isFinishing}
+            className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition flex items-center gap-1.5 shadow-sm text-white ${
+              metrics.allResolved
+                ? 'bg-indigo-600 hover:bg-indigo-700'
+                : 'bg-amber-600 hover:bg-amber-700'
+            }`}
+            title={metrics.allResolved ? 'Finalize sheet and view report' : 'Resolve all flags before finalizing'}
+          >
+            {isFinishing ? (
+              <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <FileCheck2 className="w-3.5 h-3.5" />
+            )}
+            <span>{metrics.allResolved ? 'Finish & View Report' : 'Review Remaining'}</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </header>
+
+      {/* ==================================================================== */}
+      {/* 2. MAIN BODY (2 Columns): Left = Question Details, Right = Question Panel */}
+      {/* ==================================================================== */}
+      <div className="flex-1 flex min-h-0 overflow-hidden">
+        {/* LEFT COLUMN: The selected question (scrolls) */}
+        <main className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4">
+          {activeQuestion ? (
+            <>
+              {/* Question Header Card */}
+              <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs space-y-2">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-bold text-slate-900 font-mono">
+                      Q.{activeQuestion.q_no}
+                    </span>
+                    <span className="text-slate-300">·</span>
+                    <span className="text-xs font-medium text-slate-600">
+                      {activeQuestion.section_name || 'General Section'}
+                    </span>
+                    <span className="text-slate-300">·</span>
+                    <span className="text-xs font-mono font-bold text-indigo-700">
+                      {activeQuestion.max_marks} Marks
+                    </span>
+                  </div>
+
+                  <StrictnessChip
+                    level={activeQuestion.strictness_used || activeQuestion.strictness_effective || paper?.strictness_level || 3}
+                    source={activeQuestion.strictness_source}
+                  />
+                </div>
+
+                {/* Question Prompt Text */}
+                <div className="text-xs text-slate-800 leading-relaxed font-sans">
+                  {activeQuestion.question_text || activeQuestion.text || 'Question Prompt'}
+                </div>
+
+                {/* MCQ Options (if any) */}
+                {activeQuestion.options && activeQuestion.options.length > 0 && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1.5 border-t border-slate-100 text-xs">
+                    {activeQuestion.options.map((opt: string, idx: number) => (
+                      <div
+                        key={idx}
+                        className="px-2.5 py-1 rounded-md bg-slate-50 border border-slate-200 text-slate-700 font-mono text-[11px]"
+                      >
+                        {opt}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* 2. Answer Sheet Viewer: Crop (default) / Full page + box */}
+              <SheetImageViewer
+                sheetId={state.sheetId || ''}
+                evalId={activeQuestion.eval_id}
+                cropUrl={activeQuestion.crop_url}
+                qNo={activeQuestion.q_no}
+                pageNumbers={activeQuestion.page_numbers || [1]}
+                allPagesCount={reviewData?.pages?.length || 1}
+                bbox={activeQuestion.bbox}
+                notAttempted={isNotAttempted}
+              />
+
+              {/* 3. OCR Text Card (editable + legibility bar + reader diff) */}
+              <OcrCard
+                evalId={activeQuestion.eval_id}
+                ocrText={activeQuestion.ocr_text || activeQuestion.extracted_text || ''}
+                evidenceQuotes={
+                  activeQuestion.evidence_quote
+                    ? [activeQuestion.evidence_quote]
+                    : (activeQuestion.verdicts || []).map((v: any) => v.quote).filter(Boolean)
+                }
+                legibility={activeQuestion.legibility ?? activeQuestion.legibility_score ?? 0.85}
+                readerTexts={activeQuestion.reader_texts || {}}
+                isEditingExternal={isEditingOcrExternal}
+                onTextSaved={(newTxt) => {
+                  setReviewData((prev) => {
+                    if (!prev) return prev;
+                    const updated = prev.questions.map((q) =>
+                      q.eval_id === activeQuestion.eval_id
+                        ? { ...q, ocr_text: newTxt, extracted_text: newTxt }
+                        : q
+                    );
+                    return { ...prev, questions: updated };
+                  });
+                }}
+                onRequestRecheck={() => handleRecheckQuestion()}
+                onError={(err) => store.setError(err)}
+              />
+
+              {/* 4. Marks and Why (MarksCard): marks stepper, per-point verdicts, coded flags */}
+              <MarksCard
+                evalId={activeQuestion.eval_id}
+                maxMarks={activeQuestion.max_marks || 5}
+                aiMarks={activeQuestion.ai_marks || 0}
+                currentMarks={
+                  activeQuestion.final_marks !== undefined
+                    ? activeQuestion.final_marks
+                    : activeQuestion.ai_marks || 0
+                }
+                isCounted={activeQuestion.is_counted !== undefined ? activeQuestion.is_counted : true}
+                isResolved={Boolean(activeQuestion.resolved)}
+                status={activeQuestion.status || (activeQuestion.flags?.length ? 'flagged' : 'pending')}
+                flags={activeQuestion.flags || []}
+                verdicts={activeQuestion.verdicts || []}
+                strictnessUsed={activeQuestion.strictness_used}
+                strictnessEffective={activeQuestion.strictness_effective || paper?.strictness_level || 3}
+                strictnessSource={activeQuestion.strictness_source}
+                previousFinalMarks={previousFinalMarksMap[activeQuestion.eval_id]}
+                errorMessage={activeQuestion.error_message}
+                onMarksChange={handleMarksChange}
+                onRecheck={(lvl, persist) => handleRecheckQuestion(lvl, persist)}
+                onError={(err) => store.setError(err)}
+              />
+
+              {/* 5. Reference Card (Collapsible) */}
+              <div className="rounded-xl border border-slate-200 bg-white shadow-xs overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setIsReferenceExpanded((prev) => !prev)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between text-xs font-semibold text-slate-800 hover:bg-slate-100 transition"
+                >
+                  <div className="flex items-center gap-2">
+                    <span>Model Answer & Rubric Criteria</span>
+                    <span className="text-[10px] text-slate-500 font-normal">
+                      ({activeQuestion.reference?.source === 'teacher_key' ? 'Teacher Key' : 'AI Reference'})
+                    </span>
+                  </div>
+                  {isReferenceExpanded ? (
+                    <ChevronUp className="w-4 h-4 text-slate-500" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4 text-slate-500" />
+                  )}
+                </button>
+                {isReferenceExpanded && (
+                  <div className="p-3">
+                    <ReferenceCard
+                      paperId={state.paperId || ''}
+                      questionKey={activeQuestion.question_key || activeQuestion.key || ''}
+                      reference={
+                        activeQuestion.reference || {
+                          model_answer: activeQuestion.model_answer || '',
+                          key_points: activeQuestion.key_points || [],
+                          source: 'ai_draft',
+                        }
+                      }
+                      questionType={activeQuestion.options && activeQuestion.options.length > 0 ? 'mcq' : 'short'}
+                      options={activeQuestion.options || []}
+                      strictness={String(paper?.strictness_level || 3)}
+                      onReferenceUpdated={loadReviewData}
+                      onError={(err) => store.setError(err)}
+                    />
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="m-auto text-center p-8 bg-white rounded-xl border border-slate-200 text-slate-500 text-xs">
+              No questions found in evaluation.
+            </div>
+          )}
+        </main>
+
+        {/* RIGHT COLUMN: Question Panel (Collapsible Rail with localStorage) */}
+        <QuestionPanel
           questions={questions}
           activeKey={activeKey}
-          isCollapsed={state.isSidebarCollapsed}
-          onToggleCollapse={() => store.toggleSidebar()}
+          isCollapsed={isPanelCollapsed}
+          onToggleCollapse={togglePanel}
           onSelectQuestion={handleSelectQuestion}
         />
-
-        {/* Pane 2 (Centre): Fixed Sheet Viewer */}
-        <SheetViewer
-          sheetId={state.sheetId || ''}
-          pageCount={pageCount}
-          currentPage={activePage}
-          onPageChange={setActivePage}
-          bbox={bbox}
-          continuesPage={continuesPage}
-          notAttempted={isNotAttempted}
-        />
-
-        {/* Pane 3 (Right): Three Stacked Evaluation Cards */}
-        <section
-          aria-label="Evaluation Details"
-          className="border-l border-[var(--surface-border)] bg-[var(--surface-card)] flex flex-col min-h-0 h-full p-2.5 gap-2.5 overflow-hidden"
-        >
-          {/* Card 1: OCR Detected (~35% height) */}
-          <div className="flex-[35] min-h-0">
-            <OcrCard
-              evalId={activeQuestion?.eval_id || ''}
-              ocrText={activeQuestion?.ocr_text || activeQuestion?.extracted_text || ''}
-              evidenceQuotes={
-                activeQuestion?.evidence_quote
-                  ? [activeQuestion.evidence_quote]
-                  : (activeQuestion?.key_point_verdicts || []).map((v) => v.quote)
-              }
-              legibility={activeQuestion?.legibility || activeQuestion?.legibility_score || 0.85}
-              readerTexts={activeQuestion?.reader_texts || {}}
-              isEditingExternal={isEditingOcrExternal}
-              onTextSaved={(newTxt) => {
-                if (!activeQuestion) return;
-                setReviewData((prev) => {
-                  if (!prev) return prev;
-                  const updatedQuestions = prev.questions.map((q) =>
-                    q.eval_id === activeQuestion.eval_id
-                      ? { ...q, ocr_text: newTxt, extracted_text: newTxt }
-                      : q
-                  );
-                  return { ...prev, questions: updatedQuestions };
-                });
-              }}
-              onRequestRecheck={handleRecheckActiveQuestion}
-              onError={(err) => store.setError(err)}
-            />
-          </div>
-
-          {/* Card 2: Reference (~30% height) */}
-          <div className="flex-[30] min-h-0">
-            <ReferenceCard
-              paperId={state.paperId || ''}
-              questionKey={activeQuestion?.question_key || activeQuestion?.key || ''}
-              reference={
-                activeQuestion?.reference || {
-                  model_answer: activeQuestion?.model_answer || '',
-                  key_points: activeQuestion?.key_points || [],
-                  source: 'ai_draft',
-                }
-              }
-              questionType={activeQuestion?.options && activeQuestion.options.length > 0 ? 'mcq' : 'short'}
-              options={activeQuestion?.options || []}
-              strictness={reviewData?.paper?.strictness || 'lenient'}
-              onReferenceUpdated={loadReviewData}
-              onError={(err) => store.setError(err)}
-            />
-          </div>
-
-          {/* Card 3: Marks & Evidence (~35% height) */}
-          <div className="flex-[35] min-h-0">
-            <MarksCard
-              evalId={activeQuestion?.eval_id || ''}
-              maxMarks={activeQuestion?.max_marks || 5}
-              aiMarks={activeQuestion?.ai_marks || 0}
-              currentMarks={
-                activeQuestion?.final_marks !== undefined
-                  ? activeQuestion.final_marks
-                  : activeQuestion?.ai_marks || 0
-              }
-              isCounted={activeQuestion?.is_counted !== undefined ? activeQuestion.is_counted : true}
-              isResolved={Boolean(activeQuestion?.resolved)}
-              status={activeQuestion?.status || 'pending'}
-              flags={activeQuestion?.flags || []}
-              keyPointVerdicts={activeQuestion?.key_point_verdicts || []}
-              errorMessage={activeQuestion?.error_message}
-              onMarksChange={handleMarksChange}
-              onRecheck={handleRecheckActiveQuestion}
-              onError={(err) => store.setError(err)}
-            />
-          </div>
-        </section>
       </div>
 
       {/* Confirmation Modal for "Approve All Unflagged" */}
       {showApproveAllModal && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-[var(--surface-card)] border border-[var(--surface-border)] rounded-lg p-5 max-w-sm w-full shadow-xl">
-            <h4 className="text-sm font-bold text-[var(--ink-primary)] mb-2">
+          <div className="bg-white border border-slate-200 rounded-xl p-5 max-w-sm w-full shadow-2xl space-y-3">
+            <h4 className="text-sm font-bold text-slate-900">
               Approve All Unflagged Questions?
             </h4>
-            <p className="text-xs text-[var(--ink-secondary)] mb-4 leading-relaxed">
+            <p className="text-xs text-slate-600 leading-relaxed">
               This will accept the AI suggestions for all unflagged questions that have not yet been manually approved. Flagged questions will remain open for your inspection.
             </p>
-            <div className="flex justify-end gap-2">
+            <div className="flex justify-end gap-2 pt-2">
               <button
                 type="button"
                 onClick={() => setShowApproveAllModal(false)}
-                className="px-3 py-1.5 text-xs rounded border border-[var(--surface-border)] hover:bg-[var(--surface-hover)] text-[var(--ink-secondary)]"
+                className="px-3 py-1.5 text-xs rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-700"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={handleApproveAllUnflagged}
-                className="px-3 py-1.5 text-xs font-semibold rounded bg-[var(--status-approved)] text-white hover:opacity-90"
+                className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 shadow-xs"
               >
                 Approve Unflagged
               </button>
@@ -502,18 +736,18 @@ export const EvaluateScreen: React.FC = () => {
       {/* Shortcut Help Modal Overlay */}
       {showHelpModal && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-[var(--surface-card)] border border-[var(--surface-border)] rounded-lg p-6 max-w-md w-full shadow-xl">
-            <div className="flex items-center justify-between pb-3 border-b border-[var(--surface-border)] mb-4">
+          <div className="bg-white border border-slate-200 rounded-xl p-6 max-w-md w-full shadow-2xl">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
               <div className="flex items-center gap-2">
-                <HelpCircle className="w-4 h-4 text-[var(--accent-indigo)]" />
-                <h3 className="text-sm font-bold text-[var(--ink-primary)]">
+                <HelpCircle className="w-4 h-4 text-indigo-600" />
+                <h3 className="text-sm font-bold text-slate-900">
                   Keyboard Shortcuts
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={() => setShowHelpModal(false)}
-                className="p-1 rounded text-[var(--ink-muted)] hover:text-[var(--ink-primary)]"
+                className="p-1 rounded text-slate-400 hover:text-slate-700"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -521,29 +755,30 @@ export const EvaluateScreen: React.FC = () => {
 
             <div className="space-y-2 text-xs">
               {[
-                { key: '→ / ←', desc: 'Next / previous question' },
+                { key: 'J / ↓ / →', desc: 'Next question' },
+                { key: 'K / ↑ / ←', desc: 'Previous question' },
                 { key: 'A', desc: 'Approve current question' },
                 { key: 'F', desc: 'Jump to next flagged question' },
                 { key: '+ / -', desc: 'Marks +0.5 / -0.5' },
                 { key: 'R', desc: 'Recheck evaluation with AI' },
                 { key: 'E', desc: 'Edit extracted OCR text' },
-                { key: '[', desc: 'Toggle question sidebar collapse' },
+                { key: '[', desc: 'Toggle question panel collapse' },
                 { key: '?', desc: 'Show this shortcut list' },
               ].map((s, idx) => (
                 <div
                   key={idx}
-                  className="flex items-center justify-between p-1.5 rounded hover:bg-[var(--surface-subtle)]"
+                  className="flex items-center justify-between p-1.5 rounded hover:bg-slate-50"
                 >
-                  <span className="text-[var(--ink-secondary)]">{s.desc}</span>
-                  <kbd className="px-2 py-0.5 rounded bg-[var(--surface-subtle)] border border-[var(--surface-border)] font-mono text-[11px] font-bold">
+                  <span className="text-slate-600">{s.desc}</span>
+                  <kbd className="px-2 py-0.5 rounded bg-slate-100 border border-slate-200 font-mono text-[11px] font-bold text-slate-800">
                     {s.key}
                   </kbd>
                 </div>
               ))}
             </div>
 
-            <p className="mt-4 pt-3 border-t border-[var(--surface-border)] text-[11px] text-[var(--ink-muted)]">
-              Shortcuts are automatically disabled while typing in any text input or editable box.
+            <p className="mt-4 pt-3 border-t border-slate-100 text-[11px] text-slate-400">
+              Shortcuts are automatically disabled while typing in any text input.
             </p>
           </div>
         </div>

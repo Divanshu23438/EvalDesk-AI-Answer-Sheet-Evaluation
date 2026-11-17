@@ -1,0 +1,1154 @@
+{
+  "sheet": {
+    "id": "8b0eb794-ae71-409e-a5f3-18e1c86316e1",
+    "paper_id": "98c7885a-5ca9-4300-b1dc-874cf1ea23a1",
+    "student_name": "Vikram Malhotra",
+    "roll_number": "CS-2026-088",
+    "consent_flag": 1,
+    "status": "evaluated",
+    "raw_filename": "vikram_os.pdf",
+    "current_stage": "Evaluation complete",
+    "error_message": null,
+    "total_score": 16.0,
+    "max_marks": 20.0,
+    "percentage": 80.0,
+    "grade": "A",
+    "created_at": "2026-11-17 10:08:03",
+    "updated_at": "2026-11-17 10:08:03",
+    "failed_stage": null,
+    "stage_key": "evaluated"
+  },
+  "paper": {
+    "id": "98c7885a-5ca9-4300-b1dc-874cf1ea23a1",
+    "title": "Operating Systems Final Exam",
+    "subject": "Computer Science",
+    "total_marks": 20.0,
+    "strictness": "lenient",
+    "checking_medium": "ai_reference",
+    "has_answer_key": 0,
+    "is_locked": 1,
+    "instructions": "",
+    "paper_path": null,
+    "answer_key_path": null,
+    "created_at": "2026-11-17 10:08:03",
+    "updated_at": "2026-11-17 10:08:03",
+    "subject_code": "CS302",
+    "exam_name": "Fall 2026",
+    "strictness_level": 3,
+    "subject_domain": "cs_it"
+  },
+  "sections": [
+    {
+      "id": "a27ed2ea-e376-4b53-89dc-4a9b8e5619a4",
+      "paper_id": "98c7885a-5ca9-4300-b1dc-874cf1ea23a1",
+      "name": "Section A",
+      "instructions": "",
+      "attempt_n": 3,
+      "total_questions": 0,
+      "marks_each": 5.0,
+      "section_marks": 0.0,
+      "policy": "best_n"
+    }
+  ],
+  "pages": [
+    {
+      "id": "83a64dc4-6cc5-4da6-9b12-6dcc1e8c101e",
+      "sheet_id": "8b0eb794-ae71-409e-a5f3-18e1c86316e1",
+      "page_number": 1,
+      "file_path": "data/sheets/8b0eb794-ae71-409e-a5f3-18e1c86316e1/page_1.jpg",
+      "ocr_status": "done",
+      "ocr_error": null,
+      "ocr_legibility": 0.72,
+      "url": "/storage/sheets/8b0eb794-ae71-409e-a5f3-18e1c86316e1/original/page_1.jpg"
+    },
+    {
+      "id": "563c0021-0a0e-446a-adf3-583a643845fe",
+      "sheet_id": "8b0eb794-ae71-409e-a5f3-18e1c86316e1",
+      "page_number": 2,
+      "file_path": "data/sheets/8b0eb794-ae71-409e-a5f3-18e1c86316e1/page_2.jpg",
+      "ocr_status": "done",
+      "ocr_error": null,
+      "ocr_legibility": 0.95,
+      "url": "/storage/sheets/8b0eb794-ae71-409e-a5f3-18e1c86316e1/original/page_2.jpg"
+    }
+  ],
+  "sheet_pages": [
+    {
+      "id": "83a64dc4-6cc5-4da6-9b12-6dcc1e8c101e",
+      "sheet_id": "8b0eb794-ae71-409e-a5f3-18e1c86316e1",
+      "page_number": 1,
+      "file_path": "data/sheets/8b0eb794-ae71-409e-a5f3-18e1c86316e1/page_1.jpg",
+      "ocr_status": "done",
+      "ocr_error": null,
+      "ocr_legibility": 0.72,
+      "url": "/storage/sheets/8b0eb794-ae71-409e-a5f3-18e1c86316e1/original/page_1.jpg"
+    },
+    {
+      "id": "563c0021-0a0e-446a-adf3-583a643845fe",
+      "sheet_id": "8b0eb794-ae71-409e-a5f3-18e1c86316e1",
+      "page_number": 2,
+      "file_path": "data/sheets/8b0eb794-ae71-409e-a5f3-18e1c86316e1/page_2.jpg",
+      "ocr_status": "done",
+      "ocr_error": null,
+      "ocr_legibility": 0.95,
+      "url": "/storage/sheets/8b0eb794-ae71-409e-a5f3-18e1c86316e1/original/page_2.jpg"
+    }
+  ],
+  "paper_pages": [],
+  "questions": [
+    {
+      "eval_id": "51ba447a-4c5b-490e-9a38-e7d43adb2497",
+      "ai_marks": 6.5,
+      "final_marks": 6.5,
+      "reason": "Partial explanation of context switching.",
+      "evidence_quote": "Context switching saves thread register states to PCB.",
+      "flags_json": "[{\"code\": \"FLAG_CONFIDENCE_LOW\", \"message\": \"Confidence score is below threshold (0.72 < 0.75)\"}]",
+      "resolved": 0,
+      "is_counted": true,
+      "strictness_used": 3,
+      "verdicts_json": "[{\"point\": \"Process vs thread definition\", \"marks_awarded\": 3.0, \"marks_available\": 3.0, \"verdict\": \"full\", \"quote\": \"A process is a program in execution with private memory space.\", \"reason\": \"Accurate definition.\"}, {\"point\": \"Address space sharing\", \"marks_awarded\": 2.0, \"marks_available\": 2.0, \"verdict\": \"full\", \"quote\": \"Threads share the process memory and open files.\", \"reason\": \"Correct address space explanation.\"}, {\"point\": \"Context switching mechanism\", \"marks_awarded\": 1.5, \"marks_available\": 5.0, \"verdict\": \"partial\", \"quote\": \"Context switching saves thread register states to PCB.\", \"reason\": \"Mentioned PCB save but omitted reload of target thread state.\"}]",
+      "confidence": 0.72,
+      "status": "flagged",
+      "question_id": "030ffee8-6852-4258-920d-460aba7aaece",
+      "question_key": null,
+      "q_no": "1",
+      "question_text": "Explain the difference between a process and a thread, and describe context switching.",
+      "max_marks": 10.0,
+      "section_name": "General",
+      "options_json": "[]",
+      "strictness_level_override": null,
+      "extracted_text": "A process is a program in execution with private memory space. Threads share the process memory and open files. Context switching saves thread register states to PCB.",
+      "legibility_score": 0.72,
+      "page_numbers": [
+        1
+      ],
+      "bbox_json": [
+        0.13,
+        0.06,
+        0.44,
+        0.94
+      ],
+      "reader_texts_json": "{}",
+      "flags": [
+        {
+          "code": "FLAG_CONFIDENCE_LOW",
+          "message": "Confidence score is below threshold (0.72 < 0.75)",
+          "severity": "warning"
+        }
+      ],
+      "model_answer": "A process has its own address space; threads share address space.",
+      "key_points": [
+        {
+          "text": "Process vs thread definition",
+          "marks": 3.0
+        },
+        {
+          "text": "Address space sharing",
+          "marks": 2.0
+        },
+        {
+          "text": "Context switching mechanism",
+          "marks": 5.0
+        }
+      ],
+      "crop_url": "/api/sheets/8b0eb794-ae71-409e-a5f3-18e1c86316e1/crop/51ba447a-4c5b-490e-9a38-e7d43adb2497",
+      "key": "Q1",
+      "text": "Explain the difference between a process and a thread, and describe context switching.",
+      "options": [],
+      "ocr_text": "A process is a program in execution with private memory space. Threads share the process memory and open files. Context switching saves thread register states to PCB.",
+      "reader_texts": [
+        "A process is a program in execution with private memory space. Threads share the process memory and open files. Context switching saves thread register states to PCB."
+      ],
+      "legibility": 0.72,
+      "bbox": [
+        0.13,
+        0.06,
+        0.44,
+        0.94
+      ],
+      "continues": false,
+      "reference": {
+        "source": "teacher_key",
+        "model_answer": "A process has its own address space; threads share address space.",
+        "key_points": [
+          {
+            "text": "Process vs thread definition",
+            "marks": 3.0
+          },
+          {
+            "text": "Address space sharing",
+            "marks": 2.0
+          },
+          {
+            "text": "Context switching mechanism",
+            "marks": 5.0
+          }
+        ],
+        "correct_option": null
+      },
+      "verdicts": [
+        {
+          "point": "Process vs thread definition",
+          "marks_awarded": 3.0,
+          "marks_available": 3.0,
+          "verdict": "full",
+          "quote": "A process is a program in execution with private memory space.",
+          "reason": "Accurate definition."
+        },
+        {
+          "point": "Address space sharing",
+          "marks_awarded": 2.0,
+          "marks_available": 2.0,
+          "verdict": "full",
+          "quote": "Threads share the process memory and open files.",
+          "reason": "Correct address space explanation."
+        },
+        {
+          "point": "Context switching mechanism",
+          "marks_awarded": 1.5,
+          "marks_available": 5.0,
+          "verdict": "partial",
+          "quote": "Context switching saves thread register states to PCB.",
+          "reason": "Mentioned PCB save but omitted reload of target thread state."
+        }
+      ],
+      "key_point_verdicts": [
+        {
+          "point": "Process vs thread definition",
+          "marks_awarded": 3.0,
+          "marks_available": 3.0,
+          "verdict": "full",
+          "quote": "A process is a program in execution with private memory space.",
+          "reason": "Accurate definition."
+        },
+        {
+          "point": "Address space sharing",
+          "marks_awarded": 2.0,
+          "marks_available": 2.0,
+          "verdict": "full",
+          "quote": "Threads share the process memory and open files.",
+          "reason": "Correct address space explanation."
+        },
+        {
+          "point": "Context switching mechanism",
+          "marks_awarded": 1.5,
+          "marks_available": 5.0,
+          "verdict": "partial",
+          "quote": "Context switching saves thread register states to PCB.",
+          "reason": "Mentioned PCB save but omitted reload of target thread state."
+        }
+      ],
+      "strictness_effective": 3,
+      "strictness_source": "paper",
+      "error_message": null
+    },
+    {
+      "eval_id": "c44603b2-82e0-4397-b097-c665d40d850d",
+      "ai_marks": 4.5,
+      "final_marks": 4.5,
+      "reason": "Identified all 4 Coffman conditions correctly.",
+      "evidence_quote": "Mutual exclusion, Hold and wait, No preemption, Circular wait.",
+      "flags_json": "[]",
+      "resolved": 1,
+      "is_counted": true,
+      "strictness_used": 4,
+      "verdicts_json": "[{\"point\": \"Deadlock definition\", \"marks_awarded\": 1.5, \"marks_available\": 1.5, \"verdict\": \"full\", \"quote\": \"Deadlock is a state where processes are blocked.\", \"reason\": \"Clear definition.\"}, {\"point\": \"Coffman conditions\", \"marks_awarded\": 3.0, \"marks_available\": 3.5, \"verdict\": \"partial\", \"quote\": \"Mutual exclusion, Hold and wait, No preemption, Circular wait.\", \"reason\": \"All 4 named accurately under strict rubric.\"}]",
+      "confidence": 0.95,
+      "status": "approved",
+      "question_id": "022da9b4-61e7-4bdd-a728-010ca204395a",
+      "question_key": null,
+      "q_no": "2",
+      "question_text": "What is deadlock? State the four necessary Coffman conditions.",
+      "max_marks": 5.0,
+      "section_name": "General",
+      "options_json": "[]",
+      "strictness_level_override": 4,
+      "extracted_text": "Deadlock is a state where processes are blocked. Conditions: Mutual exclusion, Hold and wait, No preemption, Circular wait.",
+      "legibility_score": 0.95,
+      "page_numbers": [
+        1
+      ],
+      "bbox_json": [
+        0.47,
+        0.06,
+        0.77,
+        0.94
+      ],
+      "reader_texts_json": "{}",
+      "flags": [],
+      "model_answer": "Deadlock conditions: mutual exclusion, hold & wait, no preemption, circular wait.",
+      "key_points": [
+        {
+          "text": "Deadlock definition",
+          "marks": 1.5
+        },
+        {
+          "text": "Coffman conditions",
+          "marks": 3.5
+        }
+      ],
+      "crop_url": "/api/sheets/8b0eb794-ae71-409e-a5f3-18e1c86316e1/crop/c44603b2-82e0-4397-b097-c665d40d850d",
+      "key": "Q2",
+      "text": "What is deadlock? State the four necessary Coffman conditions.",
+      "options": [],
+      "ocr_text": "Deadlock is a state where processes are blocked. Conditions: Mutual exclusion, Hold and wait, No preemption, Circular wait.",
+      "reader_texts": [
+        "Deadlock is a state where processes are blocked. Conditions: Mutual exclusion, Hold and wait, No preemption, Circular wait."
+      ],
+      "legibility": 0.95,
+      "bbox": [
+        0.47,
+        0.06,
+        0.77,
+        0.94
+      ],
+      "continues": false,
+      "reference": {
+        "source": "teacher_key",
+        "model_answer": "Deadlock conditions: mutual exclusion, hold & wait, no preemption, circular wait.",
+        "key_points": [
+          {
+            "text": "Deadlock definition",
+            "marks": 1.5
+          },
+          {
+            "text": "Coffman conditions",
+            "marks": 3.5
+          }
+        ],
+        "correct_option": null
+      },
+      "verdicts": [
+        {
+          "point": "Deadlock definition",
+          "marks_awarded": 1.5,
+          "marks_available": 1.5,
+          "verdict": "full",
+          "quote": "Deadlock is a state where processes are blocked.",
+          "reason": "Clear definition."
+        },
+        {
+          "point": "Coffman conditions",
+          "marks_awarded": 3.0,
+          "marks_available": 3.5,
+          "verdict": "partial",
+          "quote": "Mutual exclusion, Hold and wait, No preemption, Circular wait.",
+          "reason": "All 4 named accurately under strict rubric."
+        }
+      ],
+      "key_point_verdicts": [
+        {
+          "point": "Deadlock definition",
+          "marks_awarded": 1.5,
+          "marks_available": 1.5,
+          "verdict": "full",
+          "quote": "Deadlock is a state where processes are blocked.",
+          "reason": "Clear definition."
+        },
+        {
+          "point": "Coffman conditions",
+          "marks_awarded": 3.0,
+          "marks_available": 3.5,
+          "verdict": "partial",
+          "quote": "Mutual exclusion, Hold and wait, No preemption, Circular wait.",
+          "reason": "All 4 named accurately under strict rubric."
+        }
+      ],
+      "strictness_effective": 4,
+      "strictness_source": "question",
+      "error_message": null
+    },
+    {
+      "eval_id": "36329c87-8524-438a-9699-1e01cbe77756",
+      "ai_marks": 5.0,
+      "final_marks": 5.0,
+      "reason": "Correct option selected.",
+      "evidence_quote": "Option B - Round Robin Scheduling",
+      "flags_json": "[]",
+      "resolved": 1,
+      "is_counted": true,
+      "strictness_used": 3,
+      "verdicts_json": "[{\"point\": \"Round Robin\", \"marks_awarded\": 5.0, \"marks_available\": 5.0, \"verdict\": \"full\", \"quote\": \"Option B - Round Robin Scheduling\", \"reason\": \"Correct option selected.\"}]",
+      "confidence": 0.99,
+      "status": "approved",
+      "question_id": "1f5074a0-7ddd-4d31-8e51-d5efd1f7cd8b",
+      "question_key": null,
+      "q_no": "3",
+      "question_text": "Which scheduling algorithm prevents starvation?",
+      "max_marks": 5.0,
+      "section_name": "General",
+      "options_json": "[\"A) FCFS\", \"B) Round Robin\", \"C) Shortest Job First\", \"D) Priority Scheduling\"]",
+      "strictness_level_override": null,
+      "extracted_text": "Ans 3: Option B - Round Robin Scheduling",
+      "legibility_score": 0.98,
+      "page_numbers": [
+        2
+      ],
+      "bbox_json": [
+        0.13,
+        0.06,
+        0.36,
+        0.94
+      ],
+      "reader_texts_json": "{}",
+      "flags": [],
+      "model_answer": "Round Robin",
+      "key_points": [],
+      "crop_url": "/api/sheets/8b0eb794-ae71-409e-a5f3-18e1c86316e1/crop/36329c87-8524-438a-9699-1e01cbe77756",
+      "key": "Q3",
+      "text": "Which scheduling algorithm prevents starvation?",
+      "options": [
+        "A) FCFS",
+        "B) Round Robin",
+        "C) Shortest Job First",
+        "D) Priority Scheduling"
+      ],
+      "ocr_text": "Ans 3: Option B - Round Robin Scheduling",
+      "reader_texts": [
+        "Ans 3: Option B - Round Robin Scheduling"
+      ],
+      "legibility": 0.98,
+      "bbox": [
+        0.13,
+        0.06,
+        0.36,
+        0.94
+      ],
+      "continues": false,
+      "reference": {
+        "source": "teacher_key",
+        "model_answer": "Round Robin",
+        "key_points": [],
+        "correct_option": "B"
+      },
+      "verdicts": [
+        {
+          "point": "Round Robin",
+          "marks_awarded": 5.0,
+          "marks_available": 5.0,
+          "verdict": "full",
+          "quote": "Option B - Round Robin Scheduling",
+          "reason": "Correct option selected."
+        }
+      ],
+      "key_point_verdicts": [
+        {
+          "point": "Round Robin",
+          "marks_awarded": 5.0,
+          "marks_available": 5.0,
+          "verdict": "full",
+          "quote": "Option B - Round Robin Scheduling",
+          "reason": "Correct option selected."
+        }
+      ],
+      "strictness_effective": 3,
+      "strictness_source": "paper",
+      "error_message": null
+    }
+  ],
+  "evaluations": [
+    {
+      "eval_id": "51ba447a-4c5b-490e-9a38-e7d43adb2497",
+      "ai_marks": 6.5,
+      "final_marks": 6.5,
+      "reason": "Partial explanation of context switching.",
+      "evidence_quote": "Context switching saves thread register states to PCB.",
+      "flags_json": "[{\"code\": \"FLAG_CONFIDENCE_LOW\", \"message\": \"Confidence score is below threshold (0.72 < 0.75)\"}]",
+      "resolved": 0,
+      "is_counted": true,
+      "strictness_used": 3,
+      "verdicts_json": "[{\"point\": \"Process vs thread definition\", \"marks_awarded\": 3.0, \"marks_available\": 3.0, \"verdict\": \"full\", \"quote\": \"A process is a program in execution with private memory space.\", \"reason\": \"Accurate definition.\"}, {\"point\": \"Address space sharing\", \"marks_awarded\": 2.0, \"marks_available\": 2.0, \"verdict\": \"full\", \"quote\": \"Threads share the process memory and open files.\", \"reason\": \"Correct address space explanation.\"}, {\"point\": \"Context switching mechanism\", \"marks_awarded\": 1.5, \"marks_available\": 5.0, \"verdict\": \"partial\", \"quote\": \"Context switching saves thread register states to PCB.\", \"reason\": \"Mentioned PCB save but omitted reload of target thread state.\"}]",
+      "confidence": 0.72,
+      "status": "flagged",
+      "question_id": "030ffee8-6852-4258-920d-460aba7aaece",
+      "question_key": null,
+      "q_no": "1",
+      "question_text": "Explain the difference between a process and a thread, and describe context switching.",
+      "max_marks": 10.0,
+      "section_name": "General",
+      "options_json": "[]",
+      "strictness_level_override": null,
+      "extracted_text": "A process is a program in execution with private memory space. Threads share the process memory and open files. Context switching saves thread register states to PCB.",
+      "legibility_score": 0.72,
+      "page_numbers": [
+        1
+      ],
+      "bbox_json": [
+        0.13,
+        0.06,
+        0.44,
+        0.94
+      ],
+      "reader_texts_json": "{}",
+      "flags": [
+        {
+          "code": "FLAG_CONFIDENCE_LOW",
+          "message": "Confidence score is below threshold (0.72 < 0.75)",
+          "severity": "warning"
+        }
+      ],
+      "model_answer": "A process has its own address space; threads share address space.",
+      "key_points": [
+        {
+          "text": "Process vs thread definition",
+          "marks": 3.0
+        },
+        {
+          "text": "Address space sharing",
+          "marks": 2.0
+        },
+        {
+          "text": "Context switching mechanism",
+          "marks": 5.0
+        }
+      ],
+      "crop_url": "/api/sheets/8b0eb794-ae71-409e-a5f3-18e1c86316e1/crop/51ba447a-4c5b-490e-9a38-e7d43adb2497",
+      "key": "Q1",
+      "text": "Explain the difference between a process and a thread, and describe context switching.",
+      "options": [],
+      "ocr_text": "A process is a program in execution with private memory space. Threads share the process memory and open files. Context switching saves thread register states to PCB.",
+      "reader_texts": [
+        "A process is a program in execution with private memory space. Threads share the process memory and open files. Context switching saves thread register states to PCB."
+      ],
+      "legibility": 0.72,
+      "bbox": [
+        0.13,
+        0.06,
+        0.44,
+        0.94
+      ],
+      "continues": false,
+      "reference": {
+        "source": "teacher_key",
+        "model_answer": "A process has its own address space; threads share address space.",
+        "key_points": [
+          {
+            "text": "Process vs thread definition",
+            "marks": 3.0
+          },
+          {
+            "text": "Address space sharing",
+            "marks": 2.0
+          },
+          {
+            "text": "Context switching mechanism",
+            "marks": 5.0
+          }
+        ],
+        "correct_option": null
+      },
+      "verdicts": [
+        {
+          "point": "Process vs thread definition",
+          "marks_awarded": 3.0,
+          "marks_available": 3.0,
+          "verdict": "full",
+          "quote": "A process is a program in execution with private memory space.",
+          "reason": "Accurate definition."
+        },
+        {
+          "point": "Address space sharing",
+          "marks_awarded": 2.0,
+          "marks_available": 2.0,
+          "verdict": "full",
+          "quote": "Threads share the process memory and open files.",
+          "reason": "Correct address space explanation."
+        },
+        {
+          "point": "Context switching mechanism",
+          "marks_awarded": 1.5,
+          "marks_available": 5.0,
+          "verdict": "partial",
+          "quote": "Context switching saves thread register states to PCB.",
+          "reason": "Mentioned PCB save but omitted reload of target thread state."
+        }
+      ],
+      "key_point_verdicts": [
+        {
+          "point": "Process vs thread definition",
+          "marks_awarded": 3.0,
+          "marks_available": 3.0,
+          "verdict": "full",
+          "quote": "A process is a program in execution with private memory space.",
+          "reason": "Accurate definition."
+        },
+        {
+          "point": "Address space sharing",
+          "marks_awarded": 2.0,
+          "marks_available": 2.0,
+          "verdict": "full",
+          "quote": "Threads share the process memory and open files.",
+          "reason": "Correct address space explanation."
+        },
+        {
+          "point": "Context switching mechanism",
+          "marks_awarded": 1.5,
+          "marks_available": 5.0,
+          "verdict": "partial",
+          "quote": "Context switching saves thread register states to PCB.",
+          "reason": "Mentioned PCB save but omitted reload of target thread state."
+        }
+      ],
+      "strictness_effective": 3,
+      "strictness_source": "paper",
+      "error_message": null
+    },
+    {
+      "eval_id": "c44603b2-82e0-4397-b097-c665d40d850d",
+      "ai_marks": 4.5,
+      "final_marks": 4.5,
+      "reason": "Identified all 4 Coffman conditions correctly.",
+      "evidence_quote": "Mutual exclusion, Hold and wait, No preemption, Circular wait.",
+      "flags_json": "[]",
+      "resolved": 1,
+      "is_counted": true,
+      "strictness_used": 4,
+      "verdicts_json": "[{\"point\": \"Deadlock definition\", \"marks_awarded\": 1.5, \"marks_available\": 1.5, \"verdict\": \"full\", \"quote\": \"Deadlock is a state where processes are blocked.\", \"reason\": \"Clear definition.\"}, {\"point\": \"Coffman conditions\", \"marks_awarded\": 3.0, \"marks_available\": 3.5, \"verdict\": \"partial\", \"quote\": \"Mutual exclusion, Hold and wait, No preemption, Circular wait.\", \"reason\": \"All 4 named accurately under strict rubric.\"}]",
+      "confidence": 0.95,
+      "status": "approved",
+      "question_id": "022da9b4-61e7-4bdd-a728-010ca204395a",
+      "question_key": null,
+      "q_no": "2",
+      "question_text": "What is deadlock? State the four necessary Coffman conditions.",
+      "max_marks": 5.0,
+      "section_name": "General",
+      "options_json": "[]",
+      "strictness_level_override": 4,
+      "extracted_text": "Deadlock is a state where processes are blocked. Conditions: Mutual exclusion, Hold and wait, No preemption, Circular wait.",
+      "legibility_score": 0.95,
+      "page_numbers": [
+        1
+      ],
+      "bbox_json": [
+        0.47,
+        0.06,
+        0.77,
+        0.94
+      ],
+      "reader_texts_json": "{}",
+      "flags": [],
+      "model_answer": "Deadlock conditions: mutual exclusion, hold & wait, no preemption, circular wait.",
+      "key_points": [
+        {
+          "text": "Deadlock definition",
+          "marks": 1.5
+        },
+        {
+          "text": "Coffman conditions",
+          "marks": 3.5
+        }
+      ],
+      "crop_url": "/api/sheets/8b0eb794-ae71-409e-a5f3-18e1c86316e1/crop/c44603b2-82e0-4397-b097-c665d40d850d",
+      "key": "Q2",
+      "text": "What is deadlock? State the four necessary Coffman conditions.",
+      "options": [],
+      "ocr_text": "Deadlock is a state where processes are blocked. Conditions: Mutual exclusion, Hold and wait, No preemption, Circular wait.",
+      "reader_texts": [
+        "Deadlock is a state where processes are blocked. Conditions: Mutual exclusion, Hold and wait, No preemption, Circular wait."
+      ],
+      "legibility": 0.95,
+      "bbox": [
+        0.47,
+        0.06,
+        0.77,
+        0.94
+      ],
+      "continues": false,
+      "reference": {
+        "source": "teacher_key",
+        "model_answer": "Deadlock conditions: mutual exclusion, hold & wait, no preemption, circular wait.",
+        "key_points": [
+          {
+            "text": "Deadlock definition",
+            "marks": 1.5
+          },
+          {
+            "text": "Coffman conditions",
+            "marks": 3.5
+          }
+        ],
+        "correct_option": null
+      },
+      "verdicts": [
+        {
+          "point": "Deadlock definition",
+          "marks_awarded": 1.5,
+          "marks_available": 1.5,
+          "verdict": "full",
+          "quote": "Deadlock is a state where processes are blocked.",
+          "reason": "Clear definition."
+        },
+        {
+          "point": "Coffman conditions",
+          "marks_awarded": 3.0,
+          "marks_available": 3.5,
+          "verdict": "partial",
+          "quote": "Mutual exclusion, Hold and wait, No preemption, Circular wait.",
+          "reason": "All 4 named accurately under strict rubric."
+        }
+      ],
+      "key_point_verdicts": [
+        {
+          "point": "Deadlock definition",
+          "marks_awarded": 1.5,
+          "marks_available": 1.5,
+          "verdict": "full",
+          "quote": "Deadlock is a state where processes are blocked.",
+          "reason": "Clear definition."
+        },
+        {
+          "point": "Coffman conditions",
+          "marks_awarded": 3.0,
+          "marks_available": 3.5,
+          "verdict": "partial",
+          "quote": "Mutual exclusion, Hold and wait, No preemption, Circular wait.",
+          "reason": "All 4 named accurately under strict rubric."
+        }
+      ],
+      "strictness_effective": 4,
+      "strictness_source": "question",
+      "error_message": null
+    },
+    {
+      "eval_id": "36329c87-8524-438a-9699-1e01cbe77756",
+      "ai_marks": 5.0,
+      "final_marks": 5.0,
+      "reason": "Correct option selected.",
+      "evidence_quote": "Option B - Round Robin Scheduling",
+      "flags_json": "[]",
+      "resolved": 1,
+      "is_counted": true,
+      "strictness_used": 3,
+      "verdicts_json": "[{\"point\": \"Round Robin\", \"marks_awarded\": 5.0, \"marks_available\": 5.0, \"verdict\": \"full\", \"quote\": \"Option B - Round Robin Scheduling\", \"reason\": \"Correct option selected.\"}]",
+      "confidence": 0.99,
+      "status": "approved",
+      "question_id": "1f5074a0-7ddd-4d31-8e51-d5efd1f7cd8b",
+      "question_key": null,
+      "q_no": "3",
+      "question_text": "Which scheduling algorithm prevents starvation?",
+      "max_marks": 5.0,
+      "section_name": "General",
+      "options_json": "[\"A) FCFS\", \"B) Round Robin\", \"C) Shortest Job First\", \"D) Priority Scheduling\"]",
+      "strictness_level_override": null,
+      "extracted_text": "Ans 3: Option B - Round Robin Scheduling",
+      "legibility_score": 0.98,
+      "page_numbers": [
+        2
+      ],
+      "bbox_json": [
+        0.13,
+        0.06,
+        0.36,
+        0.94
+      ],
+      "reader_texts_json": "{}",
+      "flags": [],
+      "model_answer": "Round Robin",
+      "key_points": [],
+      "crop_url": "/api/sheets/8b0eb794-ae71-409e-a5f3-18e1c86316e1/crop/36329c87-8524-438a-9699-1e01cbe77756",
+      "key": "Q3",
+      "text": "Which scheduling algorithm prevents starvation?",
+      "options": [
+        "A) FCFS",
+        "B) Round Robin",
+        "C) Shortest Job First",
+        "D) Priority Scheduling"
+      ],
+      "ocr_text": "Ans 3: Option B - Round Robin Scheduling",
+      "reader_texts": [
+        "Ans 3: Option B - Round Robin Scheduling"
+      ],
+      "legibility": 0.98,
+      "bbox": [
+        0.13,
+        0.06,
+        0.36,
+        0.94
+      ],
+      "continues": false,
+      "reference": {
+        "source": "teacher_key",
+        "model_answer": "Round Robin",
+        "key_points": [],
+        "correct_option": "B"
+      },
+      "verdicts": [
+        {
+          "point": "Round Robin",
+          "marks_awarded": 5.0,
+          "marks_available": 5.0,
+          "verdict": "full",
+          "quote": "Option B - Round Robin Scheduling",
+          "reason": "Correct option selected."
+        }
+      ],
+      "key_point_verdicts": [
+        {
+          "point": "Round Robin",
+          "marks_awarded": 5.0,
+          "marks_available": 5.0,
+          "verdict": "full",
+          "quote": "Option B - Round Robin Scheduling",
+          "reason": "Correct option selected."
+        }
+      ],
+      "strictness_effective": 3,
+      "strictness_source": "paper",
+      "error_message": null
+    }
+  ],
+  "checked_questions": [
+    {
+      "eval_id": "c44603b2-82e0-4397-b097-c665d40d850d",
+      "ai_marks": 4.5,
+      "final_marks": 4.5,
+      "reason": "Identified all 4 Coffman conditions correctly.",
+      "evidence_quote": "Mutual exclusion, Hold and wait, No preemption, Circular wait.",
+      "flags_json": "[]",
+      "resolved": 1,
+      "is_counted": true,
+      "strictness_used": 4,
+      "verdicts_json": "[{\"point\": \"Deadlock definition\", \"marks_awarded\": 1.5, \"marks_available\": 1.5, \"verdict\": \"full\", \"quote\": \"Deadlock is a state where processes are blocked.\", \"reason\": \"Clear definition.\"}, {\"point\": \"Coffman conditions\", \"marks_awarded\": 3.0, \"marks_available\": 3.5, \"verdict\": \"partial\", \"quote\": \"Mutual exclusion, Hold and wait, No preemption, Circular wait.\", \"reason\": \"All 4 named accurately under strict rubric.\"}]",
+      "confidence": 0.95,
+      "status": "approved",
+      "question_id": "022da9b4-61e7-4bdd-a728-010ca204395a",
+      "question_key": null,
+      "q_no": "2",
+      "question_text": "What is deadlock? State the four necessary Coffman conditions.",
+      "max_marks": 5.0,
+      "section_name": "General",
+      "options_json": "[]",
+      "strictness_level_override": 4,
+      "extracted_text": "Deadlock is a state where processes are blocked. Conditions: Mutual exclusion, Hold and wait, No preemption, Circular wait.",
+      "legibility_score": 0.95,
+      "page_numbers": [
+        1
+      ],
+      "bbox_json": [
+        0.47,
+        0.06,
+        0.77,
+        0.94
+      ],
+      "reader_texts_json": "{}",
+      "flags": [],
+      "model_answer": "Deadlock conditions: mutual exclusion, hold & wait, no preemption, circular wait.",
+      "key_points": [
+        {
+          "text": "Deadlock definition",
+          "marks": 1.5
+        },
+        {
+          "text": "Coffman conditions",
+          "marks": 3.5
+        }
+      ],
+      "crop_url": "/api/sheets/8b0eb794-ae71-409e-a5f3-18e1c86316e1/crop/c44603b2-82e0-4397-b097-c665d40d850d",
+      "key": "Q2",
+      "text": "What is deadlock? State the four necessary Coffman conditions.",
+      "options": [],
+      "ocr_text": "Deadlock is a state where processes are blocked. Conditions: Mutual exclusion, Hold and wait, No preemption, Circular wait.",
+      "reader_texts": [
+        "Deadlock is a state where processes are blocked. Conditions: Mutual exclusion, Hold and wait, No preemption, Circular wait."
+      ],
+      "legibility": 0.95,
+      "bbox": [
+        0.47,
+        0.06,
+        0.77,
+        0.94
+      ],
+      "continues": false,
+      "reference": {
+        "source": "teacher_key",
+        "model_answer": "Deadlock conditions: mutual exclusion, hold & wait, no preemption, circular wait.",
+        "key_points": [
+          {
+            "text": "Deadlock definition",
+            "marks": 1.5
+          },
+          {
+            "text": "Coffman conditions",
+            "marks": 3.5
+          }
+        ],
+        "correct_option": null
+      },
+      "verdicts": [
+        {
+          "point": "Deadlock definition",
+          "marks_awarded": 1.5,
+          "marks_available": 1.5,
+          "verdict": "full",
+          "quote": "Deadlock is a state where processes are blocked.",
+          "reason": "Clear definition."
+        },
+        {
+          "point": "Coffman conditions",
+          "marks_awarded": 3.0,
+          "marks_available": 3.5,
+          "verdict": "partial",
+          "quote": "Mutual exclusion, Hold and wait, No preemption, Circular wait.",
+          "reason": "All 4 named accurately under strict rubric."
+        }
+      ],
+      "key_point_verdicts": [
+        {
+          "point": "Deadlock definition",
+          "marks_awarded": 1.5,
+          "marks_available": 1.5,
+          "verdict": "full",
+          "quote": "Deadlock is a state where processes are blocked.",
+          "reason": "Clear definition."
+        },
+        {
+          "point": "Coffman conditions",
+          "marks_awarded": 3.0,
+          "marks_available": 3.5,
+          "verdict": "partial",
+          "quote": "Mutual exclusion, Hold and wait, No preemption, Circular wait.",
+          "reason": "All 4 named accurately under strict rubric."
+        }
+      ],
+      "strictness_effective": 4,
+      "strictness_source": "question",
+      "error_message": null
+    },
+    {
+      "eval_id": "36329c87-8524-438a-9699-1e01cbe77756",
+      "ai_marks": 5.0,
+      "final_marks": 5.0,
+      "reason": "Correct option selected.",
+      "evidence_quote": "Option B - Round Robin Scheduling",
+      "flags_json": "[]",
+      "resolved": 1,
+      "is_counted": true,
+      "strictness_used": 3,
+      "verdicts_json": "[{\"point\": \"Round Robin\", \"marks_awarded\": 5.0, \"marks_available\": 5.0, \"verdict\": \"full\", \"quote\": \"Option B - Round Robin Scheduling\", \"reason\": \"Correct option selected.\"}]",
+      "confidence": 0.99,
+      "status": "approved",
+      "question_id": "1f5074a0-7ddd-4d31-8e51-d5efd1f7cd8b",
+      "question_key": null,
+      "q_no": "3",
+      "question_text": "Which scheduling algorithm prevents starvation?",
+      "max_marks": 5.0,
+      "section_name": "General",
+      "options_json": "[\"A) FCFS\", \"B) Round Robin\", \"C) Shortest Job First\", \"D) Priority Scheduling\"]",
+      "strictness_level_override": null,
+      "extracted_text": "Ans 3: Option B - Round Robin Scheduling",
+      "legibility_score": 0.98,
+      "page_numbers": [
+        2
+      ],
+      "bbox_json": [
+        0.13,
+        0.06,
+        0.36,
+        0.94
+      ],
+      "reader_texts_json": "{}",
+      "flags": [],
+      "model_answer": "Round Robin",
+      "key_points": [],
+      "crop_url": "/api/sheets/8b0eb794-ae71-409e-a5f3-18e1c86316e1/crop/36329c87-8524-438a-9699-1e01cbe77756",
+      "key": "Q3",
+      "text": "Which scheduling algorithm prevents starvation?",
+      "options": [
+        "A) FCFS",
+        "B) Round Robin",
+        "C) Shortest Job First",
+        "D) Priority Scheduling"
+      ],
+      "ocr_text": "Ans 3: Option B - Round Robin Scheduling",
+      "reader_texts": [
+        "Ans 3: Option B - Round Robin Scheduling"
+      ],
+      "legibility": 0.98,
+      "bbox": [
+        0.13,
+        0.06,
+        0.36,
+        0.94
+      ],
+      "continues": false,
+      "reference": {
+        "source": "teacher_key",
+        "model_answer": "Round Robin",
+        "key_points": [],
+        "correct_option": "B"
+      },
+      "verdicts": [
+        {
+          "point": "Round Robin",
+          "marks_awarded": 5.0,
+          "marks_available": 5.0,
+          "verdict": "full",
+          "quote": "Option B - Round Robin Scheduling",
+          "reason": "Correct option selected."
+        }
+      ],
+      "key_point_verdicts": [
+        {
+          "point": "Round Robin",
+          "marks_awarded": 5.0,
+          "marks_available": 5.0,
+          "verdict": "full",
+          "quote": "Option B - Round Robin Scheduling",
+          "reason": "Correct option selected."
+        }
+      ],
+      "strictness_effective": 3,
+      "strictness_source": "paper",
+      "error_message": null
+    }
+  ],
+  "flagged_questions": [
+    {
+      "eval_id": "51ba447a-4c5b-490e-9a38-e7d43adb2497",
+      "ai_marks": 6.5,
+      "final_marks": 6.5,
+      "reason": "Partial explanation of context switching.",
+      "evidence_quote": "Context switching saves thread register states to PCB.",
+      "flags_json": "[{\"code\": \"FLAG_CONFIDENCE_LOW\", \"message\": \"Confidence score is below threshold (0.72 < 0.75)\"}]",
+      "resolved": 0,
+      "is_counted": true,
+      "strictness_used": 3,
+      "verdicts_json": "[{\"point\": \"Process vs thread definition\", \"marks_awarded\": 3.0, \"marks_available\": 3.0, \"verdict\": \"full\", \"quote\": \"A process is a program in execution with private memory space.\", \"reason\": \"Accurate definition.\"}, {\"point\": \"Address space sharing\", \"marks_awarded\": 2.0, \"marks_available\": 2.0, \"verdict\": \"full\", \"quote\": \"Threads share the process memory and open files.\", \"reason\": \"Correct address space explanation.\"}, {\"point\": \"Context switching mechanism\", \"marks_awarded\": 1.5, \"marks_available\": 5.0, \"verdict\": \"partial\", \"quote\": \"Context switching saves thread register states to PCB.\", \"reason\": \"Mentioned PCB save but omitted reload of target thread state.\"}]",
+      "confidence": 0.72,
+      "status": "flagged",
+      "question_id": "030ffee8-6852-4258-920d-460aba7aaece",
+      "question_key": null,
+      "q_no": "1",
+      "question_text": "Explain the difference between a process and a thread, and describe context switching.",
+      "max_marks": 10.0,
+      "section_name": "General",
+      "options_json": "[]",
+      "strictness_level_override": null,
+      "extracted_text": "A process is a program in execution with private memory space. Threads share the process memory and open files. Context switching saves thread register states to PCB.",
+      "legibility_score": 0.72,
+      "page_numbers": [
+        1
+      ],
+      "bbox_json": [
+        0.13,
+        0.06,
+        0.44,
+        0.94
+      ],
+      "reader_texts_json": "{}",
+      "flags": [
+        {
+          "code": "FLAG_CONFIDENCE_LOW",
+          "message": "Confidence score is below threshold (0.72 < 0.75)",
+          "severity": "warning"
+        }
+      ],
+      "model_answer": "A process has its own address space; threads share address space.",
+      "key_points": [
+        {
+          "text": "Process vs thread definition",
+          "marks": 3.0
+        },
+        {
+          "text": "Address space sharing",
+          "marks": 2.0
+        },
+        {
+          "text": "Context switching mechanism",
+          "marks": 5.0
+        }
+      ],
+      "crop_url": "/api/sheets/8b0eb794-ae71-409e-a5f3-18e1c86316e1/crop/51ba447a-4c5b-490e-9a38-e7d43adb2497",
+      "key": "Q1",
+      "text": "Explain the difference between a process and a thread, and describe context switching.",
+      "options": [],
+      "ocr_text": "A process is a program in execution with private memory space. Threads share the process memory and open files. Context switching saves thread register states to PCB.",
+      "reader_texts": [
+        "A process is a program in execution with private memory space. Threads share the process memory and open files. Context switching saves thread register states to PCB."
+      ],
+      "legibility": 0.72,
+      "bbox": [
+        0.13,
+        0.06,
+        0.44,
+        0.94
+      ],
+      "continues": false,
+      "reference": {
+        "source": "teacher_key",
+        "model_answer": "A process has its own address space; threads share address space.",
+        "key_points": [
+          {
+            "text": "Process vs thread definition",
+            "marks": 3.0
+          },
+          {
+            "text": "Address space sharing",
+            "marks": 2.0
+          },
+          {
+            "text": "Context switching mechanism",
+            "marks": 5.0
+          }
+        ],
+        "correct_option": null
+      },
+      "verdicts": [
+        {
+          "point": "Process vs thread definition",
+          "marks_awarded": 3.0,
+          "marks_available": 3.0,
+          "verdict": "full",
+          "quote": "A process is a program in execution with private memory space.",
+          "reason": "Accurate definition."
+        },
+        {
+          "point": "Address space sharing",
+          "marks_awarded": 2.0,
+          "marks_available": 2.0,
+          "verdict": "full",
+          "quote": "Threads share the process memory and open files.",
+          "reason": "Correct address space explanation."
+        },
+        {
+          "point": "Context switching mechanism",
+          "marks_awarded": 1.5,
+          "marks_available": 5.0,
+          "verdict": "partial",
+          "quote": "Context switching saves thread register states to PCB.",
+          "reason": "Mentioned PCB save but omitted reload of target thread state."
+        }
+      ],
+      "key_point_verdicts": [
+        {
+          "point": "Process vs thread definition",
+          "marks_awarded": 3.0,
+          "marks_available": 3.0,
+          "verdict": "full",
+          "quote": "A process is a program in execution with private memory space.",
+          "reason": "Accurate definition."
+        },
+        {
+          "point": "Address space sharing",
+          "marks_awarded": 2.0,
+          "marks_available": 2.0,
+          "verdict": "full",
+          "quote": "Threads share the process memory and open files.",
+          "reason": "Correct address space explanation."
+        },
+        {
+          "point": "Context switching mechanism",
+          "marks_awarded": 1.5,
+          "marks_available": 5.0,
+          "verdict": "partial",
+          "quote": "Context switching saves thread register states to PCB.",
+          "reason": "Mentioned PCB save but omitted reload of target thread state."
+        }
+      ],
+      "strictness_effective": 3,
+      "strictness_source": "paper",
+      "error_message": null
+    }
+  ],
+  "all_resolved": false
+}

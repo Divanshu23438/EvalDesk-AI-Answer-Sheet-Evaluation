@@ -12,26 +12,38 @@ import {
   ToggleRight,
 } from 'lucide-react';
 import { apiClient } from '../api/client';
+import { StrictnessChip } from './StrictnessChip';
+import { RecheckPopover } from './RecheckPopover';
 
 export interface KeyPointVerdict {
-  point: string;
+  point?: string;
+  text?: string;
   verdict: 'full' | 'partial' | 'none';
-  quote: string;
+  quote?: string;
+  marks_available?: number;
+  marks_awarded?: number;
+  reason?: string;
 }
 
-interface MarksCardProps {
+export interface MarksCardProps {
   evalId: string;
   maxMarks: number;
   aiMarks: number;
   currentMarks: number;
   isCounted?: boolean;
   isResolved?: boolean;
-  status: 'approved' | 'flagged' | 'pending' | 'failed';
-  flags?: Array<{ code: string; message: string }>;
+  status: 'approved' | 'flagged' | 'pending' | 'failed' | string;
+  flags?: Array<{ code: string; message: string; severity?: string }>;
   keyPointVerdicts?: KeyPointVerdict[];
+  verdicts?: KeyPointVerdict[];
+  strictnessUsed?: number;
+  strictnessEffective?: number;
+  strictnessSource?: 'question' | 'paper' | string;
   errorMessage?: string | null;
+  previousFinalMarks?: number | null;
   onMarksChange?: (newMarks: number, isCounted: boolean, isResolved: boolean) => void;
-  onRecheck?: () => Promise<void>;
+  onRecheck?: (level?: number, persistOverride?: boolean) => Promise<void>;
+  onUndo?: (oldMarks: number) => Promise<void> | void;
   onError?: (err: { code: string; message: string }) => void;
 }
 
@@ -45,15 +57,23 @@ export const MarksCard: React.FC<MarksCardProps> = ({
   status,
   flags = [],
   keyPointVerdicts = [],
+  verdicts = [],
+  strictnessUsed,
+  strictnessEffective,
+  strictnessSource,
   errorMessage,
+  previousFinalMarks = null,
   onMarksChange,
   onRecheck,
+  onUndo,
   onError,
 }) => {
   const [marks, setMarks] = useState(currentMarks !== undefined ? currentMarks : aiMarks);
   const [counted, setCounted] = useState(isCounted);
   const [isSaving, setIsSaving] = useState(false);
   const [isRechecking, setIsRechecking] = useState(false);
+  const [showPopover, setShowPopover] = useState(false);
+  const [undoMarks, setUndoMarks] = useState<number | null>(previousFinalMarks);
 
   useEffect(() => {
     setMarks(currentMarks !== undefined ? currentMarks : aiMarks);
@@ -63,11 +83,19 @@ export const MarksCard: React.FC<MarksCardProps> = ({
     setCounted(isCounted);
   }, [isCounted]);
 
+  useEffect(() => {
+    if (previousFinalMarks !== undefined && previousFinalMarks !== null) {
+      setUndoMarks(previousFinalMarks);
+    }
+  }, [previousFinalMarks]);
+
   const isFailed = status === 'failed';
   const hasChangedMarks = Math.abs(marks - aiMarks) > 0.001;
+  const effectiveVerdicts = verdicts.length > 0 ? verdicts : keyPointVerdicts;
+  const effectiveStrictness = strictnessUsed || strictnessEffective || 3;
 
   const handleStepMarks = (delta: number) => {
-    const nextVal = Math.min(maxMarks, Math.max(0, marks + delta));
+    const nextVal = Math.min(maxMarks, Math.max(0, Number((marks + delta).toFixed(1))));
     setMarks(nextVal);
   };
 
@@ -90,11 +118,12 @@ export const MarksCard: React.FC<MarksCardProps> = ({
     }
   };
 
-  const handleTriggerRecheck = async () => {
+  const handleExecuteRecheck = async (level: number, persistOverride: boolean) => {
     if (!onRecheck) return;
     setIsRechecking(true);
+    setShowPopover(false);
     try {
-      await onRecheck();
+      await onRecheck(level, persistOverride);
     } catch (err: any) {
       onError?.({
         code: err.code || 'RECHECK_FAILED',
@@ -105,18 +134,47 @@ export const MarksCard: React.FC<MarksCardProps> = ({
     }
   };
 
+  const handleUndo = async () => {
+    if (undoMarks === null) return;
+    const oldM = undoMarks;
+    setIsSaving(true);
+    try {
+      await apiClient.post(`/api/evaluations/${evalId}/review`, {
+        teacher_marks: oldM,
+        accept_ai: false,
+        is_counted: counted,
+      });
+      setMarks(oldM);
+      setUndoMarks(null);
+      onMarksChange?.(oldM, counted, true);
+      onUndo?.(oldM);
+    } catch (err: any) {
+      onError?.({
+        code: err.code || 'UNDO_FAILED',
+        message: err.message || 'Failed to undo marks.',
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <section
       aria-label="Evaluation Marks"
-      className="border border-[var(--surface-border)] rounded-lg bg-[var(--surface-card)] flex flex-col min-h-0 h-full overflow-hidden"
+      className="border border-slate-200 rounded-xl bg-white shadow-xs flex flex-col min-h-0 overflow-hidden relative"
     >
-      {/* Header */}
-      <div className="px-3 py-2 bg-[var(--surface-canvas)] border-b border-[var(--surface-border)] flex items-center justify-between gap-2 shrink-0">
+      {/* Header with Strictness Chip and Counted Toggle */}
+      <div className="px-3.5 py-2.5 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2 shrink-0">
         <div className="flex items-center gap-2">
-          <Award className="w-3.5 h-3.5 text-[var(--accent-indigo)]" />
-          <h4 className="text-xs font-semibold text-[var(--ink-primary)] uppercase tracking-wider">
-            3. Marks & Evidence
+          <Award className="w-4 h-4 text-indigo-600" />
+          <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+            Marks & Why
           </h4>
+          <StrictnessChip
+            level={effectiveStrictness}
+            source={strictnessSource}
+            size="sm"
+          />
         </div>
 
         {/* Counted in Total Score Toggle */}
@@ -127,58 +185,58 @@ export const MarksCard: React.FC<MarksCardProps> = ({
             setCounted(nextCounted);
             onMarksChange?.(marks, nextCounted, isResolved);
           }}
-          className="flex items-center gap-1 text-[11px] font-medium text-[var(--ink-secondary)] hover:text-[var(--accent-indigo)]"
+          className="flex items-center gap-1 text-[11px] font-medium text-slate-600 hover:text-indigo-600"
           title="Toggle whether this question counts toward final paper score (Section Choice Rules)"
         >
           {counted ? (
-            <ToggleRight className="w-4 h-4 text-[var(--status-approved)]" />
+            <ToggleRight className="w-4 h-4 text-emerald-600" />
           ) : (
-            <ToggleLeft className="w-4 h-4 text-[var(--ink-muted)]" />
+            <ToggleLeft className="w-4 h-4 text-slate-400" />
           )}
           <span>{counted ? 'Counted' : 'Not Counted'}</span>
         </button>
       </div>
 
-      {/* Card Content: Stepper, Verdicts, Flags */}
-      <div className="panel flex-1 p-3 overflow-y-auto space-y-3 text-xs">
+      {/* Card Content: Stepper, Undo Banner, Flags, Verdicts */}
+      <div className="p-3.5 overflow-y-auto space-y-3 text-xs">
         {/* Recheck Skeleton Overlay if rechecking */}
         {isRechecking ? (
-          <div className="py-8 flex flex-col items-center justify-center text-center text-xs text-[var(--accent-indigo)]">
+          <div className="py-8 flex flex-col items-center justify-center text-center text-xs text-indigo-600">
             <Sparkles className="w-6 h-6 animate-spin mb-2" />
             <p className="font-semibold">Rechecking evaluation with AI...</p>
-            <p className="text-[11px] text-[var(--ink-muted)]">Verifying rubric criteria and evidence quotes</p>
+            <p className="text-[11px] text-slate-500">Verifying rubric criteria and evidence quotes</p>
           </div>
         ) : isFailed ? (
           /* Failed Question Display */
-          <div className="p-3 rounded-lg bg-[var(--status-failed-bg)] border border-[var(--status-failed-border)] text-[var(--status-failed)] space-y-2">
+          <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 space-y-1.5">
             <div className="flex items-center gap-1.5 font-semibold text-xs">
-              <AlertCircle className="w-4 h-4" />
-              <span>Evaluation Execution Failed</span>
+              <AlertCircle className="w-4 h-4 text-rose-600" />
+              <span>Evaluation Failed</span>
             </div>
             <p className="text-[11px] leading-relaxed">
               {errorMessage || 'The AI marking model encountered an error evaluating this question.'}
             </p>
-            <p className="text-[10px] text-[var(--ink-muted)] italic">
-              Use Retry below or enter manual marks to resolve.
+            <p className="text-[10px] text-slate-500 italic">
+              Use Recheck below or step manual marks to approve.
             </p>
           </div>
         ) : (
           <>
             {/* Marks Stepper Row */}
-            <div className="flex items-center justify-between p-2.5 rounded-lg border border-[var(--surface-border)] bg-[var(--surface-canvas)]">
+            <div className="flex items-center justify-between p-2.5 rounded-lg border border-slate-200 bg-slate-50">
               <div>
-                <span className="text-[10px] font-bold text-[var(--ink-muted)] uppercase tracking-wider block">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
                   Score Awarded:
                 </span>
                 <div className="flex items-baseline gap-1 mt-0.5">
-                  <span className="text-xl font-bold tabular-nums text-[var(--ink-primary)]">
+                  <span className="text-2xl font-bold tabular-nums text-slate-900 font-mono">
                     {marks}
                   </span>
-                  <span className="text-xs text-[var(--ink-muted)] tabular-nums">
+                  <span className="text-xs text-slate-500 tabular-nums">
                     / {maxMarks} Marks
                   </span>
                   {hasChangedMarks && (
-                    <span className="text-[11px] text-[var(--status-flagged)] font-semibold ml-2">
+                    <span className="text-[11px] text-amber-700 font-semibold ml-2">
                       (AI suggested {aiMarks})
                     </span>
                   )}
@@ -186,12 +244,12 @@ export const MarksCard: React.FC<MarksCardProps> = ({
               </div>
 
               {/* Stepper Buttons */}
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1.5">
                 <button
                   type="button"
                   onClick={() => handleStepMarks(-0.5)}
                   disabled={marks <= 0}
-                  className="w-7 h-7 rounded border border-[var(--surface-border)] bg-[var(--surface-card)] hover:bg-[var(--surface-hover)] disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center text-[var(--ink-primary)] transition"
+                  className="w-7 h-7 rounded-md border border-slate-300 bg-white hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center text-slate-800 transition shadow-2xs font-bold"
                   title="Minus 0.5 Mark (-)"
                 >
                   <Minus className="w-3.5 h-3.5" />
@@ -200,7 +258,7 @@ export const MarksCard: React.FC<MarksCardProps> = ({
                   type="button"
                   onClick={() => handleStepMarks(0.5)}
                   disabled={marks >= maxMarks}
-                  className="w-7 h-7 rounded border border-[var(--surface-border)] bg-[var(--surface-card)] hover:bg-[var(--surface-hover)] disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center text-[var(--ink-primary)] transition"
+                  className="w-7 h-7 rounded-md border border-slate-300 bg-white hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center text-slate-800 transition shadow-2xs font-bold"
                   title="Plus 0.5 Mark (+)"
                 >
                   <Plus className="w-3.5 h-3.5" />
@@ -208,57 +266,93 @@ export const MarksCard: React.FC<MarksCardProps> = ({
               </div>
             </div>
 
-            {/* Plain-English Flags */}
+            {/* Undo Banner after Recheck */}
+            {undoMarks !== null && (
+              <div className="p-2.5 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-900 text-xs flex items-center justify-between gap-2 animate-in fade-in">
+                <span>
+                  Score was <strong>{undoMarks} M</strong> before recheck
+                </span>
+                <button
+                  type="button"
+                  onClick={handleUndo}
+                  disabled={isSaving}
+                  className="px-2.5 py-1 rounded-md bg-white border border-indigo-300 text-indigo-700 hover:bg-indigo-100 font-semibold text-[11px] flex items-center gap-1 shadow-2xs transition"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  <span>Undo</span>
+                </button>
+              </div>
+            )}
+
+            {/* Plain-English Coded Flags */}
             {flags.length > 0 && (
-              <div className="space-y-1">
-                <span className="text-[10px] font-bold text-[var(--status-flagged)] uppercase tracking-wider block">
-                  Attention Required:
+              <div className="space-y-1.5">
+                <span className="text-[10px] font-bold text-amber-800 uppercase tracking-wider block">
+                  Attention Required ({flags.length}):
                 </span>
                 {flags.map((flg, idx) => (
                   <div
                     key={idx}
-                    className="p-2 rounded bg-[var(--status-flagged-bg)] border border-[var(--status-flagged-border)] text-[11px] text-[var(--status-flagged)] flex items-start gap-1.5"
+                    className="p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-[11px] text-amber-900 flex items-start gap-2"
                   >
-                    <Flag className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                    <span>{flg.message || flg.code}</span>
+                    <Flag className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+                    <div className="min-w-0">
+                      <span className="font-semibold block">{flg.message || flg.code}</span>
+                      <span className="text-[9px] font-mono text-amber-700/80 uppercase">
+                        [{flg.code}]
+                      </span>
+                    </div>
                   </div>
                 ))}
               </div>
             )}
 
-            {/* Key Point Verdicts with Quotes */}
-            {keyPointVerdicts.length > 0 && (
+            {/* Key Point Verdicts with Quotes & Reasons */}
+            {effectiveVerdicts.length > 0 && (
               <div>
-                <span className="text-[10px] font-bold text-[var(--ink-muted)] uppercase tracking-wider block mb-1.5">
-                  Rubric Point Verdicts:
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">
+                  Rubric Point Breakdown:
                 </span>
                 <div className="space-y-1.5">
-                  {keyPointVerdicts.map((v, i) => {
+                  {effectiveVerdicts.map((v, i) => {
                     const isFull = v.verdict === 'full';
                     const isPartial = v.verdict === 'partial';
+                    const pointText = v.text || v.point || `Point ${i + 1}`;
                     return (
                       <div
                         key={i}
-                        className="p-2 rounded border border-[var(--surface-border)] bg-[var(--surface-card)] text-[11px] space-y-1"
+                        className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/50 text-[11px] space-y-1"
                       >
                         <div className="flex items-start justify-between gap-1.5">
-                          <span className="font-medium text-[var(--ink-primary)]">
-                            {v.point}
-                          </span>
+                          <div className="flex-1">
+                            <span className="font-semibold text-slate-800">
+                              {pointText}
+                            </span>
+                            {v.marks_available !== undefined && (
+                              <span className="text-[10px] text-slate-500 font-mono ml-1.5 font-bold">
+                                ({v.marks_awarded ?? 0}/{v.marks_available}M)
+                              </span>
+                            )}
+                          </div>
                           <span
                             className={`px-1.5 py-0.2 rounded text-[10px] font-bold uppercase shrink-0 ${
                               isFull
-                                ? 'bg-[var(--status-approved-bg)] text-[var(--status-approved)]'
+                                ? 'bg-emerald-100 text-emerald-800'
                                 : isPartial
-                                ? 'bg-[var(--status-flagged-bg)] text-[var(--status-flagged)]'
-                                : 'bg-[var(--status-failed-bg)] text-[var(--status-failed)]'
+                                ? 'bg-amber-100 text-amber-800'
+                                : 'bg-rose-100 text-rose-800'
                             }`}
                           >
                             {v.verdict}
                           </span>
                         </div>
+                        {v.reason && (
+                          <p className="text-[10px] text-slate-600 leading-relaxed">
+                            {v.reason}
+                          </p>
+                        )}
                         {v.quote && (
-                          <div className="text-[10px] text-[var(--ink-muted)] italic font-mono bg-[var(--surface-subtle)] p-1 rounded">
+                          <div className="text-[10px] text-slate-600 italic font-mono bg-white border border-slate-200 p-1.5 rounded">
                             "{v.quote}"
                           </div>
                         )}
@@ -273,26 +367,35 @@ export const MarksCard: React.FC<MarksCardProps> = ({
       </div>
 
       {/* Card Footer: Recheck & Approve Buttons */}
-      <div className="px-3 py-2 bg-[var(--surface-canvas)] border-t border-[var(--surface-border)] flex items-center justify-between gap-2 shrink-0">
+      <div className="px-3.5 py-2.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-2 shrink-0 relative">
+        {/* Recheck Popover */}
+        <RecheckPopover
+          isOpen={showPopover}
+          initialLevel={effectiveStrictness}
+          isSaving={isRechecking}
+          onClose={() => setShowPopover(false)}
+          onConfirm={handleExecuteRecheck}
+        />
+
         <button
           type="button"
-          onClick={handleTriggerRecheck}
+          onClick={() => setShowPopover((prev) => !prev)}
           disabled={isRechecking || isSaving}
-          className="px-2.5 py-1.5 text-xs font-medium rounded border border-[var(--surface-border)] hover:bg-[var(--surface-hover)] text-[var(--ink-secondary)] disabled:opacity-40 transition flex items-center gap-1.5"
-          title="Recheck question with AI (R)"
+          className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 hover:bg-white text-slate-700 disabled:opacity-40 transition flex items-center gap-1.5 shadow-2xs"
+          title="Recheck question with custom strictness (R)"
         >
-          <Sparkles className="w-3.5 h-3.5 text-[var(--accent-indigo)]" />
-          <span>Recheck</span>
+          <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+          <span>Recheck...</span>
         </button>
 
         <button
           type="button"
           onClick={handleApprove}
           disabled={isSaving || (isFailed && !hasChangedMarks)}
-          className={`px-3.5 py-1.5 text-xs font-semibold rounded text-white transition flex items-center gap-1.5 shadow-sm disabled:opacity-40 ${
+          className={`px-4 py-1.5 text-xs font-semibold rounded-lg text-white transition flex items-center gap-1.5 shadow-xs disabled:opacity-40 ${
             isResolved
-              ? 'bg-[var(--status-approved)] hover:opacity-90'
-              : 'bg-[var(--accent-indigo)] hover:bg-[var(--accent-indigo-hover)]'
+              ? 'bg-emerald-600 hover:bg-emerald-700'
+              : 'bg-indigo-600 hover:bg-indigo-700'
           }`}
           title="Approve marks for this question (A)"
         >

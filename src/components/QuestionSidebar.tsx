@@ -50,6 +50,9 @@ export interface ReviewQuestionItem {
     verdict: 'full' | 'partial' | 'none';
     quote: string;
   }>;
+  strictness_used?: number;
+  strictness_source?: 'paper' | 'question' | 'recheck';
+  strictness_override?: number | null;
   error_message?: string | null;
 }
 
