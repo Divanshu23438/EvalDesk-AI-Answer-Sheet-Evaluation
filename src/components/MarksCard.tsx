@@ -161,10 +161,10 @@ export const MarksCard: React.FC<MarksCardProps> = ({
   return (
     <section
       aria-label="Evaluation Marks"
-      className="border border-slate-200 rounded-xl bg-white shadow-xs flex flex-col min-h-0 overflow-hidden relative"
+      className="border border-slate-200 rounded-xl bg-white shadow-xs flex flex-col h-full min-h-0 overflow-hidden relative"
     >
       {/* Header with Strictness Chip and Counted Toggle */}
-      <div className="px-3.5 py-2.5 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2 shrink-0">
+      <div className="px-3.5 py-2 bg-slate-50 border-b border-slate-200 flex items-center justify-between gap-2 shrink-0">
         <div className="flex items-center gap-2">
           <Award className="w-4 h-4 text-indigo-600" />
           <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
@@ -198,7 +198,7 @@ export const MarksCard: React.FC<MarksCardProps> = ({
       </div>
 
       {/* Card Content: Stepper, Undo Banner, Flags, Verdicts */}
-      <div className="p-3.5 overflow-y-auto space-y-3 text-xs">
+      <div className="p-3 overflow-y-auto space-y-2.5 text-xs flex-1 min-h-0">
         {/* Recheck Skeleton Overlay if rechecking */}
         {isRechecking ? (
           <div className="py-8 flex flex-col items-center justify-center text-center text-xs text-indigo-600">
@@ -366,8 +366,8 @@ export const MarksCard: React.FC<MarksCardProps> = ({
         )}
       </div>
 
-      {/* Card Footer: Recheck & Approve Buttons */}
-      <div className="px-3.5 py-2.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-2 shrink-0 relative">
+      {/* Card Footer: Recheck & Approve Buttons - Always Pinned & Visible */}
+      <div className="px-3.5 py-2 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-2 shrink-0 z-10 shadow-2xs">
         {/* Recheck Popover */}
         <RecheckPopover
           isOpen={showPopover}

@@ -695,7 +695,7 @@ export const EvaluateScreen: React.FC = () => {
               {/* SUB-COLUMN 2: OCR Card on top + MarksCard filling bottom */}
               <div className="flex flex-col h-full min-h-0 overflow-hidden gap-2">
                 {/* 1. OCR Text Card (editable + legibility bar + reader diff) */}
-                <div className="shrink-0 max-h-[38%] flex flex-col min-h-0 overflow-hidden">
+                <div className="shrink-0 max-h-[35%] flex flex-col min-h-0 overflow-hidden">
                   <OcrCard
                     evalId={activeQuestion.eval_id}
                     ocrText={activeQuestion.ocr_text || activeQuestion.extracted_text || ''}
@@ -724,7 +724,7 @@ export const EvaluateScreen: React.FC = () => {
                 </div>
 
                 {/* 2. Marks and Why (MarksCard): marks stepper, per-point verdicts, coded flags */}
-                <div className="flex-1 min-h-0 overflow-y-auto">
+                <div className="flex-1 min-h-0 h-full overflow-hidden flex flex-col">
                   <MarksCard
                     evalId={activeQuestion.eval_id}
                     maxMarks={activeQuestion.max_marks || 5}

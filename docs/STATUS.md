@@ -1,7 +1,19 @@
 # STATUS (update at the end of every session)
 Date / author (agent or model name): 2026-11-17 / Antigravity (Gemini 3.8 Flash)
-Current phase and task: Layout Header Occlusion & Container-Local Scroll Fix (`src/app/Shell.tsx`, `src/screens/EvaluateScreen.tsx`, `src/components/QuestionPanel.tsx`, `src/components/QuestionSidebar.tsx`, `src/components/ErrorBanner.tsx`, `src/index.css`).
+Current phase and task: Marks & Why Pinned Action Buttons (`src/components/MarksCard.tsx`, `src/screens/EvaluateScreen.tsx`).
 Done (task id, commit, proof file):
+- Task: Fixed Marks & Why Action Buttons Visibility (`src/components/MarksCard.tsx`, `src/screens/EvaluateScreen.tsx`):
+  1. Pinned Footer Layout (`src/components/MarksCard.tsx`):
+     - Changed `MarksCard` root `<section>` to `h-full min-h-0 flex flex-col`.
+     - Made the middle card content (score stepper, flags, rubric point breakdowns, evidence quotes) `flex-1 min-h-0 overflow-y-auto`.
+     - Pinned the card footer containing the `Recheck...` and `Approve` buttons (`shrink-0 z-10 shadow-2xs`), ensuring the buttons are permanently visible on screen regardless of the length of the rubric or flags.
+  2. Sub-column Container Flex Optimization (`src/screens/EvaluateScreen.tsx`):
+     - Converted the `MarksCard` parent wrapper from `flex-1 min-h-0 overflow-y-auto` to `flex-1 min-h-0 h-full overflow-hidden flex flex-col`, preventing the entire card from being pushed down and cutting off buttons.
+     - Calibrated `OcrCard` container to `max-h-[35%]` to ensure optimal vertical space for `MarksCard`.
+  3. Verification:
+     - `npx tsc --noEmit` clean (0 errors).
+     - `npm run build` succeeds (dist built in 5.51s).
+     - `python scripts/check_all.py --no-live` reports `RESULT: ALL PASS`.
 - Task: Fixed components behind header and offscreen layout shifts (`src/app/Shell.tsx`, `src/screens/EvaluateScreen.tsx`, `src/components/QuestionPanel.tsx`, `src/components/QuestionSidebar.tsx`, `src/components/ErrorBanner.tsx`, `src/index.css`, `src/screens/UploadScreen.tsx`):
   1. Root Cause Resolution (Ancestor Scroll via `scrollIntoView`):
      - Identified that `QuestionPanel.tsx` and `QuestionSidebar.tsx` called global `element.scrollIntoView()`, which scrolled the ancestor `<main>` container down by 104px whenever questions were rendered or changed.
