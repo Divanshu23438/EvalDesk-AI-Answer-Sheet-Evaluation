@@ -12,6 +12,7 @@ interface KeyPoint {
 interface ReferenceData {
   model_answer: string;
   key_points: KeyPoint[];
+  correct_option?: string | null;
   source: string; // 'teacher_key' | 'ai_draft'
 }
 
@@ -38,6 +39,7 @@ export const ReferenceCard: React.FC<ReferenceCardProps> = ({
 }) => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [editModelAnswer, setEditModelAnswer] = useState(reference?.model_answer || '');
+  const [editCorrectOption, setEditCorrectOption] = useState(reference?.correct_option || '');
   const [isSaving, setIsSaving] = useState(false);
 
   const isTeacherKey = reference?.source === 'teacher_key';
@@ -45,6 +47,7 @@ export const ReferenceCard: React.FC<ReferenceCardProps> = ({
 
   const handleOpenDrawer = () => {
     setEditModelAnswer(reference?.model_answer || '');
+    setEditCorrectOption(reference?.correct_option || '');
     setIsDrawerOpen(true);
   };
 
@@ -54,6 +57,7 @@ export const ReferenceCard: React.FC<ReferenceCardProps> = ({
       await apiClient.put(`/api/papers/${paperId}/questions/${questionKey}/reference`, {
         model_answer: editModelAnswer.trim(),
         key_points: reference?.key_points || [],
+        correct_option: editCorrectOption.trim() || undefined,
       });
       setIsDrawerOpen(false);
       onReferenceUpdated?.();
@@ -120,6 +124,18 @@ export const ReferenceCard: React.FC<ReferenceCardProps> = ({
 
       {/* Content: Model Answer & Rubric Points */}
       <div className="panel flex-1 p-3 overflow-y-auto space-y-3 text-xs leading-relaxed">
+        {/* Correct Option for MCQ/Objective */}
+        {reference?.correct_option && (
+          <div className="p-2 rounded bg-[var(--status-approved-bg)] border border-[var(--status-approved-border)] flex items-center justify-between">
+            <span className="text-[10px] font-bold text-[var(--status-approved)] uppercase tracking-wider">
+              Correct Option:
+            </span>
+            <span className="text-xs font-semibold text-[var(--status-approved)] font-mono">
+              {reference.correct_option}
+            </span>
+          </div>
+        )}
+
         {/* Model Answer */}
         <div>
           <span className="text-[10px] font-bold text-[var(--ink-muted)] uppercase tracking-wider block mb-1">
@@ -209,6 +225,20 @@ export const ReferenceCard: React.FC<ReferenceCardProps> = ({
           </div>
 
           <div className="flex-1 flex flex-col gap-2 min-h-0">
+            {(options.length > 0 || questionType === 'mcq') && (
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-[var(--ink-secondary)] font-medium">
+                  Correct Option / Answer:
+                </label>
+                <input
+                  type="text"
+                  value={editCorrectOption}
+                  onChange={(e) => setEditCorrectOption(e.target.value)}
+                  className="p-2 text-xs font-mono rounded border border-[var(--surface-border)] bg-[var(--surface-bg)] text-[var(--ink-primary)] focus:outline-none focus:border-[var(--accent-indigo)]"
+                  placeholder="e.g. Operating system / B / 1"
+                />
+              </div>
+            )}
             <label className="text-xs text-[var(--ink-secondary)] font-medium">
               Model Answer:
             </label>

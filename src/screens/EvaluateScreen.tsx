@@ -336,7 +336,21 @@ export const EvaluateScreen: React.FC = () => {
   }, [handlePrevQuestion, handleNextQuestion, handleFinishAndProceedToReport]);
 
   const pageCount = reviewData?.pages ? reviewData.pages.length : 1;
-  const bbox = activeQuestion?.bbox || null;
+  const pgs: number[] = activeQuestion?.page_numbers || [];
+  const pageIdx = pgs.indexOf(activePage);
+  let rawBox: any = null;
+  if (pageIdx >= 0 && Array.isArray(activeQuestion?.bbox)) {
+    rawBox = activeQuestion.bbox[pageIdx];
+  } else if (Array.isArray(activeQuestion?.bbox) && activeQuestion.bbox.length === 4 && typeof activeQuestion.bbox[0] === 'number') {
+    rawBox = activeQuestion.bbox;
+  }
+  while (Array.isArray(rawBox) && rawBox.length === 1 && Array.isArray(rawBox[0])) {
+    rawBox = rawBox[0];
+  }
+  const bbox: [number, number, number, number] | null =
+    Array.isArray(rawBox) && rawBox.length === 4 && rawBox.every((n) => typeof n === 'number')
+      ? ([rawBox[1], rawBox[0], rawBox[3], rawBox[2]] as [number, number, number, number])
+      : null;
   const isNotAttempted =
     Boolean(activeQuestion?.reason?.includes('not attempted')) ||
     (activeQuestion?.flags || []).some((f) => f.code === 'not_attempted');

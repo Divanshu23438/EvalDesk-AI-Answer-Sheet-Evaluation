@@ -184,7 +184,7 @@ class AIGateway:
         """
         Converts inputs:
         - Detects PDFs and converts first page to standard JPEG if sent as media.
-        - Normalizes images: auto-rotates (EXIF), converts to RGB JPEG, resizes to <=2000px.
+        - Normalizes images: auto-rotates (EXIF), converts to RGB JPEG, resizes to <=1600px.
         - Validates that image is not blank or corrupt.
         Raises typed AIError(kind="bad_input") on corrupt or blank inputs.
         """
@@ -199,13 +199,13 @@ class AIGateway:
                     raise ValueError("PDF contains no renderable pages.")
                 # Return first page rendered as standard JPEG
                 first_page = pdf_res["page_images_bytes"][0]
-                return normalize_image_bytes(first_page, max_dimension=2000)
+                return normalize_image_bytes(first_page, max_dimension=1600)
             except Exception as e:
                 raise AIError("bad_input", f"Invalid or corrupt PDF document: {e}", provider="gateway") from e
 
         # Standard image normalization
         try:
-            return normalize_image_bytes(raw_bytes, max_dimension=2000)
+            return normalize_image_bytes(raw_bytes, max_dimension=1600)
         except ValueError as ve:
             raise AIError("bad_input", str(ve), provider="gateway") from ve
         except Exception as e:
@@ -215,14 +215,17 @@ class AIGateway:
         self,
         prompt: str,
         image_bytes: Optional[bytes] = None,
+        images_bytes: Optional[List[bytes]] = None,
         mime_type: Optional[str] = None,
         task: str = "general",
         response_model: Optional[Type[BaseModel]] = None,
         demo_mode: bool = False,
+        thinking_budget: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
         Calls Gemini with:
-        - Image normalization (auto-rotate, resize <=2000px, blank check).
+        - Multi-image support (images_bytes) or single image (image_bytes).
+        - Image normalization (auto-rotate, resize <=1600px, blank check).
         - SHA-256 content-based caching.
         - Exponential backoff on 429 and 503.
         - 90s timeout for vision calls.
@@ -232,12 +235,16 @@ class AIGateway:
         if not GEMINI_API_KEY:
             raise AIError("auth", "GEMINI_API_KEY is not configured on the server.", provider="gemini")
 
-        normalized_bytes: Optional[bytes] = None
-        final_mime = "image/jpeg"
-        if image_bytes:
-            normalized_bytes, final_mime = self.prepare_media_input(image_bytes, declared_mime=mime_type)
+        normalized_list: List[Tuple[bytes, str]] = []
+        if images_bytes:
+            for b in images_bytes:
+                if b and len(b) > 10:
+                    normalized_list.append(self.prepare_media_input(b, declared_mime=mime_type))
+        elif image_bytes:
+            normalized_list.append(self.prepare_media_input(image_bytes, declared_mime=mime_type))
 
-        cache_key = get_content_cache_key("gemini", task, prompt, normalized_bytes)
+        all_media_bytes = b"".join(n[0] for n in normalized_list) if normalized_list else None
+        cache_key = get_content_cache_key("gemini", task, prompt, all_media_bytes)
         cached = get_cached_response(cache_key)
         if demo_mode or cached:
             if cached:
@@ -251,26 +258,30 @@ class AIGateway:
         models_to_try = [GEMINI_PRIMARY_MODEL, GEMINI_FALLBACK_MODEL]
         last_error_msg = ""
         last_status_code = None
-        timeout = self.image_timeout if normalized_bytes else self.text_timeout
+        timeout = self.image_timeout if normalized_list else self.text_timeout
         start_time = time.time()
 
         parts: List[Dict[str, Any]] = []
-        if normalized_bytes:
-            b64_data = base64.b64encode(normalized_bytes).decode("utf-8")
+        for n_bytes, n_mime in normalized_list:
+            b64_data = base64.b64encode(n_bytes).decode("utf-8")
             parts.append({
                 "inline_data": {
-                    "mime_type": final_mime,
+                    "mime_type": n_mime,
                     "data": b64_data,
                 }
             })
         parts.append({"text": prompt})
 
+        generation_cfg: Dict[str, Any] = {
+            "response_mime_type": "application/json",
+            "temperature": 0.0,
+        }
+        if thinking_budget is not None and thinking_budget > 0:
+            generation_cfg["thinkingConfig"] = {"thinkingBudget": thinking_budget}
+
         payload = {
             "contents": [{"parts": parts}],
-            "generationConfig": {
-                "response_mime_type": "application/json",
-                "temperature": 0.0,
-            },
+            "generationConfig": generation_cfg,
         }
 
         async with httpx.AsyncClient(timeout=timeout) as client:

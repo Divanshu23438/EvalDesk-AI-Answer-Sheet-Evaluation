@@ -1,8 +1,9 @@
 import json
 import shutil
 import zipfile
+import hashlib
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, Tuple, List, Dict
 from datetime import datetime
 from backend.config import (
     BASE_DIR,
@@ -78,90 +79,204 @@ def create_data_backup() -> Path:
                 
     return backup_file
 
+def normalize_box_coords(box: Any, w: int, h: int) -> Optional[Tuple[int, int, int, int]]:
+    """
+    Normalizes and clamps bounding boxes across arbitrary nesting structures:
+    - Dicts: {"x": ..., "y": ..., "w": ..., "h": ...}
+    - Lists of 4 coords: [ymin, xmin, ymax, xmax] in 0..1, 0..1000, or pixel scale
+    - Deeply nested structures: [[[ymin, ...]]]
+    - Multiple sub-boxes on a page: computes bounding envelope
+    Returns (left, top, right, bottom) clamped to image, or None if invalid.
+    """
+    if box is None:
+        return None
+
+    cur = box
+    # Unwrap outer single-element wrappers
+    while isinstance(cur, (list, tuple)) and len(cur) == 1 and isinstance(cur[0], (list, tuple, dict)):
+        cur = cur[0]
+
+    # Multiple sub-boxes on the same page: take bounding envelope
+    if isinstance(cur, (list, tuple)) and len(cur) > 0 and isinstance(cur[0], (list, tuple)) and len(cur[0]) == 4:
+        norm_subs = [normalize_box_coords(sb, w, h) for sb in cur]
+        valid_subs = [b for b in norm_subs if b is not None]
+        if valid_subs:
+            min_l = min(b[0] for b in valid_subs)
+            min_t = min(b[1] for b in valid_subs)
+            max_r = max(b[2] for b in valid_subs)
+            max_b = max(b[3] for b in valid_subs)
+            return (min_l, min_t, max_r, max_b)
+        return None
+
+    # Dict format: x, y, w, h
+    if isinstance(cur, dict) and "x" in cur and "y" in cur and "w" in cur and "h" in cur:
+        raw_x = float(cur["x"])
+        raw_y = float(cur["y"])
+        raw_w = float(cur["w"])
+        raw_h = float(cur["h"])
+        if raw_x <= 1.0 and raw_w <= 1.0:
+            left, top, right, bottom = raw_x * w, raw_y * h, (raw_x + raw_w) * w, (raw_y + raw_h) * h
+        elif raw_x <= 1000 and (w > 1000 or h > 1000):
+            left, top, right, bottom = (raw_x / 1000.0) * w, (raw_y / 1000.0) * h, ((raw_x + raw_w) / 1000.0) * w, ((raw_y + raw_h) / 1000.0) * h
+        else:
+            left, top, right, bottom = raw_x, raw_y, raw_x + raw_w, raw_y + raw_h
+    elif isinstance(cur, (list, tuple)) and len(cur) == 4:
+        # Standard object detection: [ymin, xmin, ymax, xmax]
+        b0, b1, b2, b3 = float(cur[0]), float(cur[1]), float(cur[2]), float(cur[3])
+        if max(b0, b1, b2, b3) <= 1.0:
+            left, top, right, bottom = min(b1, b3) * w, min(b0, b2) * h, max(b1, b3) * w, max(b0, b2) * h
+        elif max(b0, b1, b2, b3) <= 1000 and (w > 1000 or h > 1000):
+            left = (min(b1, b3) / 1000.0) * w
+            top = (min(b0, b2) / 1000.0) * h
+            right = (max(b1, b3) / 1000.0) * w
+            bottom = (max(b0, b2) / 1000.0) * h
+        else:
+            left = min(b1, b3)
+            top = min(b0, b2)
+            right = max(b1, b3)
+            bottom = max(b0, b2)
+    else:
+        return None
+
+    # Generous margin padding
+    pad = 16
+    left = max(0, int(left - pad))
+    top = max(0, int(top - pad))
+    right = min(w, int(right + pad))
+    bottom = min(h, int(bottom + pad))
+
+    if right <= left + 10 or bottom <= top + 10:
+        return None
+
+    return (left, top, right, bottom)
+
+def clear_answer_crops(sheet_id: str, eval_id: Optional[str] = None) -> None:
+    """Removes cached crop files for a sheet or specific evaluation."""
+    crop_dir = SHEETS_STORAGE_DIR / sheet_id / "crops"
+    if not crop_dir.exists():
+        return
+    if eval_id:
+        for f in crop_dir.glob(f"{eval_id}*.jpg"):
+            try:
+                f.unlink(missing_ok=True)
+            except Exception:
+                pass
+    else:
+        for f in crop_dir.glob("*.jpg"):
+            try:
+                f.unlink(missing_ok=True)
+            except Exception:
+                pass
+
 def get_or_create_answer_crop_path(
     sheet_id: str,
     eval_id: str,
     page_file_path: Optional[Path] = None,
     bbox_raw: Any = None,
     page_idx: int = 0,
+    page_numbers: Optional[List[int]] = None,
+    pages_map: Optional[Dict[int, Path]] = None,
 ) -> Optional[Path]:
     """
     Retrieves or generates a cropped JPEG snippet of the student's handwritten answer.
-    Caches into data/storage/sheets/{sheet_id}/crops/{eval_id}.jpg.
-    Returns the absolute Path if successful, or None.
+    Supports multi-page continuation stacking with page headers.
+    Cached into data/storage/sheets/{sheet_id}/crops/{eval_id}_{hash}.jpg.
+    Returns the absolute Path if successful, or None if unattempted / box not found.
     """
     if not sheet_id or not eval_id:
         return None
 
     crop_dir = SHEETS_STORAGE_DIR / sheet_id / "crops"
     crop_dir.mkdir(parents=True, exist_ok=True)
-    crop_file = crop_dir / f"{eval_id}.jpg"
+
+    # Compute content hash for cache key
+    h_src = f"{eval_id}|{page_numbers}|{bbox_raw}"
+    cache_tag = hashlib.sha256(h_src.encode("utf-8")).hexdigest()[:12]
+    crop_file = crop_dir / f"{eval_id}_{cache_tag}.jpg"
 
     if crop_file.exists() and crop_file.stat().st_size > 0:
         return crop_file
 
-    if not page_file_path or not page_file_path.exists():
+    # Parse bboxes
+    bboxes = []
+    if isinstance(bbox_raw, str):
+        try:
+            bboxes = json.loads(bbox_raw)
+        except Exception:
+            bboxes = []
+    elif isinstance(bbox_raw, list):
+        bboxes = bbox_raw
+
+    if not bboxes:
         return None
 
     try:
-        from PIL import Image
-        with Image.open(page_file_path) as img:
-            w, h = img.size
-            bboxes = []
-            if isinstance(bbox_raw, str):
-                try:
-                    bboxes = json.loads(bbox_raw)
-                except Exception:
-                    bboxes = []
-            elif isinstance(bbox_raw, list):
-                bboxes = bbox_raw
+        from PIL import Image, ImageDraw
 
-            if bboxes and isinstance(bboxes, list) and len(bboxes) > 0:
-                box = bboxes[0]
-                if isinstance(box, dict) and "x" in box and "y" in box and "w" in box and "h" in box:
-                    bx = box["x"] * w if box["x"] <= 1.0 else (box["x"] / 1000.0 * w if box["x"] <= 1000 and w > 1000 else box["x"])
-                    by = box["y"] * h if box["y"] <= 1.0 else (box["y"] / 1000.0 * h if box["y"] <= 1000 and h > 1000 else box["y"])
-                    bw = box["w"] * w if box["w"] <= 1.0 else (box["w"] / 1000.0 * w if box["w"] <= 1000 and w > 1000 else box["w"])
-                    bh = box["h"] * h if box["h"] <= 1.0 else (box["h"] / 1000.0 * h if box["h"] <= 1000 and h > 1000 else box["h"])
-                    crop_box = (
-                        max(0, int(bx - 12)),
-                        max(0, int(by - 12)),
-                        min(w, int(bx + bw + 12)),
-                        min(h, int(by + bh + 12)),
-                    )
-                elif isinstance(box, (list, tuple)) and len(box) == 4:
-                    b0, b1, b2, b3 = box
-                    if max(b0, b1, b2, b3) <= 1.0:
-                        crop_box = (
-                            max(0, int(b1 * w - 12)),
-                            max(0, int(b0 * h - 12)),
-                            min(w, int(b3 * w + 12)),
-                            min(h, int(b2 * h + 12)),
-                        )
-                    elif max(b0, b1, b2, b3) <= 1000 and (w > 1000 or h > 1000):
-                        crop_box = (
-                            max(0, int((b1 / 1000.0) * w - 12)),
-                            max(0, int((b0 / 1000.0) * h - 12)),
-                            min(w, int((b3 / 1000.0) * w + 12)),
-                            min(h, int((b2 / 1000.0) * h + 12)),
-                        )
-                    else:
-                        crop_box = (
-                            max(0, int(min(b1, b3) - 12)),
-                            max(0, int(min(b0, b2) - 12)),
-                            min(w, int(max(b1, b3) + 12)),
-                            min(h, int(max(b0, b2) + 12)),
-                        )
-                else:
-                    crop_box = (0, 0, w, min(h, int(h * 0.35)))
-            else:
-                crop_box = (0, 0, w, min(h, int(h * 0.35)))
+        segments: List[Tuple[int, Image.Image]] = []
 
-            if crop_box[2] <= crop_box[0] or crop_box[3] <= crop_box[1]:
-                crop_box = (0, 0, w, min(h, int(h * 0.35)))
+        # Multi-page continuation path
+        if pages_map and page_numbers and len(page_numbers) > 0:
+            for idx, p_num in enumerate(page_numbers):
+                p_path = pages_map.get(p_num)
+                if not p_path or not p_path.exists():
+                    continue
+                box_item = bboxes[idx] if idx < len(bboxes) else (bboxes[0] if len(bboxes) == 1 else None)
+                if not box_item:
+                    continue
+                with Image.open(p_path) as p_img:
+                    w, h = p_img.size
+                    crop_box = normalize_box_coords(box_item, w, h)
+                    if crop_box:
+                        cropped = p_img.crop(crop_box)
+                        segments.append((p_num, cropped.copy()))
+        elif page_file_path and page_file_path.exists():
+            # Single-page path
+            with Image.open(page_file_path) as p_img:
+                w, h = p_img.size
+                box_item = bboxes[0] if bboxes else None
+                crop_box = normalize_box_coords(box_item, w, h) if box_item else None
+                if crop_box:
+                    cropped = p_img.crop(crop_box)
+                    p_num = (page_numbers[0] if page_numbers else page_idx + 1)
+                    segments.append((p_num, cropped.copy()))
 
-            cropped = img.crop(crop_box)
-            cropped.save(crop_file, format="JPEG", quality=90)
-            return crop_file
-    except Exception:
+        if not segments:
+            return None
+
+        if len(segments) == 1:
+            final_img = segments[0][1]
+        else:
+            # Stack continuation segments vertically with clean divider banners
+            max_w = max(s[1].width for s in segments)
+            banner_h = 28
+            total_h = sum(s[1].height + banner_h for s in segments)
+            stacked = Image.new("RGB", (max_w, total_h), (248, 250, 252))
+            draw = ImageDraw.Draw(stacked)
+
+            y_cursor = 0
+            for i, (p_num, s_img) in enumerate(segments):
+                # Banner bar
+                draw.rectangle([0, y_cursor, max_w, y_cursor + banner_h], fill=(226, 232, 240))
+                label = f"Page {p_num}" if i == 0 else f"Page {p_num} (Continuation)"
+                draw.text((12, y_cursor + 7), label, fill=(51, 65, 85))
+                y_cursor += banner_h
+                # Paste cropped content
+                stacked.paste(s_img, (0, y_cursor))
+                y_cursor += s_img.height
+
+            final_img = stacked
+
+        # Save to cached file
+        final_img.save(crop_file, format="JPEG", quality=90)
+        # Also maintain eval_id.jpg alias for legacy consumers
+        legacy_file = crop_dir / f"{eval_id}.jpg"
+        try:
+            final_img.save(legacy_file, format="JPEG", quality=90)
+        except Exception:
+            pass
+
+        return crop_file
+    except Exception as exc:
+        print(f"[Crops] Error generating crop for {eval_id}: {exc}")
         return None

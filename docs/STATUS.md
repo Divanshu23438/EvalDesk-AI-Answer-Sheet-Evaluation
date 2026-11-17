@@ -1,7 +1,29 @@
 # STATUS (update at the end of every session)
-Date / author (agent or model name): 2026-11-16 / Antigravity (Gemini 3.8 Flash)
-Current phase and task: Step 1A Question Paper & Teacher Answer Key intake restored; Gateway timeout & AI reference drafting remediated; Full end-to-end evaluation & reports verified (100% test pass on pytest, check_ui, and check_all).
+Date / author (agent or model name): 2026-11-17 / Antigravity (Gemini 3.8 Flash)
+Current phase and task: Fix Plan Implemented & Verified: Paper Load Accelerated, Nested BBox & Multi-Page Continuation Crops Restored, Duplicate Reviews & Scoring Discrepancies Remediated (100% test pass on pytest, tsc, and verify_fix_plan).
 Done (task id, commit, proof file):
+- EvalDesk Fix Plan: Slow Paper Load, Wrong Crops, Missing Continuation Pages & Scoring Bugs (`backend/pdf_tools.py`, `backend/ai_gateway.py`, `backend/storage.py`, `backend/main.py`, `backend/reports_generator.py`, `scripts/verify_fix_plan.py`):
+  1. Paper Load & Extraction Acceleration (Step 1):
+     - Eliminated separate remote AI orientation call (`pdf_tools.py:116`). Replaced with local `ImageOps.exif_transpose` (sub-millisecond) and integrated rotation detection directly into the T1 extraction prompt (`"rotation_degrees_clockwise": 0 | 90 | 180 | 270`), rotating locally via `apply_rotation_degrees`.
+     - Multi-Page Scanned PDFs: Renders and passes up to 10 pages in `images_bytes` in a single multi-image Gemini call rather than dropping pages after page 0.
+     - Media Optimization: Image normalizer standardizes to max 1600px at JPEG quality 80.
+     - SHA-256 Content-Based Cache: Added deterministic cache for paper extractions (`data/cache/paper_extractions/{sha256}.json`), achieving 0.03s instant re-upload.
+     - Removed slow per-page orientation calls during student sheet ingestion.
+  2. Answer Crops & Robust Bounding Box Parser (Step 2):
+     - Deleted arbitrary 35% page slice fallback in `storage.py`. Unattempted questions now cleanly yield `None` (no more false question headers).
+     - Robust multi-level box unwrapping: handles nested lists (e.g. `[[[ymin, xmin, ymax, xmax]]]`), multi-box lists per page (bounding union), and scales across normalized 0..1, 0..1000, and pixel coordinates.
+     - Enforced clamping, positive bounding area, and minimum 15px dimensions.
+     - Deterministic crop caching keyed by `eval_id` and SHA-256 hash of `(page_numbers, bbox_raw)`. Added `clear_answer_crops` on review overrides.
+  3. Multi-Segment Continuation Pages (Step 3):
+     - Multi-Page Stacked Crops: When student answers span multiple pages (e.g. Part II Q.2, Q.5, Part III Q.3), `get_or_create_answer_crop_path` extracts the box from each page and stitches them into a unified vertical submission image with clear "Page N" / "Page N (Continuation)" banners.
+     - Fixed 1-based page index off-by-one bug in `/crop/{eval_id}` endpoint.
+     - Scaled image bounds in PDF report card increased from 130px to 240px to preserve legibility for extended answers.
+  4. Scoring Parity & Duplicate Review Deduplication (Step 4):
+     - Deduplicated `reviews` join in report queries using `ROW_NUMBER() OVER (PARTITION BY evaluation_id ORDER BY reviewed_at DESC, id DESC) as rn WHERE rn = 1`.
+     - Added defensive question deduplication in `reports_generator.py` and `submit_teacher_review` upsert/delete logic, resolving the 4x duplicate rows on Part III Q.3.
+     - Choice Rule Clarity: Questions excluded under "Attempt any N" choice rules now clearly display their awarded score (e.g. `Awarded: 1.5 / 6 (Excluded)`) alongside `[Optional — Not Counted in Total]`, ensuring transparency.
+     - Section Max Marks: Section headers take max marks from section config, and header total (28.0) strictly matches the sum of section counted subtotals (8.5 + 12.0 + 7.5 = 28.0).
+  5. Verified via `python scripts/verify_fix_plan.py` (ALL PASS), `python -m pytest -q` (33 passed), and `npx tsc --noEmit` (0 errors).
 - Teacher Answer Key Intake & AI Reference Generation Remediation (`backend/main.py`, `backend/ai_gateway.py`, `src/screens/UploadScreen.tsx`, `scripts/test_answer_key_and_step1a.py`, `scripts/test_student_sheet_e2e.py`):
   1. Teacher Answer Key Upload on `#/upload` Step 1A: Restored dedicated "Upload or Drop Teacher Answer Key (PDF / Image / DOCX — Optional)" next to Question Paper upload in responsive 2-column grid. Added `.docx` text extraction without external pip dependencies using standard library `zipfile` and `xml.etree.ElementTree`.
   2. Answer Key & AI Reference Parity: Answer key parsing stores references with `source = 'teacher_key'`. Reference generation (`POST /api/papers/{paper_id}/reference/generate`) automatically detects and skips AI drafting for any question with `source == 'teacher_key'`, preserving teacher references 1:1.
@@ -36,8 +58,16 @@ Done (task id, commit, proof file):
 - Task U0.3: Automated Viewport & Banned-String Gate (`npm run check:ui` in `package.json`, Playwright script `scripts/check_ui.py` testing 1366x768 and 1920x1080 across all 5 routes, verifying `scrollHeight <= innerHeight` and 0 console errors, screenshot captures, and `check_all.py` integration) | commit 9bee767 | docs/proof/ui/u0_proof.txt
 - Task U0.2: Section 9 Backend Contract Additions (`backend/main.py` updated and verified with `scripts/verify_u0_2.py`: `GET /api/papers/{id}/sheets`, `GET /api/sheets/{id}`, `GET /api/sheets/{id}/pages/{n}/image`, `GET /api/sheets/{id}/review`, `POST /api/evaluations/{id}/review`, `POST /api/sheets/{id}/approve-unflagged`, `POST /api/evaluations/{id}/recheck`, `POST /api/sheets/{id}/finish`, `GET /api/sheets/{id}/report`) | commit 867aad6 | docs/proof/ui/u0_2_proof.txt
 - Task U0.1: Locked Viewport App Shell & Design System (`100dvh` grid shell `grid-template-rows: 48px 1fr 56px`, `:root` tokens, Noto Sans + Noto Sans Devanagari fonts, 48px TopBar, sliding overlay `ErrorBanner`, 56px `ActionBar`, hash routing `#/upload`, `#/processing/<sheetId>`, `#/evaluate/<sheetId>`, `#/report/<sheetId>`, `#/setup`, typed fetch client `src/api/client.ts`, polling hook `src/hooks/usePolling.ts`, central store `src/state/useSheetStore.ts`) | commit 25f64b5 | docs/proof/ui/u0_1_proof.txt
-In progress / failing (exact error): None. UI/UX Overhaul & Functional Bug Remediation completed and fully verified.
-UI phase and task: Remediation Complete (Strictly 3 Screens, Isolated Card A Question Paper & Card B Student Sheet Intake, Paper Lock Integrity Verified, Clickable Queue Rows with Inline Processing, Stitch Light Design System).
+In progress / failing (exact error): None.
+UI phase and task: System Stable & Verified.
+Recent Fixes & Hardening:
+- Fix 1: Section ID uniqueness on `POST /api/papers/{paper_id}/upload` (`backend/main.py`). Avoids reusing cached section IDs from AI extractions; generates fresh UUIDs (`s["id"] = sec_id`) and maps `q["section_id"] = sec_id`. Resolves `sqlite3.IntegrityError: UNIQUE constraint failed: sections.id`.
+- Fix 2: Root `conftest.py` with autouse `_isolated_storage` fixture. Redirects `DB_PATH`, `CACHE_DIR`, and `STORAGE_DIR` during pytest runs to a temporary folder (`tmp_path`), permanently preventing tests from polluting `data/app.db` with dummy test papers.
+- Fix 3: Pipeline Acceleration & Event Loop Unblocking. Parallelized Stage 2 OCR with `asyncio.Semaphore(3)` (reduced 9-page read time from ~160s to 43s), removed duplicate Groq OCR calls, eliminated upload orientation overhead, and wrapped line segmentation with `asyncio.to_thread`.
+- Fix 4: SheetViewer clipping fix (`src/components/SheetViewer.tsx`). Replaced `transform: scale()` inside flexbox with layout-driven percentage width (`width: ${zoom * 100}%`) and native scrollable container (`overflow-auto`).
+- Fix 5: Answer highlight bbox mapping (`src/screens/EvaluateScreen.tsx`). Correctly mapped active page box from backend bbox list `pgs.indexOf(activePage)` and converted coordinate order `[ymin, xmin, ymax, xmax]` -> `[x0, y0, x1, y1]`.
+- Fix 6: Objective question reference resolving (`backend/main.py`). Resolves option indices (e.g. `'1'`) and letter codes (e.g. `'B'`) to option text, scoring `"Operating System"` correctly as 1.0 / 1.0 M for Q.1 (A)(i). Added `correct_option` display and editing in `ReferenceCard.tsx`.
+- One-time Cleanup: Live database backed up to `data/app.db.before_clean`, `data/cache` test artifacts cleared, and clean schema reinitialized. Verified 34 tests passing with 0 database leaks.
 Screens done (upload | evaluate | report): upload | evaluate | report
 Last check:ui result and viewport sizes tested: ALL PASS (1366x768 and 1920x1080 across all screens; 0 scroll overflow; 0 console errors)
 Proof files in docs/proof/ui/: remediation_proof.txt, u0_proof.txt, u0_2_proof.txt, u1_upload_proof.txt, u1_u2_proof.txt, u3_proof.txt, u4_proof.txt, u4_u5_acceptance.txt

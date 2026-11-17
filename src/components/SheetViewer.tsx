@@ -6,6 +6,7 @@ import {
   ChevronLeft,
   ChevronRight,
   RefreshCw,
+  RotateCw,
   AlertCircle,
   FileText,
   CornerDownRight,
@@ -30,54 +31,56 @@ export const SheetViewer: React.FC<SheetViewerProps> = ({
   continuesPage,
   notAttempted = false,
 }) => {
-  const [zoom, setZoom] = useState(1);
-  const [pan, setPan] = useState({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1); // 1 = fit width
+  const canvasRef = useRef<HTMLDivElement>(null);
 
   const [imgNaturalSize, setImgNaturalSize] = useState({ width: 0, height: 0 });
-  const [imgRenderedSize, setImgRenderedSize] = useState({ width: 0, height: 0 });
   const [imgError, setImgError] = useState(false);
   const [imgKey, setImgKey] = useState(0);
+  const [isRotating, setIsRotating] = useState(false);
 
-  const containerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
 
-  // Reset zoom & pan on page change or fit
-  const handleFitWidth = useCallback(() => {
-    if (!containerRef.current || !imgNaturalSize.width) return;
-    const containerWidth = containerRef.current.clientWidth - 48; // padding
-    const scale = Math.min(2.5, Math.max(0.4, containerWidth / imgNaturalSize.width));
-    setZoom(scale);
-    setPan({ x: 0, y: 0 });
-  }, [imgNaturalSize]);
-
-  const handleFitHeight = useCallback(() => {
-    if (!containerRef.current || !imgNaturalSize.height) return;
-    const containerHeight = containerRef.current.clientHeight - 80;
-    const scale = Math.min(2.5, Math.max(0.4, containerHeight / imgNaturalSize.height));
-    setZoom(scale);
-    setPan({ x: 0, y: 0 });
-  }, [imgNaturalSize]);
-
-  // Update rendered dimensions when image loads or resizes
-  const updateRenderedDimensions = useCallback(() => {
-    if (imgRef.current) {
-      setImgRenderedSize({
-        width: imgRef.current.clientWidth,
-        height: imgRef.current.clientHeight,
+  const handleRotatePage = async () => {
+    if (isRotating) return;
+    setIsRotating(true);
+    try {
+      const res = await fetch(`/api/sheets/${sheetId}/pages/${currentPage}/rotate`, {
+        method: 'POST',
       });
+      if (res.ok) {
+        setImgKey((k) => k + 1);
+      }
+    } catch (err) {
+      console.error('Failed to rotate page:', err);
+    } finally {
+      setIsRotating(false);
     }
+  };
+
+  const handleFitWidth = useCallback(() => {
+    setZoom(1);
+    canvasRef.current?.scrollTo({ top: 0, left: 0 });
   }, []);
 
+  const handleFitHeight = useCallback(() => {
+    const el = canvasRef.current;
+    if (!el || !imgNaturalSize.width) return;
+    const availW = el.clientWidth - 32;
+    const availH = el.clientHeight - 32;
+    const hAtFitW = (availW * imgNaturalSize.height) / imgNaturalSize.width;
+    setZoom(Math.min(3, Math.max(0.3, availH / hAtFitW)));
+    el.scrollTo({ top: 0, left: 0 });
+  }, [imgNaturalSize]);
+
   useEffect(() => {
-    window.addEventListener('resize', updateRenderedDimensions);
-    return () => window.removeEventListener('resize', updateRenderedDimensions);
-  }, [updateRenderedDimensions]);
+    setZoom(1);
+    canvasRef.current?.scrollTo({ top: 0, left: 0 });
+  }, [currentPage]);
 
   // Ctrl + Wheel to zoom
   useEffect(() => {
-    const el = containerRef.current;
+    const el = canvasRef.current;
     if (!el) return;
 
     const handleWheel = (e: WheelEvent) => {
@@ -92,47 +95,24 @@ export const SheetViewer: React.FC<SheetViewerProps> = ({
     return () => el.removeEventListener('wheel', handleWheel);
   }, []);
 
-  // Mouse pan drag handlers
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (e.button !== 0) return; // Only left click drag
-    setIsDragging(true);
-    setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging) return;
-    setPan({
-      x: e.clientX - dragStart.x,
-      y: e.clientY - dragStart.y,
-    });
-  };
-
-  const handleMouseUp = () => {
-    setIsDragging(false);
-  };
-
   // Image load handler
   const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
     const img = e.currentTarget;
     setImgNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
     setImgError(false);
-    updateRenderedDimensions();
   };
 
-  // Compute rendered bounding box overlay coordinates
+  // Compute rendered bounding box overlay coordinates using percentages
   const renderBboxStyle = (): React.CSSProperties | null => {
-    if (!bbox || !imgRenderedSize.width || !imgRenderedSize.height) return null;
+    if (!bbox || bbox.some((v) => typeof v !== 'number' || Number.isNaN(v))) return null;
     const [x0, y0, x1, y1] = bbox;
-    const left = Math.round(x0 * imgRenderedSize.width);
-    const top = Math.round(y0 * imgRenderedSize.height);
-    const width = Math.round((x1 - x0) * imgRenderedSize.width);
-    const height = Math.round((y1 - y0) * imgRenderedSize.height);
+    if (x1 <= x0 || y1 <= y0) return null;
 
     return {
-      left: `${left}px`,
-      top: `${top}px`,
-      width: `${width}px`,
-      height: `${height}px`,
+      left: `${x0 * 100}%`,
+      top: `${y0 * 100}%`,
+      width: `${(x1 - x0) * 100}%`,
+      height: `${(y1 - y0) * 100}%`,
     };
   };
 
@@ -141,7 +121,6 @@ export const SheetViewer: React.FC<SheetViewerProps> = ({
 
   return (
     <div
-      ref={containerRef}
       aria-label="Sheet Viewer"
       className="flex flex-col min-h-0 h-full bg-[var(--surface-bg)] relative overflow-hidden select-none"
     >
@@ -219,21 +198,27 @@ export const SheetViewer: React.FC<SheetViewerProps> = ({
           >
             Fit Height
           </button>
+          <div className="h-3 w-[1px] bg-[var(--surface-border)] mx-1" />
+          <button
+            type="button"
+            onClick={handleRotatePage}
+            disabled={isRotating}
+            className="flex items-center gap-1 px-2 py-0.5 text-[11px] rounded hover:bg-[var(--surface-subtle)] text-[var(--ink-secondary)] font-medium transition disabled:opacity-50"
+            title="Rotate Page 90° Clockwise"
+          >
+            <RotateCw className={`w-3 h-3 ${isRotating ? 'animate-spin' : ''}`} />
+            Rotate
+          </button>
         </div>
       </div>
 
       {/* Main Interactive Canvas Area */}
       <div
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
-        className={`flex-1 relative overflow-hidden flex items-center justify-center p-4 cursor-${
-          isDragging ? 'grabbing' : 'grab'
-        }`}
+        ref={canvasRef}
+        className="flex-1 min-h-0 relative overflow-auto p-4"
       >
         {imgError ? (
-          <div className="p-6 bg-[var(--surface-card)] border border-[var(--status-failed-border)] rounded-lg text-center max-w-sm">
+          <div className="p-6 bg-[var(--surface-card)] border border-[var(--status-failed-border)] rounded-lg text-center max-w-sm mx-auto my-12">
             <AlertCircle className="w-8 h-8 text-[var(--status-failed)] mx-auto mb-2" />
             <p className="text-xs font-semibold text-[var(--ink-primary)] mb-1">
               Failed to load sheet page
@@ -255,12 +240,8 @@ export const SheetViewer: React.FC<SheetViewerProps> = ({
           </div>
         ) : (
           <div
-            style={{
-              transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-              transformOrigin: 'center center',
-              transition: isDragging ? 'none' : 'transform 100ms ease-out',
-            }}
-            className="relative inline-block max-w-none shadow-md rounded overflow-hidden bg-white"
+            style={{ width: `${zoom * 100}%` }}
+            className="relative mx-auto shadow-md rounded bg-white"
           >
             {/* Sheet Page Image */}
             <img
@@ -269,11 +250,8 @@ export const SheetViewer: React.FC<SheetViewerProps> = ({
               alt={`Answer Sheet Page ${currentPage}`}
               onLoad={handleImageLoad}
               onError={() => setImgError(true)}
-              className="block max-w-none pointer-events-none"
-              style={{
-                width: imgNaturalSize.width ? `${imgNaturalSize.width}px` : 'auto',
-                maxHeight: 'none',
-              }}
+              className="block w-full h-auto select-none"
+              draggable={false}
             />
 
             {/* Scaled Bounding Box Overlay */}

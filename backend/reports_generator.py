@@ -110,8 +110,8 @@ def format_concise_feedback(
         return "; ".join(parts[:2])
     return s[:240]
 
-def create_scaled_image(crop_path_str: Optional[str], max_w: float = 440.0, max_h: float = 130.0) -> Optional[RLImage]:
-    """Scales a cropped handwriting image to fit within max width and max height while preserving aspect ratio."""
+def create_scaled_image(crop_path_str: Optional[str], max_w: float = 480.0, max_h: float = 240.0) -> Optional[RLImage]:
+    """Scales a cropped handwriting image to fit within max width and max height while preserving aspect ratio and legibility."""
     if not crop_path_str:
         return None
     p = Path(crop_path_str)
@@ -146,10 +146,21 @@ def generate_student_report_card_pdf(
     strengths: List[str],
     improvements: List[str],
     quality_stats: Optional[Dict[str, int]] = None,
+    sections_meta: Optional[Dict[str, Dict[str, Any]]] = None,
 ):
     fonts = register_report_fonts()
     reg_font = fonts["regular"]
     bold_font = fonts["bold"]
+
+    # Defensive deduplication of questions by question_id or eval_id
+    seen_ids = set()
+    deduped_questions = []
+    for q in questions:
+        qid = str(q.get("question_id") or q.get("eval_id") or q.get("q_no"))
+        if qid not in seen_ids:
+            seen_ids.add(qid)
+            deduped_questions.append(q)
+    questions = deduped_questions
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     doc = SimpleDocTemplate(str(output_path), pagesize=letter, rightMargin=36, leftMargin=36, topMargin=36, bottomMargin=36)
@@ -281,9 +292,17 @@ def generate_student_report_card_pdf(
 
     for sec_name, q_list in sec_groups.items():
         sec_counted_score = sum(float(q.get("final_marks", 0.0)) for q in q_list if q.get("is_counted", True))
-        sec_counted_max = sum(float(q.get("max_marks", 0.0)) for q in q_list if q.get("is_counted", True))
-        if sec_counted_max == 0:
-            sec_counted_max = sum(float(q.get("max_marks", 0.0)) for q in q_list)
+        
+        # Take section max marks from sections_meta if available
+        sec_meta = sections_meta.get(sec_name.lower().strip()) if sections_meta else None
+        if sec_meta and (sec_meta.get("section_marks") or 0.0) > 0:
+            sec_counted_max = float(sec_meta["section_marks"])
+        elif sec_meta and (sec_meta.get("attempt_n") or 0) > 0 and (sec_meta.get("marks_each") or 0.0) > 0:
+            sec_counted_max = float(sec_meta["attempt_n"]) * float(sec_meta["marks_each"])
+        else:
+            sec_counted_max = sum(float(q.get("max_marks", 0.0)) for q in q_list if q.get("is_counted", True))
+            if sec_counted_max == 0:
+                sec_counted_max = sum(float(q.get("max_marks", 0.0)) for q in q_list)
 
         sec_banner = Table([
             [
@@ -319,8 +338,11 @@ def generate_student_report_card_pdf(
             max_m = float(q.get("max_marks", 0.0))
 
             if not is_counted:
-                badge = "<font color='#575E71'><b>[Optional — Not Counted]</b></font>"
-                marks_str = f"Excluded (Max {max_m:g}M)"
+                badge = "<font color='#575E71'><b>[Optional — Not Counted in Total]</b></font>"
+                if is_att:
+                    marks_str = f"{score:g} / {max_m:g} (Excluded)"
+                else:
+                    marks_str = f"0 / {max_m:g} (Excluded)"
             elif not is_att:
                 badge = "<font color='#BA1A1A'><b>[Unattempted — 0 Marks]</b></font>"
                 marks_str = f"0 / {max_m:g}"
