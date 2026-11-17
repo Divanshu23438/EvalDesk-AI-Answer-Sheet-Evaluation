@@ -89,9 +89,9 @@ export const PaperDetailsForm: React.FC<PaperDetailsFormProps> = ({ meta, hasTea
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             onBlur={() => handleBlurField('title', title.trim(), meta.title)}
-            placeholder="e.g. Operating Systems Final Exam"
-            className={`w-full px-2 py-1.5 rounded-md border text-xs bg-white text-slate-800 focus:outline-none focus:border-indigo-500 ${
-              !title.trim() ? 'border-amber-300' : 'border-slate-300'
+            placeholder={!title.trim() ? "Not detected — enter manually" : "e.g. Operating Systems Final Exam"}
+            className={`w-full px-2 py-1.5 rounded-md border text-xs bg-white text-slate-800 focus:outline-none focus:border-indigo-500 transition ${
+              !title.trim() ? 'border-amber-400 bg-amber-50/20 placeholder:text-amber-700/70 font-medium' : 'border-slate-300'
             }`}
           />
         </div>
@@ -101,8 +101,8 @@ export const PaperDetailsForm: React.FC<PaperDetailsFormProps> = ({ meta, hasTea
           <div className="flex items-center justify-between">
             <label className="text-[11px] font-medium text-slate-700">Exam / Term Name</label>
             {!examName.trim() && (
-              <span className="text-[9px] px-1.5 py-0.2 rounded bg-slate-200 text-slate-600 font-medium">
-                Optional
+              <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 font-medium">
+                Not detected
               </span>
             )}
           </div>
@@ -111,8 +111,10 @@ export const PaperDetailsForm: React.FC<PaperDetailsFormProps> = ({ meta, hasTea
             value={examName}
             onChange={(e) => setExamName(e.target.value)}
             onBlur={() => handleBlurField('exam_name', examName.trim(), meta.exam_name)}
-            placeholder="e.g. End Semester Exam 2026"
-            className="w-full px-2 py-1.5 rounded-md border border-slate-300 text-xs bg-white text-slate-800 focus:outline-none focus:border-indigo-500"
+            placeholder={!examName.trim() ? "Not detected — enter manually" : "e.g. End Semester Exam 2026"}
+            className={`w-full px-2 py-1.5 rounded-md border text-xs bg-white text-slate-800 focus:outline-none focus:border-indigo-500 transition ${
+              !examName.trim() ? 'border-amber-400 bg-amber-50/20 placeholder:text-amber-700/70 font-medium' : 'border-slate-300'
+            }`}
           />
         </div>
 
@@ -131,9 +133,9 @@ export const PaperDetailsForm: React.FC<PaperDetailsFormProps> = ({ meta, hasTea
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
             onBlur={() => handleBlurField('subject', subject.trim(), meta.subject)}
-            placeholder="e.g. Linux Architecture & Administration"
-            className={`w-full px-2 py-1.5 rounded-md border text-xs bg-white text-slate-800 focus:outline-none focus:border-indigo-500 ${
-              !subject.trim() ? 'border-amber-300' : 'border-slate-300'
+            placeholder={!subject.trim() ? "Not detected — enter manually" : "e.g. Linux Architecture & Administration"}
+            className={`w-full px-2 py-1.5 rounded-md border text-xs bg-white text-slate-800 focus:outline-none focus:border-indigo-500 transition ${
+              !subject.trim() ? 'border-amber-400 bg-amber-50/20 placeholder:text-amber-700/70 font-medium' : 'border-slate-300'
             }`}
           />
         </div>
@@ -143,8 +145,8 @@ export const PaperDetailsForm: React.FC<PaperDetailsFormProps> = ({ meta, hasTea
           <div className="flex items-center justify-between">
             <label className="text-[11px] font-medium text-slate-700">Subject Code</label>
             {!subjectCode.trim() && (
-              <span className="text-[9px] px-1.5 py-0.2 rounded bg-slate-200 text-slate-600 font-medium">
-                Optional
+              <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 font-medium">
+                Not detected
               </span>
             )}
           </div>
@@ -153,8 +155,10 @@ export const PaperDetailsForm: React.FC<PaperDetailsFormProps> = ({ meta, hasTea
             value={subjectCode}
             onChange={(e) => setSubjectCode(e.target.value)}
             onBlur={() => handleBlurField('subject_code', subjectCode.trim(), meta.subject_code)}
-            placeholder="e.g. CS-402 / IT-301"
-            className="w-full px-2 py-1.5 rounded-md border border-slate-300 text-xs bg-white text-slate-800 focus:outline-none focus:border-indigo-500 uppercase font-mono"
+            placeholder={!subjectCode.trim() ? "Not detected — enter manually" : "e.g. CS-402 / IT-301"}
+            className={`w-full px-2 py-1.5 rounded-md border text-xs bg-white text-slate-800 focus:outline-none focus:border-indigo-500 uppercase font-mono transition ${
+              !subjectCode.trim() ? 'border-amber-400 bg-amber-50/20 placeholder:text-amber-700/70 font-medium' : 'border-slate-300'
+            }`}
           />
         </div>
       </div>

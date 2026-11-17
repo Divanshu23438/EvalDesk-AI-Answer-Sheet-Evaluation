@@ -11,9 +11,11 @@ import {
   AlertTriangle,
   Clock,
   Sparkles,
+  Pencil,
 } from 'lucide-react';
 import { StatusChip, StatusType } from './StatusChip';
 import { apiClient } from '../api/client';
+import { IdentityForm } from './IdentityForm';
 
 export interface SheetQueueItem {
   id: string;
@@ -49,6 +51,7 @@ interface QueueRowProps {
   onSelect?: () => void;
   onRefresh?: () => void;
   onError?: (err: { code: string; message: string }) => void;
+  onEditIdentity?: () => void;
 }
 
 export const QueueRow: React.FC<QueueRowProps> = ({
@@ -57,10 +60,12 @@ export const QueueRow: React.FC<QueueRowProps> = ({
   onSelect,
   onRefresh,
   onError,
+  onEditIdentity,
 }) => {
   const [isRetrying, setIsRetrying] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [thumbError, setThumbError] = useState(false);
+  const [isEditingIdentity, setIsEditingIdentity] = useState(false);
 
   const isProcessing = [
     'queued',
@@ -287,9 +292,43 @@ export const QueueRow: React.FC<QueueRowProps> = ({
                     ({sheet.roll})
                   </span>
                 )}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (onEditIdentity) {
+                      onEditIdentity();
+                    } else {
+                      setIsEditingIdentity((prev) => !prev);
+                    }
+                  }}
+                  className="p-0.5 ml-0.5 text-slate-400 hover:text-indigo-600 rounded hover:bg-slate-100 transition inline-flex items-center"
+                  title="Edit student name & roll number (✎)"
+                  aria-label="Edit student identity"
+                >
+                  <Pencil className="w-3 h-3" />
+                </button>
               </span>
             ) : (
-              <span>{sheet.page_count || 1} pages</span>
+              <span className="inline-flex items-center gap-1">
+                <span>{sheet.page_count || 1} pages</span>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (onEditIdentity) {
+                      onEditIdentity();
+                    } else {
+                      setIsEditingIdentity((prev) => !prev);
+                    }
+                  }}
+                  className="p-0.5 ml-0.5 text-slate-400 hover:text-indigo-600 rounded hover:bg-slate-100 transition inline-flex items-center"
+                  title="Enter student name & roll number (✎)"
+                  aria-label="Edit student identity"
+                >
+                  <Pencil className="w-3 h-3" />
+                </button>
+              </span>
             )}
 
             {sheet.total_score !== undefined && sheet.total_score > 0 && (
@@ -301,6 +340,22 @@ export const QueueRow: React.FC<QueueRowProps> = ({
               </>
             )}
           </div>
+
+          {/* Self-contained Inline Identity Editor if not handled by parent */}
+          {isEditingIdentity && !onEditIdentity && (
+            <div className="mb-2" onClick={(e) => e.stopPropagation()}>
+              <IdentityForm
+                sheetId={sheet.id}
+                initialName={sheet.student_name || ''}
+                initialRoll={sheet.roll || ''}
+                onSaved={() => {
+                  setIsEditingIdentity(false);
+                  if (onRefresh) onRefresh();
+                }}
+                onCancel={() => setIsEditingIdentity(false)}
+              />
+            </div>
+          )}
 
           {/* Live Inline 5-Stage Processing Tracker */}
           {isProcessing && (

@@ -88,6 +88,15 @@ export const UploadScreen: React.FC = () => {
   const [newPaperTitle, setNewPaperTitle] = useState('');
   const [isCreatingNewPaper, setIsCreatingNewPaper] = useState(false);
   const [paperMeta, setPaperMeta] = useState<PaperMeta | null>(null);
+  const [newPaperMeta, setNewPaperMeta] = useState<PaperMeta>({
+    title: '',
+    subject: '',
+    subject_code: '',
+    exam_name: '',
+    strictness_level: 3,
+    subject_domain: 'general',
+  });
+  const [editingIdentitySheetIds, setEditingIdentitySheetIds] = useState<Set<string>>(new Set());
 
   // Card B: Student Sheets state
   const [isSheetDragOver, setIsSheetDragOver] = useState(false);
@@ -288,7 +297,7 @@ export const UploadScreen: React.FC = () => {
   };
 
   const handleCreatePaper = async () => {
-    const title = newPaperTitle.trim();
+    const title = (newPaperMeta.title || newPaperTitle).trim();
     if (!title) {
       setPaperMessage({ type: 'error', text: 'Please enter an assessment title.' });
       return;
@@ -296,24 +305,35 @@ export const UploadScreen: React.FC = () => {
     try {
       const res = await apiClient.post<any>('/api/papers', {
         title,
-        subject: '',
-        strictness_level: 3,
-        subject_domain: 'general',
+        subject: newPaperMeta.subject.trim(),
+        subject_code: newPaperMeta.subject_code.trim(),
+        exam_name: newPaperMeta.exam_name.trim(),
+        strictness_level: newPaperMeta.strictness_level || 3,
+        subject_domain: newPaperMeta.subject_domain || 'general',
         checking_medium: 'ai_reference',
       });
       setNewPaperTitle('');
+      setNewPaperMeta({
+        title: '',
+        subject: '',
+        subject_code: '',
+        exam_name: '',
+        strictness_level: 3,
+        subject_domain: 'general',
+      });
       setIsCreatingNewPaper(false);
       setPaperMessage({ type: 'success', text: 'Created new assessment paper.' });
-      if (res.paper_id) {
+      const createdId = res.id || res.paper_id;
+      if (createdId) {
         store.setPaper({
-          id: res.paper_id,
+          id: createdId,
           title: res.title || title,
           totalMarks: 0,
           questionCount: 0,
           isLocked: false,
         });
         store.setSheet(null);
-        await loadPaperDetails(res.paper_id);
+        await loadPaperDetails(createdId);
       }
       await loadPapers();
     } catch (err: any) {
@@ -766,26 +786,13 @@ export const UploadScreen: React.FC = () => {
             {/* Paper Selection Bar & Inline Create */}
             <div className="flex items-center gap-2 mb-2.5">
               {isCreatingNewPaper ? (
-                <div className="flex-1 flex items-center gap-1.5">
-                  <input
-                    type="text"
-                    value={newPaperTitle}
-                    onChange={(e) => setNewPaperTitle(e.target.value)}
-                    placeholder="Enter Assessment Title..."
-                    className="flex-1 text-xs px-2.5 py-1 rounded-md border border-slate-300 focus:outline-none focus:border-indigo-500"
-                    autoFocus
-                  />
-                  <button
-                    type="button"
-                    onClick={handleCreatePaper}
-                    className="px-2.5 py-1 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-md transition"
-                  >
-                    Create
-                  </button>
+                <div className="flex-1 flex items-center justify-between text-xs font-semibold text-indigo-900 bg-indigo-50/70 border border-indigo-200 px-3 py-1.5 rounded-md">
+                  <span>Create New Assessment Paper</span>
                   <button
                     type="button"
                     onClick={() => setIsCreatingNewPaper(false)}
-                    className="p-1 text-slate-400 hover:text-slate-600"
+                    className="p-1 text-slate-400 hover:text-slate-600 rounded"
+                    title="Cancel create"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
@@ -821,15 +828,41 @@ export const UploadScreen: React.FC = () => {
               )}
             </div>
 
-            {/* Paper details (title, subject, code, exam) + strictness 1-5 */}
-            {paperMeta && (
+            {/* Paper details (title, subject, code, exam, domain) + strictness 1-5 */}
+            {isCreatingNewPaper ? (
+              <div className="space-y-2">
+                <PaperDetailsForm
+                  meta={newPaperMeta}
+                  hasTeacherKey={false}
+                  onSave={(patch) => setNewPaperMeta((prev) => ({ ...prev, ...patch }))}
+                />
+                <div className="flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsCreatingNewPaper(false)}
+                    className="px-3 py-1 text-xs text-slate-600 hover:text-slate-800 rounded-md border border-slate-300 bg-white hover:bg-slate-50 transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCreatePaper}
+                    disabled={!newPaperMeta.title.trim() && !newPaperTitle.trim()}
+                    className="px-3.5 py-1 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-md transition flex items-center gap-1.5 shadow-2xs"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Create Assessment</span>
+                  </button>
+                </div>
+              </div>
+            ) : paperMeta ? (
               <PaperDetailsForm
                 key={state.paperId}
                 meta={paperMeta}
                 hasTeacherKey={hasAnswerKey}
                 onSave={savePaperMeta}
               />
-            )}
+            ) : null}
 
             {/* When Unlocked: Show 2-Column Upload Grid (QP & AK), Status Chips, Section Summary, and Actions */}
             {!state.paperIsLocked ? (
@@ -1269,13 +1302,35 @@ export const UploadScreen: React.FC = () => {
                     onError={(err) => {
                       store.setError(err);
                     }}
+                    onEditIdentity={() => {
+                      setEditingIdentitySheetIds((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(sheet.id)) next.delete(sheet.id);
+                        else next.add(sheet.id);
+                        return next;
+                      });
+                    }}
                   />
-                  {sheet.status === 'needs_identity' && (
+                  {(sheet.status === 'needs_identity' || editingIdentitySheetIds.has(sheet.id)) && (
                     <IdentityForm
                       sheetId={sheet.id}
                       initialName={sheet.student_name || ''}
                       initialRoll={sheet.roll || ''}
-                      onSaved={loadSheets}
+                      onSaved={() => {
+                        setEditingIdentitySheetIds((prev) => {
+                          const next = new Set(prev);
+                          next.delete(sheet.id);
+                          return next;
+                        });
+                        loadSheets();
+                      }}
+                      onCancel={() => {
+                        setEditingIdentitySheetIds((prev) => {
+                          const next = new Set(prev);
+                          next.delete(sheet.id);
+                          return next;
+                        });
+                      }}
                     />
                   )}
                   {((ACTIVE_STATUSES.includes(sheet.status) || sheet.status === 'needs_identity' || sheet.status === 'failed') && sheet.pages && sheet.pages.length > 0) && (

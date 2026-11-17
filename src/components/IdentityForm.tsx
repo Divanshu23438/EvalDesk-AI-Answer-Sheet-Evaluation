@@ -8,9 +8,17 @@ interface IdentityFormProps {
   initialRoll?: string;
   /** Called after the server accepted the identity (evaluation is auto-queued server-side). */
   onSaved: () => void;
+  /** Optional cancel callback to close form when opened via manual edit button */
+  onCancel?: () => void;
 }
 
-export const IdentityForm: React.FC<IdentityFormProps> = ({ sheetId, initialName = '', initialRoll = '', onSaved }) => {
+export const IdentityForm: React.FC<IdentityFormProps> = ({
+  sheetId,
+  initialName = '',
+  initialRoll = '',
+  onSaved,
+  onCancel,
+}) => {
   const [name, setName] = useState(initialName);
   const [roll, setRoll] = useState(initialRoll);
   const [saving, setSaving] = useState(false);
@@ -66,14 +74,25 @@ export const IdentityForm: React.FC<IdentityFormProps> = ({ sheetId, initialName
 
       <div className="flex items-center justify-between gap-2">
         <span className="text-[11px] text-rose-700 min-h-[1rem]">{error}</span>
-        <button
-          type="submit"
-          disabled={saving || !name.trim() || !roll.trim()}
-          className="px-3 py-1 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-md transition flex items-center gap-1.5 shrink-0"
-        >
-          {saving && <RefreshCw className="w-3 h-3 animate-spin" />}
-          <span>Save and evaluate</span>
-        </button>
+        <div className="flex items-center gap-1.5">
+          {onCancel && (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="px-2.5 py-1 text-xs font-medium text-slate-600 hover:text-slate-800 rounded-md border border-slate-300 bg-white hover:bg-slate-50 transition"
+            >
+              Cancel
+            </button>
+          )}
+          <button
+            type="submit"
+            disabled={saving || !name.trim() || !roll.trim()}
+            className="px-3 py-1 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-md transition flex items-center gap-1.5 shrink-0"
+          >
+            {saving && <RefreshCw className="w-3 h-3 animate-spin" />}
+            <span>Save and evaluate</span>
+          </button>
+        </div>
       </div>
     </form>
   );

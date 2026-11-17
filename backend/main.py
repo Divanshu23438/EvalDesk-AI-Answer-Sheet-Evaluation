@@ -2454,6 +2454,7 @@ async def set_sheet_identity(
 # A16: Global evaluation worker queue semaphore with configurable concurrency
 EVAL_CONCURRENCY = int(os.environ.get("EVAL_CONCURRENCY", "1"))
 _eval_semaphore: Optional[asyncio.Semaphore] = None
+_db_write_lock = asyncio.Lock()
 
 def get_eval_semaphore() -> asyncio.Semaphore:
     global _eval_semaphore
@@ -2595,12 +2596,13 @@ async def _execute_sheet_evaluation_pipeline(sheet_id: str):
             async def read_page(p_row):
                 async with page_sem:
                     page_num = p_row["page_number"]
-                    with get_db() as conn:
-                        conn.execute(
-                            "UPDATE sheet_pages SET ocr_status = 'reading', ocr_error = NULL WHERE sheet_id = ? AND page_number = ?",
-                            (sheet_id, page_num),
-                        )
-                        conn.commit()
+                    async with _db_write_lock:
+                        with get_db() as conn:
+                            conn.execute(
+                                "UPDATE sheet_pages SET ocr_status = 'reading', ocr_error = NULL WHERE sheet_id = ? AND page_number = ?",
+                                (sheet_id, page_num),
+                            )
+                            conn.commit()
 
                     try:
                         page_path = from_relative_posix(p_row["file_path"])
@@ -2668,21 +2670,23 @@ async def _execute_sheet_evaluation_pipeline(sheet_id: str):
                         legs = [float(ans["legibility"]) for ans in page_answers if ans.get("legibility") is not None]
                         avg_page_leg = round(sum(legs) / len(legs), 2) if legs else None
 
-                        with get_db() as conn:
-                            conn.execute(
-                                "UPDATE sheet_pages SET ocr_status = 'done', ocr_legibility = ?, ocr_error = NULL WHERE sheet_id = ? AND page_number = ?",
-                                (avg_page_leg, sheet_id, page_num),
-                            )
-                            conn.commit()
+                        async with _db_write_lock:
+                            with get_db() as conn:
+                                conn.execute(
+                                    "UPDATE sheet_pages SET ocr_status = 'done', ocr_legibility = ?, ocr_error = NULL WHERE sheet_id = ? AND page_number = ?",
+                                    (avg_page_leg, sheet_id, page_num),
+                                )
+                                conn.commit()
 
                         return page_num, page_answers
                     except Exception as exc:
-                        with get_db() as conn:
-                            conn.execute(
-                                "UPDATE sheet_pages SET ocr_status = 'failed', ocr_error = ? WHERE sheet_id = ? AND page_number = ?",
-                                (str(exc), sheet_id, page_num),
-                            )
-                            conn.commit()
+                        async with _db_write_lock:
+                            with get_db() as conn:
+                                conn.execute(
+                                    "UPDATE sheet_pages SET ocr_status = 'failed', ocr_error = ? WHERE sheet_id = ? AND page_number = ?",
+                                    (str(exc), sheet_id, page_num),
+                                )
+                                conn.commit()
                         raise exc
 
             results = await asyncio.gather(*[read_page(p) for p in pages])
@@ -2776,11 +2780,12 @@ async def _execute_sheet_evaluation_pipeline(sheet_id: str):
 
                 completed_marking += 1
                 try:
-                    with get_db() as conn:
-                        conn.execute(
-                            "UPDATE sheets SET stage_key = 'marking', current_stage = ?, updated_at = datetime('now') WHERE id = ?",
-                            (f"Marking answers against rubric ({completed_marking}/{total_q_count})", sheet_id),
-                        )
+                    async with _db_write_lock:
+                        with get_db() as conn:
+                            conn.execute(
+                                "UPDATE sheets SET stage_key = 'marking', current_stage = ?, updated_at = datetime('now') WHERE id = ?",
+                                (f"Marking answers against rubric ({completed_marking}/{total_q_count})", sheet_id),
+                            )
                 except Exception:
                     pass
 
