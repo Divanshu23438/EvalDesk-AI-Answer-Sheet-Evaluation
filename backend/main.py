@@ -11,7 +11,7 @@ import traceback
 from datetime import datetime
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Union, Tuple
 from PIL import Image
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Query, BackgroundTasks, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -180,9 +180,16 @@ class ExtractedQuestion(BaseModel):
     options: List[str] = []
     word_limit: Optional[int] = 150
 
+VALID_SUBJECT_DOMAINS = {
+    "general", "cs_it", "math_quant", "science_bio_chem", "humanities_law", "languages"
+}
+
 class ExtractPaperResponse(BaseModel):
     draft_id: str
     paper_title: Optional[str] = ""
+    subject: Optional[str] = ""
+    subject_code: Optional[str] = ""
+    exam_name: Optional[str] = ""
     questions: List[ExtractedQuestion]
     sections: List[SectionItem] = []
     total_marks: float
@@ -203,19 +210,31 @@ class QuestionInput(BaseModel):
     section_id: Optional[str] = None
     options: List[str] = Field(default_factory=list)
     word_limit: Optional[int] = 150
-    strictness_override: Optional[str] = None
+    strictness_override: Optional[Union[int, str]] = None
     checking_medium_override: Optional[str] = None
 
 class PaperCreateRequest(BaseModel):
     draft_id: Optional[str] = None
     title: Optional[str] = None
-    subject: Optional[str] = "General"
+    subject: Optional[str] = ""
+    subject_code: Optional[str] = ""
+    exam_name: Optional[str] = ""
     strictness: Optional[str] = "lenient"
+    strictness_level: Optional[int] = 3
+    subject_domain: Optional[str] = "general"
     checking_medium: Optional[str] = "ai_reference"
     total_marks: Optional[float] = None
     instructions: Optional[str] = ""
     sections: Optional[List[SectionItem]] = Field(default_factory=list)
     questions: Optional[List[QuestionInput]] = Field(default_factory=list)
+
+class PaperPatchRequest(BaseModel):
+    title: Optional[str] = None
+    subject: Optional[str] = None
+    subject_code: Optional[str] = None
+    exam_name: Optional[str] = None
+    strictness_level: Optional[int] = None
+    subject_domain: Optional[str] = None
 
 class QuestionsUpdateRequest(BaseModel):
     questions: List[QuestionInput]
@@ -254,7 +273,7 @@ class QuestionUpdate(BaseModel):
     max_marks: float
     question_type: str = "short"
     section_name: str = "General"
-    strictness_override: Optional[str] = None
+    strictness_override: Optional[Union[int, str]] = None
     checking_medium_override: Optional[str] = None
 
 class PaperSetupUpdate(BaseModel):
@@ -278,6 +297,26 @@ class RecheckRequest(BaseModel):
 
 class LineVerification(BaseModel):
     verified_text: str
+
+def parse_strictness_override(val: Any) -> Tuple[Optional[int], Optional[Union[str, int]]]:
+    if val is None or val == "":
+        return None, None
+    if isinstance(val, int):
+        if not (1 <= val <= 5):
+            raise HTTPException(status_code=422, detail="strictness_override must be between 1 and 5")
+        return val, val
+    if isinstance(val, str):
+        v = val.strip().lower()
+        if v.isdigit():
+            iv = int(v)
+            if not (1 <= iv <= 5):
+                raise HTTPException(status_code=422, detail="strictness_override must be between 1 and 5")
+            return iv, iv
+        text_to_int = {"lenient": 1, "supportive": 2, "balanced": 3, "standard": 3, "rigorous": 4, "strict": 5}
+        if v in text_to_int:
+            return text_to_int[v], val
+        return None, None
+    return None, None
 
 # ----------------- SYSTEM & SETTINGS -----------------
 
@@ -350,6 +389,9 @@ def get_paper(paper_id: str):
                 q["options"] = json.loads(q.get("options_json") or "[]")
             except Exception:
                 q["options"] = []
+            if q.get("strictness_level_override") is not None:
+                if q.get("strictness_override") is None or str(q.get("strictness_override", "")).isdigit():
+                    q["strictness_override"] = q["strictness_level_override"]
 
         cursor.execute("SELECT * FROM \"references\" WHERE paper_id = ?", (paper_id,))
         references = [dict(r) for r in cursor.fetchall()]
@@ -512,6 +554,9 @@ For each item return:
 
 Also return:
 - `paper_title`: the printed exam title, header, course, or subject (e.g. "B.C.A (cc) - 2nd Sem MST-I LINUX" or "Operating Systems Midterm Exam") if printed on the paper, otherwise empty string ""
+- `subject`: the printed subject name (e.g. "Operating Systems", "Linux", "Data Structures") if printed on the paper, otherwise empty string ""
+- `subject_code`: the printed course / subject code (e.g. "CS-402", "BCA-201", "IT-301") if printed on the paper, otherwise empty string ""
+- `exam_name`: the printed examination or term name (e.g. "End Semester Examination Dec 2025", "Mid Semester Test I", "Final Exam") if printed on the paper, otherwise empty string ""
 - `total_marks` as a number if printed on the paper (or 0 if not printed)
 - `instructions` such as "attempt any N", general exam instructions, etc.
 - `warnings` list of any unreadable parts or ambiguities.
@@ -520,6 +565,9 @@ Also return:
 Return ONLY a valid JSON object matching this schema:
 {
   "paper_title": "...",
+  "subject": "...",
+  "subject_code": "...",
+  "exam_name": "...",
   "total_marks": 60.0,
   "instructions": "...",
   "rotation_degrees_clockwise": 0,
@@ -786,9 +834,15 @@ async def _extract_questions_from_file_bytes(content: bytes, filename: str) -> D
         total_marks = sum_of_marks if printed_total <= 0 else printed_total
 
     paper_title = str(data.get("paper_title") or data.get("title") or "").strip()
+    subject = str(data.get("subject") or "").strip()
+    subject_code = str(data.get("subject_code") or "").strip()
+    exam_name = str(data.get("exam_name") or "").strip()
 
     result_payload = {
         "paper_title": paper_title,
+        "subject": subject,
+        "subject_code": subject_code,
+        "exam_name": exam_name,
         "questions": validated_questions,
         "sections": validated_sections,
         "total_marks": total_marks,
@@ -839,6 +893,9 @@ async def extract_paper_questions(
     response_payload = {
         "draft_id": draft_id,
         "paper_title": res["paper_title"],
+        "subject": res.get("subject", ""),
+        "subject_code": res.get("subject_code", ""),
+        "exam_name": res.get("exam_name", ""),
         "questions": res["questions"],
         "sections": res["sections"],
         "total_marks": res["total_marks"],
@@ -950,19 +1007,36 @@ async def upload_question_paper_to_paper(
         if extracted_title and (not new_title or new_title.lower().startswith("assessment ") or new_title.lower().startswith("new assessment") or new_title.lower().startswith("untitled")):
             new_title = extracted_title
 
+        extracted_subject = res.get("subject", "")
+        extracted_subject_code = res.get("subject_code", "")
+        extracted_exam_name = res.get("exam_name", "")
+
         cursor.execute(
             """
             UPDATE papers
-            SET title = ?, total_marks = ?, paper_path = ?, updated_at = datetime('now')
+            SET title = ?,
+                subject = CASE WHEN (subject IS NULL OR subject = '' OR subject = 'General') AND ? != '' THEN ? ELSE subject END,
+                subject_code = CASE WHEN (subject_code IS NULL OR subject_code = '') AND ? != '' THEN ? ELSE subject_code END,
+                exam_name = CASE WHEN (exam_name IS NULL OR exam_name = '') AND ? != '' THEN ? ELSE exam_name END,
+                total_marks = ?, paper_path = ?, updated_at = datetime('now')
             WHERE id = ?
             """,
-            (new_title, total_marks, str(saved_paper_path), paper_id),
+            (
+                new_title,
+                extracted_subject, extracted_subject,
+                extracted_subject_code, extracted_subject_code,
+                extracted_exam_name, extracted_exam_name,
+                total_marks, str(saved_paper_path), paper_id
+            ),
         )
 
     return {
         "status": "uploaded",
         "paper_id": paper_id,
         "paper_title": new_title,
+        "subject": extracted_subject,
+        "subject_code": extracted_subject_code,
+        "exam_name": extracted_exam_name,
         "questions_count": len(validated_questions),
         "sections_count": len(validated_sections),
         "total_marks": total_marks,
@@ -1055,15 +1129,37 @@ async def create_paper_setup(
         calc_total = sum(q.max_marks for q in payload.questions)
         total_marks = payload.total_marks if (payload.total_marks is not None and payload.total_marks > 0) else calc_total
 
+        strict_lvl = payload.strictness_level
+        if strict_lvl is None or not (1 <= strict_lvl <= 5):
+            old_str = (payload.strictness or "lenient").lower()
+            mapping = {"lenient": 1, "supportive": 2, "balanced": 3, "standard": 3, "rigorous": 4, "strict": 5}
+            strict_lvl = mapping.get(old_str, 3)
+
+        domain = payload.subject_domain if payload.subject_domain in VALID_SUBJECT_DOMAINS else "general"
+
         try:
             with get_db() as conn:
                 cursor = conn.cursor()
                 cursor.execute(
                     """
-                    INSERT INTO papers (id, title, subject, total_marks, strictness, checking_medium, has_answer_key, is_locked, instructions, paper_path)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+                    INSERT INTO papers (id, title, subject, subject_code, exam_name, total_marks, strictness, strictness_level, subject_domain, checking_medium, has_answer_key, is_locked, instructions, paper_path)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
                     """,
-                    (paper_id, payload.title, payload.subject or "General", total_marks, payload.strictness or "lenient", payload.checking_medium or "ai_reference", 0, payload.instructions or "", str(paper_path) if paper_path else None),
+                    (
+                        paper_id,
+                        payload.title,
+                        payload.subject or "",
+                        payload.subject_code or "",
+                        payload.exam_name or "",
+                        total_marks,
+                        payload.strictness or "lenient",
+                        strict_lvl,
+                        domain,
+                        payload.checking_medium or "ai_reference",
+                        0,
+                        payload.instructions or "",
+                        str(paper_path) if paper_path else None
+                    ),
                 )
 
                 # Insert sections with fresh unique IDs per paper to prevent UNIQUE constraint collisions
@@ -1098,10 +1194,11 @@ async def create_paper_setup(
                     sec_name = (q.section_name or "").strip()
                     q_sec_id = (old_to_new_sec_id.get(q.section_id) if q.section_id else None) or sec_id_map.get(sec_name.lower())
                     key = q.key or generate_scoped_key(sec_name or "General", q.q_no, idx)
+                    q_lvl, q_override_str = parse_strictness_override(q.strictness_override)
                     cursor.execute(
                         """
-                        INSERT INTO questions (id, paper_id, key, q_no, question_text, max_marks, question_type, section_name, section_id, options_json, word_limit, strictness_override, checking_medium_override, order_idx)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        INSERT INTO questions (id, paper_id, key, q_no, question_text, max_marks, question_type, section_name, section_id, options_json, word_limit, strictness_override, strictness_level_override, checking_medium_override, order_idx)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         """,
                         (
                             q_id,
@@ -1115,7 +1212,8 @@ async def create_paper_setup(
                             q_sec_id,
                             json.dumps(q.options),
                             q.word_limit or 150,
-                            q.strictness_override,
+                            q_override_str,
+                            q_lvl,
                             q.checking_medium_override,
                             idx,
                         ),
@@ -1212,10 +1310,11 @@ def update_paper_questions(paper_id: str, payload: QuestionsUpdateRequest):
             sec_name = (q.section_name or "").strip()
             q_sec_id = (old_to_new_sec_id.get(q.section_id) if q.section_id else None) or sec_id_map.get(sec_name.lower())
             key = q.key or generate_scoped_key(sec_name or "General", q.q_no, idx)
+            q_lvl, q_override_str = parse_strictness_override(q.strictness_override)
             cursor.execute(
                 """
-                INSERT INTO questions (id, paper_id, key, q_no, question_text, max_marks, question_type, section_name, section_id, options_json, word_limit, strictness_override, checking_medium_override, order_idx)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO questions (id, paper_id, key, q_no, question_text, max_marks, question_type, section_name, section_id, options_json, word_limit, strictness_override, strictness_level_override, checking_medium_override, order_idx)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     q_id,
@@ -1229,7 +1328,8 @@ def update_paper_questions(paper_id: str, payload: QuestionsUpdateRequest):
                     q_sec_id,
                     json.dumps(q.options),
                     q.word_limit or 150,
-                    q.strictness_override,
+                    q_override_str,
+                    q_lvl,
                     q.checking_medium_override,
                     idx,
                 ),
@@ -2062,16 +2162,70 @@ def update_paper(paper_id: str, payload: PaperSetupUpdate):
         )
 
         for q in payload.questions:
+            q_lvl, q_override_str = parse_strictness_override(q.strictness_override)
             cursor.execute(
                 """
                 UPDATE questions
-                SET q_no = ?, question_text = ?, max_marks = ?, question_type = ?, section_name = ?, strictness_override = ?, checking_medium_override = ?
+                SET q_no = ?, question_text = ?, max_marks = ?, question_type = ?, section_name = ?, strictness_override = ?, strictness_level_override = ?, checking_medium_override = ?
                 WHERE id = ? AND paper_id = ?
                 """,
-                (q.q_no, q.question_text, q.max_marks, q.question_type, q.section_name, q.strictness_override, q.checking_medium_override, q.id, paper_id),
+                (q.q_no, q.question_text, q.max_marks, q.question_type, q.section_name, q_override_str, q_lvl, q.checking_medium_override, q.id, paper_id),
             )
 
     return {"status": "updated", "total_marks": total_marks, "is_locked": payload.is_locked}
+
+@app.patch("/api/papers/{paper_id}")
+def patch_paper_details(paper_id: str, payload: PaperPatchRequest):
+    """
+    Light paper metadata update (title, subject, subject_code, exam_name, strictness_level 1-5, subject_domain).
+    Allowed when paper is locked (P9.1).
+    """
+    if payload.title is not None and not payload.title.strip():
+        raise HTTPException(status_code=422, detail="Title cannot be empty")
+    if payload.strictness_level is not None and not (1 <= payload.strictness_level <= 5):
+        raise HTTPException(status_code=422, detail="strictness_level must be between 1 and 5")
+    if payload.subject_domain is not None and payload.subject_domain not in VALID_SUBJECT_DOMAINS:
+        raise HTTPException(status_code=422, detail=f"subject_domain must be one of {sorted(VALID_SUBJECT_DOMAINS)}")
+
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM papers WHERE id = ?", (paper_id,))
+        existing = cursor.fetchone()
+        if not existing:
+            raise HTTPException(status_code=404, detail="Paper not found")
+
+        updates = []
+        params = []
+        if payload.title is not None:
+            updates.append("title = ?")
+            params.append(payload.title.strip())
+        if payload.subject is not None:
+            updates.append("subject = ?")
+            params.append(payload.subject.strip())
+        if payload.subject_code is not None:
+            updates.append("subject_code = ?")
+            params.append(payload.subject_code.strip())
+        if payload.exam_name is not None:
+            updates.append("exam_name = ?")
+            params.append(payload.exam_name.strip())
+        if payload.strictness_level is not None:
+            updates.append("strictness_level = ?")
+            params.append(payload.strictness_level)
+            text_map = {1: "lenient", 2: "supportive", 3: "balanced", 4: "rigorous", 5: "strict"}
+            updates.append("strictness = ?")
+            params.append(text_map.get(payload.strictness_level, "balanced"))
+        if payload.subject_domain is not None:
+            updates.append("subject_domain = ?")
+            params.append(payload.subject_domain.strip())
+
+        if updates:
+            updates.append("updated_at = datetime('now')")
+            params.append(paper_id)
+            cursor.execute(f"UPDATE papers SET {', '.join(updates)} WHERE id = ?", tuple(params))
+
+        cursor.execute("SELECT * FROM papers WHERE id = ?", (paper_id,))
+        updated = dict(cursor.fetchone())
+        return {"status": "updated", "paper": updated, **updated}
 
 @app.post("/api/papers/{paper_id}/unlock")
 def unlock_paper(paper_id: str):

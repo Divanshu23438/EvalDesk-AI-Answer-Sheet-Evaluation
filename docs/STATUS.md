@@ -1,7 +1,13 @@
 # STATUS (update at the end of every session)
 Date / author (agent or model name): 2026-11-17 / Antigravity (Gemini 3.8 Flash)
-Current phase and task: Phase P9.0 complete; starting Phase P9.1 (Schema and paper metadata).
+Current phase and task: Phase P9.1 complete; starting Phase P9.2 (Strictness engine).
 Done (task id, commit, proof file):
+- Task P9.1: Schema and Paper Metadata (`backend/db.py`, `backend/main.py`, `backend/tests/test_migration.py`, `backend/tests/test_p9_1.py`, `scripts/verify_p9_1.py`, `docs/proof/P9.1/`):
+  1. Implemented idempotent migration in `backend/db.py` adding all 13 columns across `papers`, `questions`, `sheets`, `sheet_pages`, and `evaluations`. Added WAL mode. Backfilled `strictness_level` and `strictness_level_override` from legacy text. Verified migration runs twice without error via `test_migration.py`.
+  2. Implemented `PATCH /api/papers/{paper_id}` with strict validation (ranges 1..5 for `strictness_level`, valid subject domain check, non-empty title). Verified updates persist and are permitted even when paper is locked.
+  3. Extended `_extract_questions_from_file_bytes`, T1 prompt, and `ExtractPaperResponse` with `subject`, `subject_code`, `exam_name`.
+  4. Updated `QuestionInput.strictness_override` to accept integer values 1-5, persisted to `strictness_level_override` across all INSERT sites and UPDATE paths.
+  5. Verified all 38 pytest tests pass (100%) and saved curl/API proof to `docs/proof/P9.1/curl_outputs.txt`. | docs/proof/P9.1/
 - Task P9.0: Preflight and UI Patching (`src/api/client.ts`, `src/screens/UploadScreen.tsx`, `src/components/QueueRow.tsx`, `src/components/{PaperDetailsForm,StrictnessPicker,IdentityForm,PageFlipStrip}.tsx`, `scripts/check_all.py`, `docs/proof/P9.0/`):
   1. Ran preflight `check_all.py` baseline (ALL PASS: banned strings, git secrets, 34 pytest passing, tsc clean, live provider health).
   2. Applied `UploadScreen.diff` cleanly to `src/screens/UploadScreen.tsx`; incorporated `PaperDetailsForm`, `StrictnessPicker`, `IdentityForm`, and `PageFlipStrip`.

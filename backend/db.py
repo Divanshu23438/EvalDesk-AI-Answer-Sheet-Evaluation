@@ -6,6 +6,7 @@ from backend.config import DB_PATH
 def get_db_connection() -> sqlite3.Connection:
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode = WAL")
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
 
@@ -31,8 +32,12 @@ def init_db():
                 id TEXT PRIMARY KEY,
                 title TEXT NOT NULL,
                 subject TEXT DEFAULT '',
+                subject_code TEXT NOT NULL DEFAULT '',
+                exam_name TEXT NOT NULL DEFAULT '',
                 total_marks REAL NOT NULL DEFAULT 0.0,
-                strictness TEXT NOT NULL DEFAULT 'lenient', -- 'strict', 'lenient', 'maths'
+                strictness TEXT NOT NULL DEFAULT 'lenient', -- legacy text
+                strictness_level INTEGER NOT NULL DEFAULT 3, -- 1..5 scale
+                subject_domain TEXT NOT NULL DEFAULT 'general',
                 checking_medium TEXT NOT NULL DEFAULT 'ai_reference', -- 'answer_key', 'ai_reference'
                 has_answer_key INTEGER NOT NULL DEFAULT 0,
                 is_locked INTEGER NOT NULL DEFAULT 0,
@@ -80,9 +85,11 @@ def init_db():
                 max_marks REAL NOT NULL,
                 question_type TEXT NOT NULL DEFAULT 'short', -- 'mcq', 'one_word', 'short', 'long', 'maths'
                 section_name TEXT DEFAULT 'General',
+                section_id TEXT,
                 options_json TEXT DEFAULT '[]',
                 word_limit INTEGER DEFAULT 150,
-                strictness_override TEXT, -- NULL or 'strict', 'lenient', 'maths'
+                strictness_override TEXT, -- legacy text
+                strictness_level_override INTEGER, -- 1..5 scale (NULL = inherit paper)
                 checking_medium_override TEXT, -- NULL or 'answer_key', 'ai_reference'
                 order_idx INTEGER NOT NULL DEFAULT 0
             )
@@ -139,6 +146,7 @@ def init_db():
                 roll_number TEXT DEFAULT '',
                 consent_flag INTEGER NOT NULL DEFAULT 1,
                 status TEXT NOT NULL DEFAULT 'pending', -- 'pending', 'evaluating', 'evaluated', 'error'
+                stage_key TEXT, -- reading_identity|reading|matching|marking|flagging
                 raw_filename TEXT DEFAULT '',
                 current_stage TEXT DEFAULT 'Uploaded',
                 error_message TEXT,
@@ -157,7 +165,10 @@ def init_db():
                 id TEXT PRIMARY KEY,
                 sheet_id TEXT NOT NULL REFERENCES sheets(id) ON DELETE CASCADE,
                 page_number INTEGER NOT NULL,
-                file_path TEXT NOT NULL
+                file_path TEXT NOT NULL,
+                ocr_status TEXT NOT NULL DEFAULT 'pending', -- pending|reading|done|failed
+                ocr_error TEXT,
+                ocr_legibility REAL
             )
         """)
 
@@ -198,10 +209,14 @@ def init_db():
                 final_marks REAL NOT NULL DEFAULT 0.0,
                 reason TEXT DEFAULT '',
                 evidence_quote TEXT DEFAULT '',
-                confidence TEXT DEFAULT 'high', -- 'high', 'medium', 'low'
+                confidence REAL,
                 flags_json TEXT DEFAULT '[]',
                 evaluation_basis TEXT DEFAULT 'answer_key', -- 'answer_key', 'ai_reference'
-                resolved INTEGER NOT NULL DEFAULT 1
+                resolved INTEGER NOT NULL DEFAULT 1,
+                strictness_used INTEGER,
+                verdicts_json TEXT NOT NULL DEFAULT '[]',
+                status TEXT NOT NULL DEFAULT 'ok',
+                is_counted INTEGER NOT NULL DEFAULT 1
             )
         """)
 
@@ -276,13 +291,59 @@ def init_db():
                 cursor.execute(f"ALTER TABLE {table} ADD COLUMN {column_def}")
 
         add_column_if_missing("papers", "instructions TEXT DEFAULT ''", "instructions")
+        add_column_if_missing("papers", "subject_code TEXT NOT NULL DEFAULT ''", "subject_code")
+        add_column_if_missing("papers", "exam_name TEXT NOT NULL DEFAULT ''", "exam_name")
+        add_column_if_missing("papers", "strictness_level INTEGER NOT NULL DEFAULT 3", "strictness_level")
+        add_column_if_missing("papers", "subject_domain TEXT NOT NULL DEFAULT 'general'", "subject_domain")
+
         add_column_if_missing("questions", "key TEXT", "key")
         add_column_if_missing("questions", "section_id TEXT", "section_id")
         add_column_if_missing("questions", "options_json TEXT DEFAULT '[]'", "options_json")
         add_column_if_missing("questions", "word_limit INTEGER DEFAULT 150", "word_limit")
-        add_column_if_missing("evaluations", "is_counted INTEGER NOT NULL DEFAULT 1", "is_counted")
+        add_column_if_missing("questions", "strictness_level_override INTEGER", "strictness_level_override")
+
+        add_column_if_missing("sheets", "stage_key TEXT", "stage_key")
         add_column_if_missing("sheets", "failed_stage TEXT", "failed_stage")
         add_column_if_missing("sheets", "raw_filename TEXT DEFAULT ''", "raw_filename")
+
+        add_column_if_missing("sheet_pages", "ocr_status TEXT NOT NULL DEFAULT 'pending'", "ocr_status")
+        add_column_if_missing("sheet_pages", "ocr_error TEXT", "ocr_error")
+        add_column_if_missing("sheet_pages", "ocr_legibility REAL", "ocr_legibility")
+
+        add_column_if_missing("evaluations", "is_counted INTEGER NOT NULL DEFAULT 1", "is_counted")
+        add_column_if_missing("evaluations", "strictness_used INTEGER", "strictness_used")
+        add_column_if_missing("evaluations", "verdicts_json TEXT NOT NULL DEFAULT '[]'", "verdicts_json")
+        add_column_if_missing("evaluations", "confidence REAL", "confidence")
+        add_column_if_missing("evaluations", "status TEXT NOT NULL DEFAULT 'ok'", "status")
+
         add_column_if_missing("answers", "page_numbers TEXT DEFAULT '[]'", "page_numbers")
         add_column_if_missing("answers", "bbox_json TEXT DEFAULT '{}'", "bbox_json")
         add_column_if_missing("answers", "reader_texts_json TEXT DEFAULT '{}'", "reader_texts_json")
+
+        # One-time backfill: papers.strictness_level from old strictness text
+        cursor.execute("""
+            UPDATE papers
+            SET strictness_level = CASE
+                WHEN lower(strictness) = 'lenient' THEN 1
+                WHEN lower(strictness) = 'supportive' THEN 2
+                WHEN lower(strictness) in ('balanced', 'standard', 'maths') THEN 3
+                WHEN lower(strictness) = 'rigorous' THEN 4
+                WHEN lower(strictness) = 'strict' THEN 5
+                ELSE 3
+            END
+            WHERE strictness_level = 3 AND strictness IS NOT NULL AND strictness != ''
+        """)
+
+        # One-time backfill: questions.strictness_level_override from old strictness_override text
+        cursor.execute("""
+            UPDATE questions
+            SET strictness_level_override = CASE
+                WHEN lower(strictness_override) = 'lenient' THEN 1
+                WHEN lower(strictness_override) = 'supportive' THEN 2
+                WHEN lower(strictness_override) in ('balanced', 'standard') THEN 3
+                WHEN lower(strictness_override) = 'rigorous' THEN 4
+                WHEN lower(strictness_override) = 'strict' THEN 5
+                ELSE NULL
+            END
+            WHERE strictness_level_override IS NULL AND strictness_override IS NOT NULL AND trim(strictness_override) != ''
+        """)

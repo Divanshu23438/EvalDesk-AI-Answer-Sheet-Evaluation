@@ -1,0 +1,87 @@
+=== EvalDesk P9.1 Verification Proof ===
+
+1. POST /api/papers -> status 200
+{
+  "status": "created",
+  "paper_id": "3d650d70-dee6-46c4-a825-dc40b908911b",
+  "title": "P9.1 Operating Systems",
+  "questions_count": 0,
+  "sections_count": 0,
+  "total_marks": 0,
+  "is_locked": false
+}
+
+2. PUT /api/papers/3d650d70-dee6-46c4-a825-dc40b908911b/questions with integer override -> status 200
+{
+  "status": "updated",
+  "questions_count": 2,
+  "total_marks": 10.0
+}
+
+2b. GET /api/papers/3d650d70-dee6-46c4-a825-dc40b908911b questions check:
+   Q1: strictness_level_override=4, strictness_override=4
+   Q2: strictness_level_override=2, strictness_override=2
+
+2c. PUT /api/papers/3d650d70-dee6-46c4-a825-dc40b908911b/reference -> status 200
+
+3. POST /api/papers/3d650d70-dee6-46c4-a825-dc40b908911b/lock -> status 200
+{
+  "status": "locked",
+  "paper_id": "3d650d70-dee6-46c4-a825-dc40b908911b",
+  "title": "P9.1 Operating Systems",
+  "total_marks": 10.0,
+  "questions_count": 2,
+  "is_locked": true,
+  "locked": true
+}
+
+4. PATCH /api/papers/3d650d70-dee6-46c4-a825-dc40b908911b on LOCKED paper -> status 200
+{
+  "status": "updated",
+  "paper": {
+    "id": "3d650d70-dee6-46c4-a825-dc40b908911b",
+    "title": "P9.1 Operating Systems",
+    "subject": "CS",
+    "total_marks": 10.0,
+    "strictness": "strict",
+    "checking_medium": "ai_reference",
+    "has_answer_key": 0,
+    "is_locked": 1,
+    "instructions": "",
+    "paper_path": null,
+    "answer_key_path": null,
+    "created_at": "2026-11-17 08:35:12",
+    "updated_at": "2026-11-17 08:35:13",
+    "subject_code": "CS-501",
+    "exam_name": "End Semester Examination Dec 2026",
+    "strictness_level": 5,
+    "subject_domain": "cs_it"
+  },
+  "id": "3d650d70-dee6-46c4-a825-dc40b908911b",
+  "title": "P9.1 Operating Systems",
+  "subject": "CS",
+  "total_marks": 10.0,
+  "strictness": "strict",
+  "checking_medium": "ai_reference",
+  "has_answer_key": 0,
+  "is_locked": 1,
+  "instructions": "",
+  "paper_path": null,
+  "answer_key_path": null,
+  "created_at": "2026-11-17 08:35:12",
+  "updated_at": "2026-11-17 08:35:13",
+  "subject_code": "CS-501",
+  "exam_name": "End Semester Examination Dec 2026",
+  "strictness_level": 5,
+  "subject_domain": "cs_it"
+}
+
+4b. GET /api/papers/3d650d70-dee6-46c4-a825-dc40b908911b after PATCH confirms locked paper retains edits:
+   is_locked=1, subject_code=CS-501, exam_name=End Semester Examination Dec 2026, strictness_level=5, subject_domain=cs_it
+
+5a. PATCH with invalid strictness_level=7 -> status 422 (expected 422)
+5b. PATCH with invalid subject_domain='astronomy' -> status 422 (expected 422)
+
+6. Header Extraction Behavior:
+   - Blank/unprinted header leaves subject='', subject_code='', exam_name='' (UI displays 'not detected')
+   - Printed header fills subject, subject_code, exam_name
