@@ -28,11 +28,21 @@ export const QuestionPanel: React.FC<QuestionPanelProps> = ({
 }) => {
   const [filter, setFilter] = useState<QuestionFilter>('all');
   const activeItemRef = useRef<HTMLButtonElement | null>(null);
+  const listContainerRef = useRef<HTMLDivElement | null>(null);
 
-  // Auto-scroll active question into view in panel
+  // Auto-scroll active question into view inside list container only (never scroll main/window)
   useEffect(() => {
-    if (activeItemRef.current) {
-      activeItemRef.current.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    if (activeItemRef.current && listContainerRef.current) {
+      const container = listContainerRef.current;
+      const item = activeItemRef.current;
+      const itemTop = item.offsetTop - container.offsetTop;
+      const itemBottom = itemTop + item.clientHeight;
+
+      if (itemTop < container.scrollTop) {
+        container.scrollTo({ top: itemTop, behavior: 'smooth' });
+      } else if (itemBottom > container.scrollTop + container.clientHeight) {
+        container.scrollTo({ top: itemBottom - container.clientHeight, behavior: 'smooth' });
+      }
     }
   }, [activeKey, isCollapsed]);
 
@@ -178,7 +188,7 @@ export const QuestionPanel: React.FC<QuestionPanelProps> = ({
       </div>
 
       {/* Question List */}
-      <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
+      <div ref={listContainerRef} className="flex-1 overflow-y-auto p-2 space-y-1.5">
         {filteredQuestions.length === 0 ? (
           <div className="p-6 text-center text-xs text-slate-400">
             No questions match this filter.

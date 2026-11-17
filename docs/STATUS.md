@@ -1,7 +1,25 @@
 # STATUS (update at the end of every session)
 Date / author (agent or model name): 2026-11-17 / Antigravity (Gemini 3.8 Flash)
-Current phase and task: Stale Sheet Navigation & HTTP 404 Auto-Recovery Fix (`src/screens/EvaluateScreen.tsx`, `src/screens/UploadScreen.tsx`, `src/app/Shell.tsx`).
+Current phase and task: Layout Header Occlusion & Container-Local Scroll Fix (`src/app/Shell.tsx`, `src/screens/EvaluateScreen.tsx`, `src/components/QuestionPanel.tsx`, `src/components/QuestionSidebar.tsx`, `src/components/ErrorBanner.tsx`, `src/index.css`).
 Done (task id, commit, proof file):
+- Task: Fixed components behind header and offscreen layout shifts (`src/app/Shell.tsx`, `src/screens/EvaluateScreen.tsx`, `src/components/QuestionPanel.tsx`, `src/components/QuestionSidebar.tsx`, `src/components/ErrorBanner.tsx`, `src/index.css`, `src/screens/UploadScreen.tsx`):
+  1. Root Cause Resolution (Ancestor Scroll via `scrollIntoView`):
+     - Identified that `QuestionPanel.tsx` and `QuestionSidebar.tsx` called global `element.scrollIntoView()`, which scrolled the ancestor `<main>` container down by 104px whenever questions were rendered or changed.
+     - Replaced `scrollIntoView` in both `QuestionPanel.tsx` and `QuestionSidebar.tsx` with container-local scrolling targeting exclusively `listContainerRef.current`, guaranteeing `<main>` and `window` are never scrolled.
+     - Added `mainRef` in `Shell.tsx` to strictly pin `main.scrollTop = 0` on every step or sheet transition.
+  2. Workspace Viewport Height Fit (`src/screens/EvaluateScreen.tsx`):
+     - Changed `EvaluateScreen` root `<section>` from `h-[100dvh] max-h-[100dvh]` to `h-full max-h-full min-h-0`. This eliminates the 104px container overflow inside `<main>`.
+     - Compacted inner header to `h-11 shrink-0` with `flex items-center justify-between` (preventing wrapping on small viewports and reserving maximum vertical height for question content).
+  3. In-Flow Error Banner & Flex Column Shell (`src/components/ErrorBanner.tsx` & `src/index.css`):
+     - Changed `ErrorBanner.tsx` from `position: absolute; top: 48px; left: 0; right: 0; z-index: 50;` to in-flow `w-full shrink-0 z-40`, so active error alerts never cover or occlude top controls.
+     - Converted `.app` in `src/index.css` from a rigid 3-row CSS Grid into a flexible `display: flex; flex-direction: column; height: 100dvh;`, maintaining perfect 48px header and 56px action bar heights while `<main>` flexes dynamically without track collision.
+  4. Stable Paper Details Rendering (`src/screens/UploadScreen.tsx`):
+     - Provided a default fallback state for `PaperDetailsForm` so Step 1A never displays an empty void while paper metadata loads.
+  5. Verification:
+     - `npx tsc --noEmit` clean (0 errors).
+     - `npm run build` succeeds (dist built in 5.62s).
+     - `python scripts/check_all.py --no-live` reports `RESULT: ALL PASS` (66 tests passed).
+     - Browser DOM bounding boxes confirmed: `shellHeader` (y: 0..48), `main` (y: 48..669), `toolbar` (y: 669..725) with zero overlap and zero negative y offsets.
 - Task: Stale Sheet Navigation & HTTP 404 Auto-Recovery Fix (`src/screens/EvaluateScreen.tsx`, `src/screens/UploadScreen.tsx`, `src/app/Shell.tsx`):
   1. Stale Sheet ID Invalidation in Upload Screen (`src/screens/UploadScreen.tsx`):
      - In `loadSheets`, validated `state.sheetId` against `fetched` sheets list. If `state.sheetId` points to an old/deleted sheet or another paper's sheet, automatically resets `sheetId` to the active paper's first valid sheet (`fetched[0].id`).

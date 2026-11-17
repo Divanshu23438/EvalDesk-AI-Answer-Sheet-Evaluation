@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useSheetStore, AppStep } from '../state/useSheetStore';
 import { apiClient } from '../api/client';
 import { ErrorBanner } from '../components/ErrorBanner';
@@ -105,6 +105,15 @@ export const Shell: React.FC = () => {
     }
     store.setStep(step);
   };
+
+  const mainRef = useRef<HTMLElement | null>(null);
+
+  // Guarantee main container stays strictly pinned to top (scrollTop 0) on step or sheet switch
+  useEffect(() => {
+    if (mainRef.current) {
+      mainRef.current.scrollTop = 0;
+    }
+  }, [state.step, state.sheetId]);
 
   return (
     <div className="app">
@@ -252,7 +261,7 @@ export const Shell: React.FC = () => {
       />
 
       {/* Main 1fr Screen Area (Zero Page Scroll) */}
-      <main className="min-h-0 overflow-hidden relative bg-slate-50 flex-1">
+      <main ref={mainRef} className="min-h-0 overflow-hidden relative bg-slate-50 flex-1">
         {state.step === 'upload' && <UploadScreen />}
         {state.step === 'evaluate' && <EvaluateScreen />}
         {state.step === 'report' && <ReportScreen />}

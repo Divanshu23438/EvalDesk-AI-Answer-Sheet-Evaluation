@@ -76,11 +76,21 @@ export const QuestionSidebar: React.FC<QuestionSidebarProps> = ({
   const [filter, setFilter] = useState<SidebarFilter>('all');
   const [hoveredQ, setHoveredQ] = useState<ReviewQuestionItem | null>(null);
   const activeItemRef = useRef<HTMLButtonElement | null>(null);
+  const listContainerRef = useRef<HTMLDivElement | null>(null);
 
-  // Auto-scroll the active question into view inside sidebar
+  // Auto-scroll the active question into view inside sidebar container only (never scroll main/window)
   useEffect(() => {
-    if (activeItemRef.current) {
-      activeItemRef.current.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    if (activeItemRef.current && listContainerRef.current) {
+      const container = listContainerRef.current;
+      const item = activeItemRef.current;
+      const itemTop = item.offsetTop - container.offsetTop;
+      const itemBottom = itemTop + item.clientHeight;
+
+      if (itemTop < container.scrollTop) {
+        container.scrollTo({ top: itemTop, behavior: 'smooth' });
+      } else if (itemBottom > container.scrollTop + container.clientHeight) {
+        container.scrollTo({ top: itemBottom - container.clientHeight, behavior: 'smooth' });
+      }
     }
   }, [activeKey, filter]);
 
@@ -198,7 +208,7 @@ export const QuestionSidebar: React.FC<QuestionSidebarProps> = ({
       )}
 
       {/* Questions Scrollable List */}
-      <div className="panel flex-1 overflow-y-auto p-1.5 space-y-1">
+      <div ref={listContainerRef} className="panel flex-1 overflow-y-auto p-1.5 space-y-1">
         {filteredQuestions.length === 0 ? (
           <div className="text-center py-6 text-xs text-[var(--ink-muted)]">
             {!isCollapsed && <p>No questions match filter.</p>}

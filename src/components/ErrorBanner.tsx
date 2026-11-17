@@ -14,7 +14,7 @@ export const ErrorBanner: React.FC<ErrorBannerProps> = ({ error, onDismiss }) =>
     <aside
       role="alert"
       aria-live="assertive"
-      className="absolute top-[48px] left-0 right-0 z-50 px-4 py-2 bg-[var(--status-failed-bg)] border-b border-[var(--status-failed-border)] text-[var(--status-failed)] shadow-md flex items-center justify-between text-xs sm:text-sm animate-in fade-in slide-in-from-top-2 duration-150"
+      className="w-full shrink-0 z-40 px-4 py-2 bg-[var(--status-failed-bg)] border-b border-[var(--status-failed-border)] text-[var(--status-failed)] shadow-xs flex items-center justify-between text-xs sm:text-sm animate-in fade-in slide-in-from-top-2 duration-150"
     >
       <div className="flex items-center gap-2 min-w-0 pr-4">
         <AlertCircle className="w-4 h-4 shrink-0 text-[var(--status-failed)]" aria-hidden="true" />

@@ -863,14 +863,23 @@ export const UploadScreen: React.FC = () => {
                   </button>
                 </div>
               </div>
-            ) : paperMeta ? (
+            ) : (
               <PaperDetailsForm
-                key={state.paperId}
-                meta={paperMeta}
+                key={state.paperId || 'default'}
+                meta={
+                  paperMeta || {
+                    title: state.paperTitle || '',
+                    subject: '',
+                    subject_code: '',
+                    exam_name: '',
+                    subject_domain: 'general',
+                    strictness_level: 3,
+                  }
+                }
                 hasTeacherKey={hasAnswerKey}
                 onSave={savePaperMeta}
               />
-            ) : null}
+            )}
 
             {/* When Unlocked: Show 2-Column Upload Grid (QP & AK), Status Chips, Section Summary, and Actions */}
             {!state.paperIsLocked ? (

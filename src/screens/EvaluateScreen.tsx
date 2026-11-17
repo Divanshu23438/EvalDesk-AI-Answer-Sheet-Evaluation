@@ -490,11 +490,11 @@ export const EvaluateScreen: React.FC = () => {
     (activeQuestion?.flags || []).some((f: any) => f.code === 'not_attempted');
 
   return (
-    <section aria-label="Evaluation Workspace" className="h-[100dvh] max-h-[100dvh] flex flex-col min-h-0 bg-slate-50 select-none overflow-hidden">
+    <section aria-label="Evaluation Workspace" className="h-full max-h-full flex flex-col min-h-0 bg-slate-50 select-none overflow-hidden">
       {/* ==================================================================== */}
       {/* 1. TOP HEADER: Paper · Student · Score/Max · Grade · Navigation · Actions */}
       {/* ==================================================================== */}
-      <header className="px-4 py-2.5 bg-white border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 shrink-0 shadow-2xs z-20">
+      <header className="px-4 py-1.5 h-11 bg-white border-b border-slate-200 flex items-center justify-between gap-2 shrink-0 shadow-2xs z-10">
         <div className="flex items-center gap-3 min-w-0">
           <div className="min-w-0">
             <h2 className="text-xs font-bold text-slate-900 truncate flex items-center gap-2">
