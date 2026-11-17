@@ -1,27 +1,36 @@
 import sqlite3
+import threading
 from typing import Generator
 from contextlib import contextmanager
 from backend.config import DB_PATH
 
+_db_lock = threading.Lock()
+
 def get_db_connection() -> sqlite3.Connection:
-    conn = sqlite3.connect(DB_PATH, timeout=30.0)
+    conn = sqlite3.connect(DB_PATH, timeout=30.0, isolation_level=None)
     conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA busy_timeout = 30000")
     conn.execute("PRAGMA journal_mode = WAL")
+    conn.execute("PRAGMA synchronous = NORMAL")
+    conn.execute("PRAGMA busy_timeout = 30000")
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
 
 @contextmanager
 def get_db() -> Generator[sqlite3.Connection, None, None]:
-    conn = get_db_connection()
-    try:
-        yield conn
-        conn.commit()
-    except Exception:
-        conn.rollback()
-        raise
-    finally:
-        conn.close()
+    with _db_lock:
+        conn = get_db_connection()
+        try:
+            conn.execute("BEGIN IMMEDIATE")
+            yield conn
+            conn.commit()
+        except Exception:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+            raise
+        finally:
+            conn.close()
 
 def init_db():
     with get_db() as conn:
@@ -306,6 +315,7 @@ def init_db():
         add_column_if_missing("sheets", "stage_key TEXT", "stage_key")
         add_column_if_missing("sheets", "failed_stage TEXT", "failed_stage")
         add_column_if_missing("sheets", "raw_filename TEXT DEFAULT ''", "raw_filename")
+        add_column_if_missing("sheets", "pages_read INTEGER NOT NULL DEFAULT 0", "pages_read")
 
         add_column_if_missing("sheet_pages", "ocr_status TEXT NOT NULL DEFAULT 'pending'", "ocr_status")
         add_column_if_missing("sheet_pages", "ocr_error TEXT", "ocr_error")

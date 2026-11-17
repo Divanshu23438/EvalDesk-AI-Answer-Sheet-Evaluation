@@ -1,7 +1,30 @@
 # STATUS (update at the end of every session)
 Date / author (agent or model name): 2026-11-17 / Antigravity (Gemini 3.8 Flash)
-Current phase and task: Plan 2 Complete — All Phases P9.0 through P9.8 Fully Verified & Committed.
+Current phase and task: Zero-Scroll Single-Screen Responsive Layouts, 1-by-1 Sequential OCR Pipeline & SQLite Locking Elimination Verified.
 Done (task id, commit, proof file):
+- Task: Zero-Scroll Single-Screen Responsive Layouts, 1-by-1 Sequential OCR Pipeline & SQLite Locking Elimination:
+  1. SQLite Database Locking Fix (`backend/db.py` & `backend/main.py`):
+     - Configured all SQLite connections with `PRAGMA journal_mode = WAL;`, `PRAGMA synchronous = NORMAL;`, `PRAGMA busy_timeout = 30000;`, and `timeout=30.0`.
+     - Wrapped all database write transactions in a global `threading.Lock()` using `BEGIN IMMEDIATE` transactions in autocommit mode (`isolation_level=None`), guaranteeing absolute thread and coroutine serialization with zero `database is locked` errors.
+  2. Sequential 1-by-1 Page OCR with Real-time Progress Tracking (`backend/main.py` & `backend/db.py`):
+     - Converted multi-page OCR execution from simultaneous `asyncio.gather` into a sequential page-by-page pipeline (`for p_row in sorted_pages:`).
+     - Updates and commits `sheet_pages.ocr_status` (`reading` -> `done` + `ocr_legibility`) and `sheets.pages_read` (and stage text `Read X/Y pages`) after each individual page finishes.
+     - Real-time `pages_read` progression strictly increments `1/N -> 2/N -> ... -> N/N` without burst or lock collision.
+  3. Zero-Scroll 3-Column Horizontal Grid on `#/upload` (`src/screens/UploadScreen.tsx` & `src/components/PaperDetailsForm.tsx`):
+     - Replaced stacked 2-column layout with a 3-column horizontal grid (`grid-cols-[36%_28%_36%] h-full overflow-hidden gap-3 p-3`):
+       - Column 1 (`36%`, Step 1A · Question Paper): Compact paper selector + `+ New`, compact 2×2 grid (Title, Subject, Subject Code, Exam Name with amber `"Not detected — enter manually"` placeholder saving on blur via `PATCH /api/papers/{id}`), Subject Domain calibration + Strictness 1–5 bar, side-by-side QP & Teacher Answer Key drop zones, and View/Edit Rubric drawer trigger.
+       - Column 2 (`28%`, Step 1B · Student Answer Sheets): Dedicated full-height drag-and-drop zone (`PDF / JPG / PNG`) + `"Treat each file as a separate sheet"` toggle switch.
+       - Column 3 (`36%`, Uploaded Batch Queue): Displays uploaded batch sheets with inline Student Name & Roll Number inputs (auto-shown on `needs_identity` and toggleable via `Edit (✎)` button on every card), Start Evaluation CTA, and Book-Style 3D Page-Flip Viewer (`PageFlipStrip.tsx`).
+  4. Real Book-Style Page-Flip Animation (`src/components/PageFlipStrip.tsx`):
+     - Displays actual scanned page image (`/api/sheets/{id}/pages/{n}/image`) as each page finishes OCR.
+     - 650ms 3D leaf turn animation (`perspective: 1200px`, `rotateY(0deg)` to `rotateY(-180deg)` with `transform-origin: left center` and spine shadow) flipping the previous scanned page over to reveal the newly scanned page underneath, with `Page X of Y scanned` progress and clickable mini page pills `1..N`.
+  5. Zero-Scroll 2-Subcolumn Layout on `#/evaluate` (`src/screens/EvaluateScreen.tsx` & `src/components/SheetImageViewer.tsx`):
+     - Fits 100% within `100dvh` with zero outer window scrolling at 1366x768 and 1920x1080.
+     - Main left area divided into 2 side-by-side sub-columns (`grid-cols-2 gap-2.5 h-full min-h-0 overflow-hidden`):
+       - Sub-column 1: Selected Question Prompt (+ MCQ options) on top + `SheetImageViewer` (crop/full toggle, bbox, zoom, rotate) filling the rest of the height.
+       - Sub-column 2: `OcrCard` (editable detected text, legibility bar) on top + `MarksCard` (stepper, per-point verdicts, evidence quotes, flags, Strictness 1–5 / Recheck) below.
+     - Right sidebar: `QuestionPanel.tsx` collapsible list (`All | Flagged | Checked`) collapsing to 44px rail with `localStorage` persistence.
+  6. Verified via `npx tsc --noEmit` (0 errors), `npm run build` (built in 3.4s), and `python scripts/check_all.py` (ALL PASS across banned strings, git secrets, 65 pytest passing, tsc clean, live provider health).
 - Task P9.8: Hardening & Cleanup (`backend/main.py`, `.env.example`, `src/screens/ReportScreen.tsx`, `scripts/verify_p9_8.py`, `docs/proof/P9.8/`):
   1. Concurrency gate (A16): Implemented global evaluation worker queue semaphore `get_eval_semaphore()` with configurable capacity via `EVAL_CONCURRENCY` environment variable (defaults to 1 for free-tier rate-limit protection), preventing free-tier 429 storms when multiple sheets are uploaded or resumed.
   2. Paper Report Analytics: Added `strictness_distribution` and `paper_strictness` to `build_paper_reports_data`, displaying strictness level breakdown (Levels 1..5) in the Paper Analytics tab of `ReportScreen.tsx`.

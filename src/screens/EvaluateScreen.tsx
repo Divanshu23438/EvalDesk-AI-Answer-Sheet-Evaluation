@@ -433,7 +433,7 @@ export const EvaluateScreen: React.FC = () => {
     (activeQuestion?.flags || []).some((f: any) => f.code === 'not_attempted');
 
   return (
-    <section aria-label="Evaluation Workspace" className="h-full flex flex-col min-h-0 bg-slate-50 select-none">
+    <section aria-label="Evaluation Workspace" className="h-[100dvh] max-h-[100dvh] flex flex-col min-h-0 bg-slate-50 select-none overflow-hidden">
       {/* ==================================================================== */}
       {/* 1. TOP HEADER: Paper · Student · Score/Max · Grade · Navigation · Actions */}
       {/* ==================================================================== */}
@@ -534,158 +534,166 @@ export const EvaluateScreen: React.FC = () => {
       {/* 2. MAIN BODY (2 Columns): Left = Question Details, Right = Question Panel */}
       {/* ==================================================================== */}
       <div className="flex-1 flex min-h-0 overflow-hidden">
-        {/* LEFT COLUMN: The selected question (scrolls) */}
-        <main className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4">
+        {/* MAIN LEFT AREA (1fr, 2 side-by-side sub-columns): Question Details + Image on Left, OCR + Marks on Right */}
+        <main className="flex-1 min-h-0 h-full p-2.5 overflow-hidden">
           {activeQuestion ? (
-            <>
-              {/* Question Header Card */}
-              <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs space-y-2">
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold text-slate-900 font-mono">
-                      Q.{activeQuestion.q_no}
-                    </span>
-                    <span className="text-slate-300">·</span>
-                    <span className="text-xs font-medium text-slate-600">
-                      {activeQuestion.section_name || 'General Section'}
-                    </span>
-                    <span className="text-slate-300">·</span>
-                    <span className="text-xs font-mono font-bold text-indigo-700">
-                      {activeQuestion.max_marks} Marks
-                    </span>
+            <div className="grid grid-cols-2 gap-2.5 h-full min-h-0 overflow-hidden">
+              {/* SUB-COLUMN 1: Selected Question Prompt on top + SheetImageViewer filling rest of height */}
+              <div className="flex flex-col h-full min-h-0 overflow-hidden gap-2">
+                {/* 1. Question Prompt Card */}
+                <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-xs space-y-1.5 shrink-0 max-h-[35%] overflow-y-auto">
+                  <div className="flex flex-wrap items-center justify-between gap-1.5 border-b border-slate-100 pb-1.5">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-bold text-slate-900 font-mono">
+                        Q.{activeQuestion.q_no}
+                      </span>
+                      <span className="text-slate-300">·</span>
+                      <span className="text-[11px] font-medium text-slate-600 truncate max-w-[140px]">
+                        {activeQuestion.section_name || 'General Section'}
+                      </span>
+                      <span className="text-slate-300">·</span>
+                      <span className="text-xs font-mono font-bold text-indigo-700">
+                        {activeQuestion.max_marks} Marks
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      <StrictnessChip
+                        level={activeQuestion.strictness_used || activeQuestion.strictness_effective || paper?.strictness_level || 3}
+                        source={activeQuestion.strictness_source}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setIsReferenceExpanded((prev) => !prev)}
+                        className={`text-[10px] font-medium px-2 py-0.5 rounded border transition flex items-center gap-1 ${
+                          isReferenceExpanded
+                            ? 'bg-indigo-50 border-indigo-300 text-indigo-700'
+                            : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                        }`}
+                        title="View Model Answer & Rubric Criteria"
+                      >
+                        <Sparkles className="w-2.5 h-2.5 text-indigo-600" />
+                        <span>Rubric</span>
+                      </button>
+                    </div>
                   </div>
 
-                  <StrictnessChip
-                    level={activeQuestion.strictness_used || activeQuestion.strictness_effective || paper?.strictness_level || 3}
-                    source={activeQuestion.strictness_source}
+                  {/* Question Prompt Text */}
+                  <div className="text-xs text-slate-800 leading-relaxed font-sans">
+                    {activeQuestion.question_text || activeQuestion.text || 'Question Prompt'}
+                  </div>
+
+                  {/* MCQ Options (if any) */}
+                  {activeQuestion.options && activeQuestion.options.length > 0 && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 pt-1 border-t border-slate-100 text-xs">
+                      {activeQuestion.options.map((opt: string, idx: number) => (
+                        <div
+                          key={idx}
+                          className="px-2 py-0.5 rounded bg-slate-50 border border-slate-200 text-slate-700 font-mono text-[10px]"
+                        >
+                          {opt}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Inline Reference Card Dropdown if toggled */}
+                  {isReferenceExpanded && (
+                    <div className="mt-2 pt-2 border-t border-slate-200">
+                      <ReferenceCard
+                        paperId={state.paperId || ''}
+                        questionKey={activeQuestion.question_key || activeQuestion.key || ''}
+                        reference={
+                          activeQuestion.reference || {
+                            model_answer: activeQuestion.model_answer || '',
+                            key_points: activeQuestion.key_points || [],
+                            source: 'ai_draft',
+                          }
+                        }
+                        questionType={activeQuestion.options && activeQuestion.options.length > 0 ? 'mcq' : 'short'}
+                        options={activeQuestion.options || []}
+                        strictness={String(paper?.strictness_level || 3)}
+                        onReferenceUpdated={loadReviewData}
+                        onError={(err) => store.setError(err)}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* 2. Answer Sheet Viewer: Crop (default) / Full page + box filling rest of height */}
+                <div className="flex-1 min-h-0 h-full overflow-hidden">
+                  <SheetImageViewer
+                    sheetId={state.sheetId || ''}
+                    evalId={activeQuestion.eval_id}
+                    cropUrl={activeQuestion.crop_url}
+                    qNo={activeQuestion.q_no}
+                    pageNumbers={activeQuestion.page_numbers || [1]}
+                    allPagesCount={reviewData?.pages?.length || 1}
+                    bbox={activeQuestion.bbox}
+                    notAttempted={isNotAttempted}
+                  />
+                </div>
+              </div>
+
+              {/* SUB-COLUMN 2: OCR Card on top + MarksCard filling bottom */}
+              <div className="flex flex-col h-full min-h-0 overflow-hidden gap-2">
+                {/* 1. OCR Text Card (editable + legibility bar + reader diff) */}
+                <div className="shrink-0 max-h-[38%] flex flex-col min-h-0 overflow-hidden">
+                  <OcrCard
+                    evalId={activeQuestion.eval_id}
+                    ocrText={activeQuestion.ocr_text || activeQuestion.extracted_text || ''}
+                    evidenceQuotes={
+                      activeQuestion.evidence_quote
+                        ? [activeQuestion.evidence_quote]
+                        : (activeQuestion.verdicts || []).map((v: any) => v.quote).filter(Boolean)
+                    }
+                    legibility={activeQuestion.legibility ?? activeQuestion.legibility_score ?? 0.85}
+                    readerTexts={activeQuestion.reader_texts || {}}
+                    isEditingExternal={isEditingOcrExternal}
+                    onTextSaved={(newTxt) => {
+                      setReviewData((prev) => {
+                        if (!prev) return prev;
+                        const updated = prev.questions.map((q) =>
+                          q.eval_id === activeQuestion.eval_id
+                            ? { ...q, ocr_text: newTxt, extracted_text: newTxt }
+                            : q
+                        );
+                        return { ...prev, questions: updated };
+                      });
+                    }}
+                    onRequestRecheck={() => handleRecheckQuestion()}
+                    onError={(err) => store.setError(err)}
                   />
                 </div>
 
-                {/* Question Prompt Text */}
-                <div className="text-xs text-slate-800 leading-relaxed font-sans">
-                  {activeQuestion.question_text || activeQuestion.text || 'Question Prompt'}
+                {/* 2. Marks and Why (MarksCard): marks stepper, per-point verdicts, coded flags */}
+                <div className="flex-1 min-h-0 overflow-y-auto">
+                  <MarksCard
+                    evalId={activeQuestion.eval_id}
+                    maxMarks={activeQuestion.max_marks || 5}
+                    aiMarks={activeQuestion.ai_marks || 0}
+                    currentMarks={
+                      activeQuestion.final_marks !== undefined
+                        ? activeQuestion.final_marks
+                        : activeQuestion.ai_marks || 0
+                    }
+                    isCounted={activeQuestion.is_counted !== undefined ? activeQuestion.is_counted : true}
+                    isResolved={Boolean(activeQuestion.resolved)}
+                    status={activeQuestion.status || (activeQuestion.flags?.length ? 'flagged' : 'pending')}
+                    flags={activeQuestion.flags || []}
+                    verdicts={activeQuestion.verdicts || []}
+                    strictnessUsed={activeQuestion.strictness_used}
+                    strictnessEffective={activeQuestion.strictness_effective || paper?.strictness_level || 3}
+                    strictnessSource={activeQuestion.strictness_source}
+                    previousFinalMarks={previousFinalMarksMap[activeQuestion.eval_id]}
+                    errorMessage={activeQuestion.error_message}
+                    onMarksChange={handleMarksChange}
+                    onRecheck={(lvl, persist) => handleRecheckQuestion(lvl, persist)}
+                    onError={(err) => store.setError(err)}
+                  />
                 </div>
-
-                {/* MCQ Options (if any) */}
-                {activeQuestion.options && activeQuestion.options.length > 0 && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1.5 border-t border-slate-100 text-xs">
-                    {activeQuestion.options.map((opt: string, idx: number) => (
-                      <div
-                        key={idx}
-                        className="px-2.5 py-1 rounded-md bg-slate-50 border border-slate-200 text-slate-700 font-mono text-[11px]"
-                      >
-                        {opt}
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
-
-              {/* 2. Answer Sheet Viewer: Crop (default) / Full page + box */}
-              <SheetImageViewer
-                sheetId={state.sheetId || ''}
-                evalId={activeQuestion.eval_id}
-                cropUrl={activeQuestion.crop_url}
-                qNo={activeQuestion.q_no}
-                pageNumbers={activeQuestion.page_numbers || [1]}
-                allPagesCount={reviewData?.pages?.length || 1}
-                bbox={activeQuestion.bbox}
-                notAttempted={isNotAttempted}
-              />
-
-              {/* 3. OCR Text Card (editable + legibility bar + reader diff) */}
-              <OcrCard
-                evalId={activeQuestion.eval_id}
-                ocrText={activeQuestion.ocr_text || activeQuestion.extracted_text || ''}
-                evidenceQuotes={
-                  activeQuestion.evidence_quote
-                    ? [activeQuestion.evidence_quote]
-                    : (activeQuestion.verdicts || []).map((v: any) => v.quote).filter(Boolean)
-                }
-                legibility={activeQuestion.legibility ?? activeQuestion.legibility_score ?? 0.85}
-                readerTexts={activeQuestion.reader_texts || {}}
-                isEditingExternal={isEditingOcrExternal}
-                onTextSaved={(newTxt) => {
-                  setReviewData((prev) => {
-                    if (!prev) return prev;
-                    const updated = prev.questions.map((q) =>
-                      q.eval_id === activeQuestion.eval_id
-                        ? { ...q, ocr_text: newTxt, extracted_text: newTxt }
-                        : q
-                    );
-                    return { ...prev, questions: updated };
-                  });
-                }}
-                onRequestRecheck={() => handleRecheckQuestion()}
-                onError={(err) => store.setError(err)}
-              />
-
-              {/* 4. Marks and Why (MarksCard): marks stepper, per-point verdicts, coded flags */}
-              <MarksCard
-                evalId={activeQuestion.eval_id}
-                maxMarks={activeQuestion.max_marks || 5}
-                aiMarks={activeQuestion.ai_marks || 0}
-                currentMarks={
-                  activeQuestion.final_marks !== undefined
-                    ? activeQuestion.final_marks
-                    : activeQuestion.ai_marks || 0
-                }
-                isCounted={activeQuestion.is_counted !== undefined ? activeQuestion.is_counted : true}
-                isResolved={Boolean(activeQuestion.resolved)}
-                status={activeQuestion.status || (activeQuestion.flags?.length ? 'flagged' : 'pending')}
-                flags={activeQuestion.flags || []}
-                verdicts={activeQuestion.verdicts || []}
-                strictnessUsed={activeQuestion.strictness_used}
-                strictnessEffective={activeQuestion.strictness_effective || paper?.strictness_level || 3}
-                strictnessSource={activeQuestion.strictness_source}
-                previousFinalMarks={previousFinalMarksMap[activeQuestion.eval_id]}
-                errorMessage={activeQuestion.error_message}
-                onMarksChange={handleMarksChange}
-                onRecheck={(lvl, persist) => handleRecheckQuestion(lvl, persist)}
-                onError={(err) => store.setError(err)}
-              />
-
-              {/* 5. Reference Card (Collapsible) */}
-              <div className="rounded-xl border border-slate-200 bg-white shadow-xs overflow-hidden">
-                <button
-                  type="button"
-                  onClick={() => setIsReferenceExpanded((prev) => !prev)}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between text-xs font-semibold text-slate-800 hover:bg-slate-100 transition"
-                >
-                  <div className="flex items-center gap-2">
-                    <span>Model Answer & Rubric Criteria</span>
-                    <span className="text-[10px] text-slate-500 font-normal">
-                      ({activeQuestion.reference?.source === 'teacher_key' ? 'Teacher Key' : 'AI Reference'})
-                    </span>
-                  </div>
-                  {isReferenceExpanded ? (
-                    <ChevronUp className="w-4 h-4 text-slate-500" />
-                  ) : (
-                    <ChevronDown className="w-4 h-4 text-slate-500" />
-                  )}
-                </button>
-                {isReferenceExpanded && (
-                  <div className="p-3">
-                    <ReferenceCard
-                      paperId={state.paperId || ''}
-                      questionKey={activeQuestion.question_key || activeQuestion.key || ''}
-                      reference={
-                        activeQuestion.reference || {
-                          model_answer: activeQuestion.model_answer || '',
-                          key_points: activeQuestion.key_points || [],
-                          source: 'ai_draft',
-                        }
-                      }
-                      questionType={activeQuestion.options && activeQuestion.options.length > 0 ? 'mcq' : 'short'}
-                      options={activeQuestion.options || []}
-                      strictness={String(paper?.strictness_level || 3)}
-                      onReferenceUpdated={loadReviewData}
-                      onError={(err) => store.setError(err)}
-                    />
-                  </div>
-                )}
-              </div>
-            </>
+            </div>
           ) : (
             <div className="m-auto text-center p-8 bg-white rounded-xl border border-slate-200 text-slate-500 text-xs">
               No questions found in evaluation.

@@ -63,23 +63,15 @@ export const PaperDetailsForm: React.FC<PaperDetailsFormProps> = ({ meta, hasTea
   const showTeacherKeyTip = strictnessLevel >= 4 && !hasTeacherKey;
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-3 space-y-3">
-      <div className="flex items-center justify-between gap-2 border-b border-slate-200 pb-2">
-        <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-800 uppercase tracking-wider">
-          <BookOpen className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-          <span>Paper & Subject Details</span>
-        </div>
-        <span className="text-[10px] text-slate-500 font-medium">Editable at any time</span>
-      </div>
-
+    <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-2 space-y-2">
       {/* Grid of Inputs */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+      <div className="grid grid-cols-2 gap-1.5 text-xs">
         {/* Title */}
-        <div className="space-y-1">
+        <div className="space-y-0.5">
           <div className="flex items-center justify-between">
-            <label className="text-[11px] font-medium text-slate-700">Assessment Title</label>
+            <label className="text-[10px] font-semibold text-slate-700">Title</label>
             {!title.trim() && (
-              <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 font-medium">
+              <span className="text-[8px] px-1 rounded bg-amber-100 text-amber-800 font-medium">
                 Not detected
               </span>
             )}
@@ -89,41 +81,19 @@ export const PaperDetailsForm: React.FC<PaperDetailsFormProps> = ({ meta, hasTea
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             onBlur={() => handleBlurField('title', title.trim(), meta.title)}
-            placeholder={!title.trim() ? "Not detected — enter manually" : "e.g. Operating Systems Final Exam"}
-            className={`w-full px-2 py-1.5 rounded-md border text-xs bg-white text-slate-800 focus:outline-none focus:border-indigo-500 transition ${
+            placeholder={!title.trim() ? "Not detected — enter manually" : "Assessment Title"}
+            className={`w-full px-2 py-1 rounded border text-xs bg-white text-slate-800 focus:outline-none focus:border-indigo-500 transition ${
               !title.trim() ? 'border-amber-400 bg-amber-50/20 placeholder:text-amber-700/70 font-medium' : 'border-slate-300'
             }`}
           />
         </div>
 
-        {/* Exam Name */}
-        <div className="space-y-1">
-          <div className="flex items-center justify-between">
-            <label className="text-[11px] font-medium text-slate-700">Exam / Term Name</label>
-            {!examName.trim() && (
-              <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 font-medium">
-                Not detected
-              </span>
-            )}
-          </div>
-          <input
-            type="text"
-            value={examName}
-            onChange={(e) => setExamName(e.target.value)}
-            onBlur={() => handleBlurField('exam_name', examName.trim(), meta.exam_name)}
-            placeholder={!examName.trim() ? "Not detected — enter manually" : "e.g. End Semester Exam 2026"}
-            className={`w-full px-2 py-1.5 rounded-md border text-xs bg-white text-slate-800 focus:outline-none focus:border-indigo-500 transition ${
-              !examName.trim() ? 'border-amber-400 bg-amber-50/20 placeholder:text-amber-700/70 font-medium' : 'border-slate-300'
-            }`}
-          />
-        </div>
-
         {/* Subject */}
-        <div className="space-y-1">
+        <div className="space-y-0.5">
           <div className="flex items-center justify-between">
-            <label className="text-[11px] font-medium text-slate-700">Subject Name</label>
+            <label className="text-[10px] font-semibold text-slate-700">Subject</label>
             {!subject.trim() && (
-              <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 font-medium">
+              <span className="text-[8px] px-1 rounded bg-amber-100 text-amber-800 font-medium">
                 Not detected
               </span>
             )}
@@ -133,19 +103,19 @@ export const PaperDetailsForm: React.FC<PaperDetailsFormProps> = ({ meta, hasTea
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
             onBlur={() => handleBlurField('subject', subject.trim(), meta.subject)}
-            placeholder={!subject.trim() ? "Not detected — enter manually" : "e.g. Linux Architecture & Administration"}
-            className={`w-full px-2 py-1.5 rounded-md border text-xs bg-white text-slate-800 focus:outline-none focus:border-indigo-500 transition ${
+            placeholder={!subject.trim() ? "Not detected — enter manually" : "e.g. Computer Science"}
+            className={`w-full px-2 py-1 rounded border text-xs bg-white text-slate-800 focus:outline-none focus:border-indigo-500 transition ${
               !subject.trim() ? 'border-amber-400 bg-amber-50/20 placeholder:text-amber-700/70 font-medium' : 'border-slate-300'
             }`}
           />
         </div>
 
         {/* Subject Code */}
-        <div className="space-y-1">
+        <div className="space-y-0.5">
           <div className="flex items-center justify-between">
-            <label className="text-[11px] font-medium text-slate-700">Subject Code</label>
+            <label className="text-[10px] font-semibold text-slate-700">Subject Code</label>
             {!subjectCode.trim() && (
-              <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 font-medium">
+              <span className="text-[8px] px-1 rounded bg-amber-100 text-amber-800 font-medium">
                 Not detected
               </span>
             )}
@@ -155,24 +125,46 @@ export const PaperDetailsForm: React.FC<PaperDetailsFormProps> = ({ meta, hasTea
             value={subjectCode}
             onChange={(e) => setSubjectCode(e.target.value)}
             onBlur={() => handleBlurField('subject_code', subjectCode.trim(), meta.subject_code)}
-            placeholder={!subjectCode.trim() ? "Not detected — enter manually" : "e.g. CS-402 / IT-301"}
-            className={`w-full px-2 py-1.5 rounded-md border text-xs bg-white text-slate-800 focus:outline-none focus:border-indigo-500 uppercase font-mono transition ${
+            placeholder={!subjectCode.trim() ? "Not detected — enter manually" : "e.g. CS-402"}
+            className={`w-full px-2 py-1 rounded border text-xs bg-white text-slate-800 focus:outline-none focus:border-indigo-500 uppercase font-mono transition ${
               !subjectCode.trim() ? 'border-amber-400 bg-amber-50/20 placeholder:text-amber-700/70 font-medium' : 'border-slate-300'
+            }`}
+          />
+        </div>
+
+        {/* Exam Name */}
+        <div className="space-y-0.5">
+          <div className="flex items-center justify-between">
+            <label className="text-[10px] font-semibold text-slate-700">Exam / Term</label>
+            {!examName.trim() && (
+              <span className="text-[8px] px-1 rounded bg-amber-100 text-amber-800 font-medium">
+                Not detected
+              </span>
+            )}
+          </div>
+          <input
+            type="text"
+            value={examName}
+            onChange={(e) => setExamName(e.target.value)}
+            onBlur={() => handleBlurField('exam_name', examName.trim(), meta.exam_name)}
+            placeholder={!examName.trim() ? "Not detected — enter manually" : "e.g. End Semester 2026"}
+            className={`w-full px-2 py-1 rounded border text-xs bg-white text-slate-800 focus:outline-none focus:border-indigo-500 transition ${
+              !examName.trim() ? 'border-amber-400 bg-amber-50/20 placeholder:text-amber-700/70 font-medium' : 'border-slate-300'
             }`}
           />
         </div>
       </div>
 
       {/* Domain Selection */}
-      <div className="space-y-1 text-xs">
-        <label className="text-[11px] font-medium text-slate-700 flex items-center gap-1">
-          <Layers className="w-3 h-3 text-slate-500" />
+      <div className="space-y-0.5 text-xs">
+        <label className="text-[10px] font-semibold text-slate-700 flex items-center gap-1">
+          <Layers className="w-2.5 h-2.5 text-slate-500" />
           <span>Subject Domain Calibration</span>
         </label>
         <select
           value={subjectDomain}
           onChange={handleDomainChange}
-          className="w-full px-2 py-1.5 rounded-md border border-slate-300 text-xs bg-white text-slate-800 focus:outline-none focus:border-indigo-500"
+          className="w-full px-2 py-1 rounded border border-slate-300 text-xs bg-white text-slate-800 focus:outline-none focus:border-indigo-500"
         >
           {SUBJECT_DOMAINS.map((d) => (
             <option key={d.id} value={d.id}>
@@ -183,9 +175,9 @@ export const PaperDetailsForm: React.FC<PaperDetailsFormProps> = ({ meta, hasTea
       </div>
 
       {/* Strictness Picker 1-5 */}
-      <div className="space-y-1 text-xs pt-1 border-t border-slate-200">
-        <label className="text-[11px] font-medium text-slate-700 flex items-center justify-between">
-          <span>Grading Strictness (1 = Lenient, 5 = Strict)</span>
+      <div className="space-y-0.5 text-xs pt-1 border-t border-slate-200">
+        <label className="text-[10px] font-semibold text-slate-700 flex items-center justify-between">
+          <span>Strictness (1 = Lenient, 5 = Strict)</span>
         </label>
         <StrictnessPicker
           value={strictnessLevel}
@@ -195,11 +187,10 @@ export const PaperDetailsForm: React.FC<PaperDetailsFormProps> = ({ meta, hasTea
 
       {/* Amber Tip for Level 4-5 without Teacher Key */}
       {showTeacherKeyTip && (
-        <div className="p-2 rounded-md bg-amber-50 border border-amber-300 text-[11px] text-amber-900 flex items-start gap-1.5">
-          <Info className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+        <div className="p-1.5 rounded bg-amber-50 border border-amber-300 text-[10px] text-amber-900 flex items-start gap-1">
+          <Info className="w-3 h-3 text-amber-600 shrink-0 mt-0.5" />
           <span>
-            <strong>Tip:</strong> Upload a Teacher Answer Key for exact keyword enforcement at Level {strictnessLevel},
-            or borderline keyword matches will be flagged for your review.
+            Upload a Teacher Key for exact keyword matching at Level {strictnessLevel}.
           </span>
         </div>
       )}

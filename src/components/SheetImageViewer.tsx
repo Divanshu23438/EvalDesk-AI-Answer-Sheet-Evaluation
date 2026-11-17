@@ -106,7 +106,7 @@ export const SheetImageViewer: React.FC<SheetImageViewerProps> = ({
   const fullPageUrl = `/api/sheets/${sheetId}/pages/${activePage}/image?v=${imgKey}`;
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white shadow-xs overflow-hidden flex flex-col min-h-[300px]">
+    <div className="rounded-xl border border-slate-200 bg-white shadow-xs overflow-hidden flex flex-col h-full min-h-0">
       {/* Viewer Toolbar */}
       <div className="px-3 py-2 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs">
         {/* View Mode Toggle: Crop vs Full Page */}
@@ -215,7 +215,7 @@ export const SheetImageViewer: React.FC<SheetImageViewerProps> = ({
       {/* Viewer Canvas */}
       <div
         ref={canvasRef}
-        className="flex-1 min-h-[260px] max-h-[460px] overflow-auto p-4 bg-slate-100 flex items-start justify-center"
+        className="flex-1 min-h-0 h-full overflow-auto p-3 bg-slate-100 flex items-start justify-center"
       >
         {notAttempted ? (
           <div className="m-auto text-center p-6 bg-white rounded-xl border border-slate-200 max-w-sm space-y-2">

@@ -722,21 +722,16 @@ export const UploadScreen: React.FC = () => {
   const failedCount = sheets.filter((s) => ['failed', 'error'].includes(s.status)).length;
 
   return (
-    <div className="panel h-full min-h-0 bg-slate-50 p-3 md:p-5 overflow-hidden select-none relative">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-full max-w-7xl mx-auto w-full min-h-0">
+    <div className="panel h-full min-h-0 bg-slate-50 p-3 overflow-hidden select-none relative">
+      <div className="grid grid-cols-1 lg:grid-cols-[36%_28%_36%] gap-3 h-full w-full min-h-0 overflow-hidden">
         
         {/* ==================================================================== */}
-        {/* LEFT COLUMN: Vertically Divided into Card A & Card B                 */}
+        {/* COLUMN 1: Step 1A · Question Paper & Rubric Configuration             */}
         {/* ==================================================================== */}
-        <div className="flex flex-col gap-3 min-h-0 h-full overflow-y-auto pr-1">
-          
-          {/* ------------------------------------------------------------------ */}
-          {/* CARD A: Question Paper & Rubric (Collapses when locked)            */}
-          {/* ------------------------------------------------------------------ */}
-          <section
-            aria-label="Target Question Paper"
-            className="bg-white rounded-xl border border-slate-200 shadow-2xs p-3.5 shrink-0 transition-all"
-          >
+        <section
+          aria-label="Target Question Paper"
+          className="bg-white rounded-xl border border-slate-200 shadow-2xs p-3 flex flex-col justify-between h-full min-h-0 overflow-hidden select-none"
+        >
             {/* Header: Paper selector, New Paper button, and Lock status badge */}
             <div className="flex items-center justify-between gap-2 mb-2">
               <div className="flex items-center gap-1.5 min-w-0">
@@ -1098,13 +1093,13 @@ export const UploadScreen: React.FC = () => {
             )}
           </section>
 
-          {/* ------------------------------------------------------------------ */}
-          {/* CARD B: Student Answer Sheets Intake                               */}
-          {/* ------------------------------------------------------------------ */}
-          <section
-            aria-label="Student Answer Sheets"
-            className="bg-white rounded-xl border border-slate-200 shadow-2xs p-4 flex flex-col justify-between shrink-0 min-h-[220px]"
-          >
+        {/* ==================================================================== */}
+        {/* COLUMN 2: Step 1B · Student Answer Sheets Intake                     */}
+        {/* ==================================================================== */}
+        <section
+          aria-label="Student Answer Sheets"
+          className="bg-white rounded-xl border border-slate-200 shadow-2xs p-3.5 flex flex-col justify-between h-full min-h-0 overflow-hidden select-none"
+        >
             <div className="flex flex-col gap-2.5 min-h-0 flex-1">
               <div className="flex items-start justify-between gap-2 shrink-0">
                 <div>
@@ -1239,21 +1234,20 @@ export const UploadScreen: React.FC = () => {
                   <CheckCircle className="w-3 h-3 text-emerald-600" />
                   Auto-detect Roll No. & Name: <strong className="text-emerald-700">ON</strong>
                 </span>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200 font-medium">
-                  <Sparkles className="w-3 h-3 text-indigo-600" />
-                  Bilingual OCR: <strong className="text-slate-800">Hindi + English</strong>
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200 font-medium">
+                  <Sparkles className="w-2.5 h-2.5 text-indigo-600" />
+                  OCR: <strong className="text-slate-800">Hindi + English</strong>
                 </span>
               </div>
             </div>
           </section>
-        </div>
 
         {/* ==================================================================== */}
-        {/* RIGHT COLUMN: Uploaded Batch Queue & Inline Processing                */}
+        {/* COLUMN 3: Uploaded Batch Queue                                       */}
         {/* ==================================================================== */}
-        <section
-          aria-label="Upload Queue"
-          className="bg-white rounded-xl border border-slate-200 shadow-2xs flex flex-col h-full overflow-hidden min-h-0"
+        <aside
+          aria-label="Uploaded Batch Queue"
+          className="bg-white rounded-xl border border-slate-200 shadow-2xs flex flex-col h-full min-h-0 overflow-hidden"
         >
           {/* Queue Header */}
           <div className="p-3.5 border-b border-slate-200 flex items-center justify-between bg-slate-50/70 shrink-0">
@@ -1372,7 +1366,7 @@ export const UploadScreen: React.FC = () => {
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
-        </section>
+        </aside>
       </div>
 
       {/* ==================================================================== */}
