@@ -1,7 +1,15 @@
 # STATUS (update at the end of every session)
 Date / author (agent or model name): 2026-11-17 / Antigravity (Gemini 3.8 Flash)
-Current phase and task: Phase P9.3 complete; starting Phase P9.4 (Real Per-Page OCR Progress & Flip Animation).
+Current phase and task: Phase P9.4 complete; starting Phase P9.5 (Upload screen completion).
 Done (task id, commit, proof file):
+- Task P9.4: Real Per-Page OCR Progress & Flip Animation (`backend/main.py`, `src/components/QueueRow.tsx`, `src/screens/UploadScreen.tsx`, `backend/tests/test_p9_4.py`, `scripts/verify_p9_4.py`, `docs/proof/P9.4/`):
+  1. Updated `read_page` to record real per-page status in SQLite `sheet_pages`: sets `ocr_status = 'reading'` and clears error at start; sets `ocr_status = 'done'`, average page legibility, and clears error on success; catches any exception and sets `ocr_status = 'failed'` with full error message. Each status change executes in its own short committed transaction.
+  2. Maintained `sheets.stage_key` at every stage transition alongside `current_stage`: `'queued'`, `'reading'`, `'matching'`, `'marking'`, `'flagging'`, `'needs_review'`, `'evaluated'`, and `'failed'`.
+  3. Eliminated fake progress counters: completely removed `pages_total // 2` guess from `GET /api/sheets/{id}` (clearing the final banned string check in `scripts/check_all.py`!) and `1 if s["status"] == "reading"` from `GET /api/papers/{id}/sheets`. Both endpoints now calculate real `pages_read = sum(1 for p in sp_rows if p["ocr_status"] == "done")` and return full `pages[]` status array with `{n, status, image_url, legibility, error}`.
+  4. Updated `retry_sheet_evaluation` to reset all sheet pages to `ocr_status = 'pending'`, `ocr_error = NULL`, `ocr_legibility = NULL` and `stage_key = 'queued'`. Handled reuse path marking all pages `done`.
+  5. Updated frontend `UploadScreen.tsx`: adaptive 1s polling interval when any sheet has `stage_key === 'reading'` or a page in `reading` state; renders `PageFlipStrip` for active or failed sheets with pages. Added `stage_key` and `pages` to `SheetQueueItem` in `QueueRow.tsx`.
+  6. Verified via `backend/tests/test_p9_4.py` (4/4 passed), full pytest suite (65/65 passed), `npx tsc --noEmit` (0 errors), and `scripts/check_all.py` (ALL PASS across banned strings, git secrets, pytest, tsc, and live provider health).
+  7. Captured multi-moment API JSON payload (`docs/proof/P9.4/moments_api.json`) and 3 Playwright screenshots (`page_flip_moment1_pending.png`, `page_flip_moment2_reading.png`, `page_flip_moment3_failed.png`). | docs/proof/P9.4/
 - Task P9.3: One Grader for Pipeline and Recheck (`backend/marking_engine.py`, `backend/main.py`, `backend/tests/test_p9_3.py`, `scripts/verify_p9_3.py`, `docs/proof/P9.3/`):
   1. Extracted subjective and objective grading into `async def grade_answer(question, ref, student_text, level, domain, has_teacher_key, legibility) -> GradeResult` in `backend/marking_engine.py`. Unified grading across both pipeline and recheck.
   2. Implemented `recalculate_sheet_totals` using `calculate_section_choice_totals` and unified `grade_for(percentage)` function across pipeline, teacher review, and recheck. Verified 100% choice totals parity before and after teacher review.

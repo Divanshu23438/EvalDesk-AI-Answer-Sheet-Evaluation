@@ -1,0 +1,400 @@
+{
+  "moment_1_pending": {
+    "sheet_status": {
+      "id": "84531bb3-5355-4479-aa3d-8322ca05d7aa",
+      "paper_id": "8b3374af-46a8-434b-a6e6-0d9bc25a2a2f",
+      "student_name": "Devin Vance",
+      "roll_number": "CS-2026-904",
+      "consent_flag": 1,
+      "status": "evaluating",
+      "raw_filename": "devin_os_exam.pdf",
+      "current_stage": "Reading pages",
+      "error_message": null,
+      "total_score": 0.0,
+      "max_marks": 0.0,
+      "percentage": 0.0,
+      "grade": "",
+      "created_at": "2026-11-17 09:36:10",
+      "updated_at": "2026-11-17 09:36:10",
+      "failed_stage": null,
+      "stage_key": "reading",
+      "pages_count": 4,
+      "pages_total": 4,
+      "pages_read": 0,
+      "pages": [
+        {
+          "n": 1,
+          "status": "pending",
+          "image_url": "/api/sheets/84531bb3-5355-4479-aa3d-8322ca05d7aa/pages/1/image",
+          "legibility": null,
+          "error": null
+        },
+        {
+          "n": 2,
+          "status": "pending",
+          "image_url": "/api/sheets/84531bb3-5355-4479-aa3d-8322ca05d7aa/pages/2/image",
+          "legibility": null,
+          "error": null
+        },
+        {
+          "n": 3,
+          "status": "pending",
+          "image_url": "/api/sheets/84531bb3-5355-4479-aa3d-8322ca05d7aa/pages/3/image",
+          "legibility": null,
+          "error": null
+        },
+        {
+          "n": 4,
+          "status": "pending",
+          "image_url": "/api/sheets/84531bb3-5355-4479-aa3d-8322ca05d7aa/pages/4/image",
+          "legibility": null,
+          "error": null
+        }
+      ],
+      "stage": "Reading pages",
+      "total_questions": 4,
+      "questions_total": 4,
+      "evaluated_questions_count": 0,
+      "questions_marked": 0,
+      "retry_at": null,
+      "history": [
+        {
+          "stage": "uploaded",
+          "at": "2026-11-17 09:36:10"
+        }
+      ]
+    },
+    "paper_sheets": {
+      "sheets": [
+        {
+          "id": "84531bb3-5355-4479-aa3d-8322ca05d7aa",
+          "paper_id": "8b3374af-46a8-434b-a6e6-0d9bc25a2a2f",
+          "student_name": "Devin Vance",
+          "roll_number": "CS-2026-904",
+          "consent_flag": 1,
+          "status": "evaluating",
+          "raw_filename": "devin_os_exam.pdf",
+          "current_stage": "Reading pages",
+          "error_message": null,
+          "total_score": 0.0,
+          "max_marks": 0.0,
+          "percentage": 0.0,
+          "grade": "",
+          "created_at": "2026-11-17 09:36:10",
+          "updated_at": "2026-11-17 09:36:10",
+          "failed_stage": null,
+          "stage_key": "reading",
+          "unresolved_flags_count": 0,
+          "total_flags_count": 0,
+          "flags_open": 0,
+          "roll": "CS-2026-904",
+          "filename": "devin_os_exam.pdf",
+          "stage": "Reading pages",
+          "page_count": 4,
+          "pages_total": 4,
+          "pages_read": 0,
+          "pages": [
+            {
+              "n": 1,
+              "status": "pending",
+              "image_url": "/api/sheets/84531bb3-5355-4479-aa3d-8322ca05d7aa/pages/1/image",
+              "legibility": null,
+              "error": null
+            },
+            {
+              "n": 2,
+              "status": "pending",
+              "image_url": "/api/sheets/84531bb3-5355-4479-aa3d-8322ca05d7aa/pages/2/image",
+              "legibility": null,
+              "error": null
+            },
+            {
+              "n": 3,
+              "status": "pending",
+              "image_url": "/api/sheets/84531bb3-5355-4479-aa3d-8322ca05d7aa/pages/3/image",
+              "legibility": null,
+              "error": null
+            },
+            {
+              "n": 4,
+              "status": "pending",
+              "image_url": "/api/sheets/84531bb3-5355-4479-aa3d-8322ca05d7aa/pages/4/image",
+              "legibility": null,
+              "error": null
+            }
+          ],
+          "questions_marked": 0,
+          "questions_total": 4
+        }
+      ]
+    }
+  },
+  "moment_2_reading": {
+    "sheet_status": {
+      "id": "84531bb3-5355-4479-aa3d-8322ca05d7aa",
+      "paper_id": "8b3374af-46a8-434b-a6e6-0d9bc25a2a2f",
+      "student_name": "Devin Vance",
+      "roll_number": "CS-2026-904",
+      "consent_flag": 1,
+      "status": "evaluating",
+      "raw_filename": "devin_os_exam.pdf",
+      "current_stage": "Reading pages",
+      "error_message": null,
+      "total_score": 0.0,
+      "max_marks": 0.0,
+      "percentage": 0.0,
+      "grade": "",
+      "created_at": "2026-11-17 09:36:10",
+      "updated_at": "2026-11-17 09:36:10",
+      "failed_stage": null,
+      "stage_key": "reading",
+      "pages_count": 4,
+      "pages_total": 4,
+      "pages_read": 1,
+      "pages": [
+        {
+          "n": 1,
+          "status": "done",
+          "image_url": "/api/sheets/84531bb3-5355-4479-aa3d-8322ca05d7aa/pages/1/image",
+          "legibility": 0.94,
+          "error": null
+        },
+        {
+          "n": 2,
+          "status": "reading",
+          "image_url": "/api/sheets/84531bb3-5355-4479-aa3d-8322ca05d7aa/pages/2/image",
+          "legibility": null,
+          "error": null
+        },
+        {
+          "n": 3,
+          "status": "pending",
+          "image_url": "/api/sheets/84531bb3-5355-4479-aa3d-8322ca05d7aa/pages/3/image",
+          "legibility": null,
+          "error": null
+        },
+        {
+          "n": 4,
+          "status": "pending",
+          "image_url": "/api/sheets/84531bb3-5355-4479-aa3d-8322ca05d7aa/pages/4/image",
+          "legibility": null,
+          "error": null
+        }
+      ],
+      "stage": "Reading pages",
+      "total_questions": 4,
+      "questions_total": 4,
+      "evaluated_questions_count": 0,
+      "questions_marked": 0,
+      "retry_at": null,
+      "history": [
+        {
+          "stage": "uploaded",
+          "at": "2026-11-17 09:36:10"
+        }
+      ]
+    },
+    "paper_sheets": {
+      "sheets": [
+        {
+          "id": "84531bb3-5355-4479-aa3d-8322ca05d7aa",
+          "paper_id": "8b3374af-46a8-434b-a6e6-0d9bc25a2a2f",
+          "student_name": "Devin Vance",
+          "roll_number": "CS-2026-904",
+          "consent_flag": 1,
+          "status": "evaluating",
+          "raw_filename": "devin_os_exam.pdf",
+          "current_stage": "Reading pages",
+          "error_message": null,
+          "total_score": 0.0,
+          "max_marks": 0.0,
+          "percentage": 0.0,
+          "grade": "",
+          "created_at": "2026-11-17 09:36:10",
+          "updated_at": "2026-11-17 09:36:10",
+          "failed_stage": null,
+          "stage_key": "reading",
+          "unresolved_flags_count": 0,
+          "total_flags_count": 0,
+          "flags_open": 0,
+          "roll": "CS-2026-904",
+          "filename": "devin_os_exam.pdf",
+          "stage": "Reading pages",
+          "page_count": 4,
+          "pages_total": 4,
+          "pages_read": 1,
+          "pages": [
+            {
+              "n": 1,
+              "status": "done",
+              "image_url": "/api/sheets/84531bb3-5355-4479-aa3d-8322ca05d7aa/pages/1/image",
+              "legibility": 0.94,
+              "error": null
+            },
+            {
+              "n": 2,
+              "status": "reading",
+              "image_url": "/api/sheets/84531bb3-5355-4479-aa3d-8322ca05d7aa/pages/2/image",
+              "legibility": null,
+              "error": null
+            },
+            {
+              "n": 3,
+              "status": "pending",
+              "image_url": "/api/sheets/84531bb3-5355-4479-aa3d-8322ca05d7aa/pages/3/image",
+              "legibility": null,
+              "error": null
+            },
+            {
+              "n": 4,
+              "status": "pending",
+              "image_url": "/api/sheets/84531bb3-5355-4479-aa3d-8322ca05d7aa/pages/4/image",
+              "legibility": null,
+              "error": null
+            }
+          ],
+          "questions_marked": 0,
+          "questions_total": 4
+        }
+      ]
+    }
+  },
+  "moment_3_failed": {
+    "sheet_status": {
+      "id": "84531bb3-5355-4479-aa3d-8322ca05d7aa",
+      "paper_id": "8b3374af-46a8-434b-a6e6-0d9bc25a2a2f",
+      "student_name": "Devin Vance",
+      "roll_number": "CS-2026-904",
+      "consent_flag": 1,
+      "status": "failed",
+      "raw_filename": "devin_os_exam.pdf",
+      "current_stage": "Reading pages",
+      "error_message": "Page 4 handwriting recognition failed (503 Service Unavailable). Click Retry to resume.",
+      "total_score": 0.0,
+      "max_marks": 0.0,
+      "percentage": 0.0,
+      "grade": "",
+      "created_at": "2026-11-17 09:36:10",
+      "updated_at": "2026-11-17 09:36:10",
+      "failed_stage": "reading",
+      "stage_key": "failed",
+      "pages_count": 4,
+      "pages_total": 4,
+      "pages_read": 3,
+      "pages": [
+        {
+          "n": 1,
+          "status": "done",
+          "image_url": "/api/sheets/84531bb3-5355-4479-aa3d-8322ca05d7aa/pages/1/image",
+          "legibility": 0.94,
+          "error": null
+        },
+        {
+          "n": 2,
+          "status": "done",
+          "image_url": "/api/sheets/84531bb3-5355-4479-aa3d-8322ca05d7aa/pages/2/image",
+          "legibility": 0.91,
+          "error": null
+        },
+        {
+          "n": 3,
+          "status": "done",
+          "image_url": "/api/sheets/84531bb3-5355-4479-aa3d-8322ca05d7aa/pages/3/image",
+          "legibility": 0.88,
+          "error": null
+        },
+        {
+          "n": 4,
+          "status": "failed",
+          "image_url": "/api/sheets/84531bb3-5355-4479-aa3d-8322ca05d7aa/pages/4/image",
+          "legibility": null,
+          "error": "Vision API network timeout: 503 Provider unavailable"
+        }
+      ],
+      "stage": "Reading pages",
+      "total_questions": 4,
+      "questions_total": 4,
+      "evaluated_questions_count": 0,
+      "questions_marked": 0,
+      "retry_at": null,
+      "history": [
+        {
+          "stage": "uploaded",
+          "at": "2026-11-17 09:36:10"
+        },
+        {
+          "stage": "reading_identity",
+          "at": "2026-11-17 09:36:10"
+        },
+        {
+          "stage": "failed",
+          "at": "2026-11-17 09:36:10"
+        }
+      ]
+    },
+    "paper_sheets": {
+      "sheets": [
+        {
+          "id": "84531bb3-5355-4479-aa3d-8322ca05d7aa",
+          "paper_id": "8b3374af-46a8-434b-a6e6-0d9bc25a2a2f",
+          "student_name": "Devin Vance",
+          "roll_number": "CS-2026-904",
+          "consent_flag": 1,
+          "status": "failed",
+          "raw_filename": "devin_os_exam.pdf",
+          "current_stage": "Reading pages",
+          "error_message": "Page 4 handwriting recognition failed (503 Service Unavailable). Click Retry to resume.",
+          "total_score": 0.0,
+          "max_marks": 0.0,
+          "percentage": 0.0,
+          "grade": "",
+          "created_at": "2026-11-17 09:36:10",
+          "updated_at": "2026-11-17 09:36:10",
+          "failed_stage": "reading",
+          "stage_key": "failed",
+          "unresolved_flags_count": 0,
+          "total_flags_count": 0,
+          "flags_open": 0,
+          "roll": "CS-2026-904",
+          "filename": "devin_os_exam.pdf",
+          "stage": "Reading pages",
+          "page_count": 4,
+          "pages_total": 4,
+          "pages_read": 3,
+          "pages": [
+            {
+              "n": 1,
+              "status": "done",
+              "image_url": "/api/sheets/84531bb3-5355-4479-aa3d-8322ca05d7aa/pages/1/image",
+              "legibility": 0.94,
+              "error": null
+            },
+            {
+              "n": 2,
+              "status": "done",
+              "image_url": "/api/sheets/84531bb3-5355-4479-aa3d-8322ca05d7aa/pages/2/image",
+              "legibility": 0.91,
+              "error": null
+            },
+            {
+              "n": 3,
+              "status": "done",
+              "image_url": "/api/sheets/84531bb3-5355-4479-aa3d-8322ca05d7aa/pages/3/image",
+              "legibility": 0.88,
+              "error": null
+            },
+            {
+              "n": 4,
+              "status": "failed",
+              "image_url": "/api/sheets/84531bb3-5355-4479-aa3d-8322ca05d7aa/pages/4/image",
+              "legibility": null,
+              "error": "Vision API network timeout: 503 Provider unavailable"
+            }
+          ],
+          "questions_marked": 0,
+          "questions_total": 4
+        }
+      ]
+    }
+  }
+}

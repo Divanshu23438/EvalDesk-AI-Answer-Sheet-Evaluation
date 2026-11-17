@@ -33,6 +33,14 @@ export interface SheetQueueItem {
   questions_total?: number;
   total_score?: number;
   max_marks?: number;
+  stage_key?: string;
+  pages?: Array<{
+    n: number;
+    status: 'pending' | 'reading' | 'done' | 'failed';
+    image_url?: string | null;
+    legibility?: number | null;
+    error?: string | null;
+  }>;
 }
 
 interface QueueRowProps {

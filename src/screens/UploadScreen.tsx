@@ -237,9 +237,14 @@ export const UploadScreen: React.FC = () => {
 
     if (!hasActiveJobs) return;
 
+    const hasReading = sheets.some(
+      (s: any) => s.stage_key === 'reading' || (s.pages && s.pages.some((p: any) => p.status === 'reading'))
+    );
+    const intervalTime = hasReading ? 1000 : 1500;
+
     const interval = setInterval(() => {
       loadSheets();
-    }, 1500);
+    }, intervalTime);
 
     return () => clearInterval(interval);
   }, [state.paperId, sheets, loadSheets]);
@@ -1273,7 +1278,7 @@ export const UploadScreen: React.FC = () => {
                       onSaved={loadSheets}
                     />
                   )}
-                  {ACTIVE_STATUSES.includes(sheet.status) && sheet.pages && sheet.pages.length > 0 && (
+                  {((ACTIVE_STATUSES.includes(sheet.status) || sheet.status === 'failed') && sheet.pages && sheet.pages.length > 0) && (
                     <PageFlipStrip pages={sheet.pages} />
                   )}
                 </div>
