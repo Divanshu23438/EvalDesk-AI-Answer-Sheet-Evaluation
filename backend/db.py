@@ -1,14 +1,71 @@
 import sqlite3
 import threading
-from typing import Generator
+from typing import Generator, Any, Dict, List, Optional
 from contextlib import contextmanager
 from backend.config import DB_PATH
 
 _db_lock = threading.Lock()
 
+class DictRow:
+    """Enhanced row factory that provides dict-like access, .get(), and numeric index access."""
+    __slots__ = ("_keys", "_dict", "_row")
+
+    def __init__(self, cursor, row):
+        self._keys = [col[0] for col in cursor.description]
+        self._dict = dict(zip(self._keys, row))
+        self._row = row
+
+    def __getitem__(self, item):
+        if isinstance(item, (int, slice)):
+            return self._row[item]
+        return self._dict[item]
+
+    def __contains__(self, key):
+        return key in self._dict
+
+    def __iter__(self):
+        return iter(self._row)
+
+    def __len__(self):
+        return len(self._row)
+
+    def __eq__(self, other):
+        if isinstance(other, DictRow):
+            return self._row == other._row and self._keys == other._keys
+        if isinstance(other, dict):
+            return self._dict == other
+        if isinstance(other, (tuple, list)):
+            return self._row == tuple(other)
+        return False
+
+    def __repr__(self):
+        return repr(self._dict)
+
+    def get(self, key, default=None):
+        return self._dict.get(key, default)
+
+    def keys(self):
+        return self._keys
+
+    def values(self):
+        return self._dict.values()
+
+    def items(self):
+        return self._dict.items()
+
+
+def fetchone(conn: sqlite3.Connection, sql: str, params: tuple = ()) -> Optional[Dict[str, Any]]:
+    row = conn.execute(sql, params).fetchone()
+    return dict(row) if row else None
+
+
+def fetchall(conn: sqlite3.Connection, sql: str, params: tuple = ()) -> List[Dict[str, Any]]:
+    return [dict(r) for r in conn.execute(sql, params).fetchall()]
+
+
 def get_db_connection() -> sqlite3.Connection:
     conn = sqlite3.connect(DB_PATH, timeout=30.0, isolation_level=None)
-    conn.row_factory = sqlite3.Row
+    conn.row_factory = DictRow
     conn.execute("PRAGMA journal_mode = WAL")
     conn.execute("PRAGMA synchronous = NORMAL")
     conn.execute("PRAGMA busy_timeout = 30000")

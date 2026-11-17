@@ -1,7 +1,16 @@
 # STATUS (update at the end of every session)
 Date / author (agent or model name): 2026-11-17 / Antigravity (Gemini 3.8 Flash)
-Current phase and task: Zero-Scroll Single-Screen Responsive Layouts, 1-by-1 Sequential OCR Pipeline & SQLite Locking Elimination Verified.
+Current phase and task: SQLite Dictionary Row Helper & DictRow Implementation (`backend/db.py`, `backend/main.py`).
 Done (task id, commit, proof file):
+- Task: SQLite Dictionary Row Helpers & DictRow (`backend/db.py`, `backend/main.py`, `backend/tests/test_backend.py`):
+  1. DB Helpers (`backend/db.py`):
+     - Added `fetchone(conn, sql, params=()) -> Optional[Dict[str, Any]]` and `fetchall(conn, sql, params=()) -> List[Dict[str, Any]]` helper functions to convert SQLite rows to plain Python dicts at the database helper level (Option A).
+     - Implemented `DictRow` as the connection `row_factory` in `get_db_connection()`, supporting index access (`row[0]`), key access (`row["col"]`), dictionary `.get(key, default=None)`, `.keys()`, `.values()`, `.items()`, `dict(row)`, and `'key' in row`.
+  2. Main Pipeline Row Access (`backend/main.py`):
+     - Imported `fetchone`, `fetchall`, `DictRow` and ensured `paper` and `sheet` rows in `_execute_sheet_evaluation_pipeline` are dict-converted, guaranteeing `.get(...)` calls never raise `AttributeError: 'sqlite3.Row' object has no attribute 'get'`.
+  3. Verification & Test Suite:
+     - Added `test_db_dict_row_and_helpers` in `backend/tests/test_backend.py` verifying `fetchone`, `fetchall`, and `DictRow` behaviors.
+     - Ran `npx tsc --noEmit` (0 errors), `npm run build` (built in 4.41s), and `python scripts/check_all.py` (ALL PASS across banned strings, git secrets, 66 pytest passing, tsc clean, live provider health).
 - Task: Zero-Scroll Single-Screen Responsive Layouts, 1-by-1 Sequential OCR Pipeline & SQLite Locking Elimination:
   1. SQLite Database Locking Fix (`backend/db.py` & `backend/main.py`):
      - Configured all SQLite connections with `PRAGMA journal_mode = WAL;`, `PRAGMA synchronous = NORMAL;`, `PRAGMA busy_timeout = 30000;`, and `timeout=30.0`.

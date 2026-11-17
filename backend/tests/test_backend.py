@@ -235,3 +235,42 @@ def test_gateway_image_resize_and_normalization():
     assert max(w, h) == 2000
     assert w == 2000 and h == 1000
 
+def test_db_dict_row_and_helpers():
+    from backend.db import get_db, fetchone, fetchall, DictRow
+    with get_db() as conn:
+        # Test fetchone with data
+        row = fetchone(conn, "SELECT 42 as num, 'test_val' as text_col")
+        assert isinstance(row, dict)
+        assert row["num"] == 42
+        assert row.get("text_col") == "test_val"
+        assert row.get("nonexistent") is None
+        assert row.get("nonexistent", "fallback") == "fallback"
+
+        # Test fetchone with empty result
+        empty = fetchone(conn, "SELECT 1 WHERE 1 = 0")
+        assert empty is None
+
+        # Test fetchall
+        rows = fetchall(conn, "SELECT 1 as id UNION ALL SELECT 2 as id")
+        assert isinstance(rows, list)
+        assert len(rows) == 2
+        assert all(isinstance(r, dict) for r in rows)
+        assert rows[0]["id"] == 1
+        assert rows[1]["id"] == 2
+
+        # Test DictRow raw cursor access
+        cursor = conn.cursor()
+        cursor.execute("SELECT 101 as student_id, 'Alice' as student_name")
+        raw_row = cursor.fetchone()
+        assert isinstance(raw_row, DictRow)
+        assert raw_row["student_id"] == 101
+        assert raw_row[0] == 101
+        assert raw_row[1] == "Alice"
+        assert raw_row.get("student_name") == "Alice"
+        assert raw_row.get("missing_field") is None
+        assert raw_row.get("missing_field", 999) == 999
+        assert "student_name" in raw_row
+        assert "missing_field" not in raw_row
+        assert dict(raw_row) == {"student_id": 101, "student_name": "Alice"}
+
+

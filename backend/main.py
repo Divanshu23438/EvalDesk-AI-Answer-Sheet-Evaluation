@@ -33,7 +33,7 @@ from backend.config import (
     GEMINI_PRIMARY_MODEL,
     GROQ_VISION_MODEL,
 )
-from backend.db import init_db, get_db
+from backend.db import init_db, get_db, fetchone, fetchall, DictRow
 from backend.storage import (
     get_paper_dir,
     get_paper_draft_dir,
@@ -2481,15 +2481,17 @@ async def _execute_sheet_evaluation_pipeline(sheet_id: str):
         with get_db() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM sheets WHERE id = ?", (sheet_id,))
-            sheet = cursor.fetchone()
-            if not sheet:
+            sheet_row = cursor.fetchone()
+            if not sheet_row:
                 return
+            sheet = dict(sheet_row)
 
             paper_id = sheet["paper_id"]
             cursor.execute("SELECT * FROM papers WHERE id = ?", (paper_id,))
-            paper = cursor.fetchone()
-            if not paper:
+            paper_row = cursor.fetchone()
+            if not paper_row:
                 raise Exception("Associated paper not found.")
+            paper = dict(paper_row)
 
             cursor.execute("SELECT * FROM questions WHERE paper_id = ? ORDER BY order_idx ASC", (paper_id,))
             questions = [dict(r) for r in cursor.fetchall()]
