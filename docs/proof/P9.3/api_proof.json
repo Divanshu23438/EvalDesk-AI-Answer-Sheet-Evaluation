@@ -1,0 +1,162 @@
+{
+  "initial_choice_totals": {
+    "total_score": 8.5,
+    "paper_max_marks": 10.0,
+    "effective_max_marks": 10.0,
+    "percentage": 85.0,
+    "grade": "A",
+    "questions": [
+      {
+        "question_id": "proof_q1",
+        "eval_id": "proof_eval1",
+        "order_idx": 1,
+        "attempted": true,
+        "final_marks": 4.5,
+        "resolved": true,
+        "section_id": "proof_sec_a",
+        "section_name": "Section A (Choice: Attempt any 2)",
+        "teacher_is_counted": null,
+        "is_counted": true,
+        "status_label": "Checked"
+      },
+      {
+        "question_id": "proof_q2",
+        "eval_id": "proof_eval2",
+        "order_idx": 2,
+        "attempted": true,
+        "final_marks": 2.5,
+        "resolved": true,
+        "section_id": "proof_sec_a",
+        "section_name": "Section A (Choice: Attempt any 2)",
+        "teacher_is_counted": null,
+        "is_counted": false,
+        "status_label": "Optional / Extra \u2014 Not Counted"
+      },
+      {
+        "question_id": "proof_q3",
+        "eval_id": "proof_eval3",
+        "order_idx": 3,
+        "attempted": true,
+        "final_marks": 4.0,
+        "resolved": true,
+        "section_id": "proof_sec_a",
+        "section_name": "Section A (Choice: Attempt any 2)",
+        "teacher_is_counted": null,
+        "is_counted": true,
+        "status_label": "Checked"
+      }
+    ]
+  },
+  "review_before_recheck": {
+    "paper_strictness_level": 2,
+    "paper_subject_domain": "cs_it",
+    "q1_strictness_used": 2,
+    "q1_marks": 4.5,
+    "q1_verdicts": [
+      {
+        "index": 1,
+        "text": "Process concept and execution state",
+        "point": "Process concept and execution state",
+        "marks_available": 2.5,
+        "marks_awarded": 2.5,
+        "verdict": "full",
+        "quote": "A process is a program in execution.",
+        "reason": "Full conceptual clarity."
+      },
+      {
+        "index": 2,
+        "text": "PCB structure (PID, registers, state)",
+        "point": "PCB structure (PID, registers, state)",
+        "marks_available": 2.5,
+        "marks_awarded": 2.0,
+        "verdict": "partial",
+        "quote": "It contains PID and registers saved in PCB.",
+        "reason": "Mentioned PID and registers (0.65 partial credit rounded)."
+      }
+    ],
+    "sheet_total": 8.5,
+    "sheet_percentage": 85.0,
+    "sheet_grade": "A"
+  },
+  "recheck_response": {
+    "evaluation_id": "proof_eval1",
+    "previous_final_marks": 4.5,
+    "new_ai_marks": 3.0,
+    "new_final_marks": 3.0,
+    "strictness_used": 5,
+    "strictness_effective": 5,
+    "strictness_source": "question",
+    "verdicts": [
+      {
+        "index": 1,
+        "text": "Process concept and execution state",
+        "point": "Process concept and execution state",
+        "marks_available": 2.5,
+        "marks_awarded": 2.5,
+        "verdict": "full",
+        "quote": "A process is a program in execution.",
+        "reason": "Clear execution definition."
+      },
+      {
+        "index": 2,
+        "text": "PCB structure (PID, registers, state)",
+        "point": "PCB structure (PID, registers, state)",
+        "marks_available": 2.5,
+        "marks_awarded": 0.5,
+        "verdict": "partial",
+        "quote": "It contains PID and registers saved in PCB.",
+        "reason": "Missing exact CPU context state required by Level 5 rubric."
+      }
+    ],
+    "new_sheet_total": 7.0,
+    "percentage": 70.0,
+    "grade": "B"
+  },
+  "review_after_recheck": {
+    "q1_strictness_used": 5,
+    "q1_strictness_effective": 5,
+    "q1_strictness_source": "question",
+    "q1_final_marks": 3.0,
+    "q1_verdicts": [
+      {
+        "index": 1,
+        "text": "Process concept and execution state",
+        "point": "Process concept and execution state",
+        "marks_available": 2.5,
+        "marks_awarded": 2.5,
+        "verdict": "full",
+        "quote": "A process is a program in execution.",
+        "reason": "Clear execution definition."
+      },
+      {
+        "index": 2,
+        "text": "PCB structure (PID, registers, state)",
+        "point": "PCB structure (PID, registers, state)",
+        "marks_available": 2.5,
+        "marks_awarded": 0.5,
+        "verdict": "partial",
+        "quote": "It contains PID and registers saved in PCB.",
+        "reason": "Missing exact CPU context state required by Level 5 rubric."
+      }
+    ],
+    "sheet_total": 7.0,
+    "sheet_grade": "B"
+  },
+  "choice_totals_parity": {
+    "total_before_review": 7.0,
+    "total_after_review": 7.0,
+    "is_identical": true
+  },
+  "forced_ai_failure": {
+    "status": "failed",
+    "awarded_marks": 0.0,
+    "flags": [
+      {
+        "code": "quota_exceeded",
+        "message": "AI call failed: Provider 429 rate limit reached",
+        "severity": "critical"
+      }
+    ],
+    "reason": "Grading call failed: Provider 429 rate limit reached"
+  }
+}

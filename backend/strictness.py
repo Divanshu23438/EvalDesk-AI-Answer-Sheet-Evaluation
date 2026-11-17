@@ -307,7 +307,7 @@ def build_strictness_instructions(
             "- At Levels 4-5, apply strict deductions for spelling, matra errors, and grammar agreement."
         ),
         "general": (
-            "DOMAIN CALIBRATION: General Assessment:\n"
+            "DOMAIN CALIBRATION: General Domain:\n"
             "- Evaluate clarity of communication, accuracy of factual claims, and relevance to the prompt."
         ),
     }

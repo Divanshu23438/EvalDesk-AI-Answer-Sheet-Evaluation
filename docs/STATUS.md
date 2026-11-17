@@ -1,7 +1,15 @@
 # STATUS (update at the end of every session)
 Date / author (agent or model name): 2026-11-17 / Antigravity (Gemini 3.8 Flash)
-Current phase and task: Phase P9.2 complete; starting Phase P9.3 (One grader for pipeline and recheck).
+Current phase and task: Phase P9.3 complete; starting Phase P9.4 (Real Per-Page OCR Progress & Flip Animation).
 Done (task id, commit, proof file):
+- Task P9.3: One Grader for Pipeline and Recheck (`backend/marking_engine.py`, `backend/main.py`, `backend/tests/test_p9_3.py`, `scripts/verify_p9_3.py`, `docs/proof/P9.3/`):
+  1. Extracted subjective and objective grading into `async def grade_answer(question, ref, student_text, level, domain, has_teacher_key, legibility) -> GradeResult` in `backend/marking_engine.py`. Unified grading across both pipeline and recheck.
+  2. Implemented `recalculate_sheet_totals` using `calculate_section_choice_totals` and unified `grade_for(percentage)` function across pipeline, teacher review, and recheck. Verified 100% choice totals parity before and after teacher review.
+  3. Rewrote `POST /api/evaluations/{eval_id}/recheck` to use `grade_answer`, honor strictness input (1-5), optionally persist question override, recompute coded flags honestly, clear cached crops, and return `previous_final_marks` and full evaluation review payload.
+  4. Updated `GET /api/sheets/{sheet_id}/review`: removed fabricated `"met"` / `"unmet"` block (`key_point_verdicts`); returned real stored `verdicts`, `strictness_used`, `strictness_effective`, `strictness_source`, `confidence`, `status`, and coded flags (`[{"code", "message", "severity"}]`).
+  5. Implemented retry retention (A14): preserves teacher-reviewed evaluations and evaluations with `resolved == 1` and `status == 'ok'`.
+  6. Replaced banned strings: eliminated `"met" if`, `get("legibility", 0.95)`, and `General Assessment`. Missing legibility is treated honestly as `None` and flagged with `low_legibility`; fallback matches on printed `q_no` add `matched_by_q_no` flag.
+  7. Verified 6/6 tests passing in `test_p9_3.py`, all 61 tests passing across full pytest suite, and `npx tsc --noEmit` clean. Proof saved to `docs/proof/P9.3/api_proof.json` and `docs/proof/P9.3/pytest_p9_3.txt`. | docs/proof/P9.3/
 - Task P9.2: Strictness Engine & Unit Tests (`backend/strictness.py`, `backend/tests/test_strictness.py`, `docs/proof/P9.2/`):
   1. Implemented `resolve_level` (question override -> paper level -> default 3) with source tracking ("question" | "paper").
   2. Implemented `TAU_FLAG = {1:0.45, 2:0.55, 3:0.70, 4:0.80, 5:0.88}` and `PARTIAL_FACTOR = {1:0.75, 2:0.65, 3:0.50, 4:0.40, 5:0.25}` matching specification.
