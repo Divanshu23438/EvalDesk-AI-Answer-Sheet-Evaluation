@@ -2451,7 +2451,25 @@ async def set_sheet_identity(
         "message": "Student identity updated. Evaluation automatically queued.",
     }
 
+# A16: Global evaluation worker queue semaphore with configurable concurrency
+EVAL_CONCURRENCY = int(os.environ.get("EVAL_CONCURRENCY", "1"))
+_eval_semaphore: Optional[asyncio.Semaphore] = None
+
+def get_eval_semaphore() -> asyncio.Semaphore:
+    global _eval_semaphore
+    if _eval_semaphore is None:
+        _eval_semaphore = asyncio.Semaphore(EVAL_CONCURRENCY)
+    return _eval_semaphore
+
 async def run_sheet_evaluation_pipeline(sheet_id: str):
+    """
+    Global concurrency gate (A16): acquires evaluation semaphore before starting pipeline.
+    """
+    sem = get_eval_semaphore()
+    async with sem:
+        await _execute_sheet_evaluation_pipeline(sheet_id)
+
+async def _execute_sheet_evaluation_pipeline(sheet_id: str):
     """
     Background worker for the multi-stage evaluation pipeline:
     Reading pages -> Matching answers -> Marking -> Checking review flags & calculating totals
@@ -3707,7 +3725,7 @@ def get_sheet_report_endpoint(sheet_id: str, regenerate: bool = False):
 
         cursor.execute(
             """
-            SELECT e.id as eval_id, e.ai_marks, e.final_marks, e.reason, e.evidence_quote, e.is_counted, e.flags_json, e.resolved,
+            SELECT e.id as eval_id, e.ai_marks, e.final_marks, e.reason, e.evidence_quote, e.is_counted, e.flags_json, e.resolved, e.strictness_used,
                    q.id as question_id, q.key as question_key, q.q_no, q.question_text, q.max_marks, q.section_name,
                    a.extracted_text, a.bbox_json, a.page_numbers, a.is_attempted,
                    r.teacher_marks, (CASE WHEN r.id IS NOT NULL THEN 1 ELSE 0 END) as is_overridden
@@ -3844,6 +3862,7 @@ def get_sheet_report_endpoint(sheet_id: str, regenerate: bool = False):
             "student_name": sheet["student_name"] or "Student",
             "roll_number": roll,
             "paper_title": paper["title"] if paper else "Examination",
+            "paper_strictness": paper["strictness_level"] if (paper and "strictness_level" in paper.keys()) else 3,
             "total_score": sheet["total_score"] or 0.0,
             "max_marks": sheet["max_marks"] or 100.0,
             "percentage": sheet["percentage"] or 0.0,
@@ -4235,6 +4254,32 @@ async def build_paper_reports_data(paper_id: str) -> Dict[str, Any]:
     flag_rate = round((total_flagged_count / total_eval_count) * 100.0, 1)
     teacher_change_rate = round((total_overrides / total_eval_count) * 100.0, 1)
 
+    # Strictness distribution across all evaluations for this paper
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT e.strictness_used
+            FROM evaluations e
+            JOIN sheets s ON e.sheet_id = s.id
+            WHERE s.paper_id = ?
+            """,
+            (paper_id,),
+        )
+        strictness_rows = [r[0] for r in cursor.fetchall()]
+
+    s_names = {1: "Lenient", 2: "Supportive", 3: "Balanced", 4: "Rigorous", 5: "Strict"}
+    strictness_counts = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
+    p_lvl = int(paper["strictness_level"]) if (paper and "strictness_level" in paper.keys() and paper["strictness_level"]) else 3
+    for lvl in strictness_rows:
+        val = int(lvl) if lvl in [1, 2, 3, 4, 5] else p_lvl
+        strictness_counts[val] += 1
+
+    strictness_dist = [
+        {"level": lvl, "name": s_names[lvl], "count": cnt}
+        for lvl, cnt in sorted(strictness_counts.items())
+    ]
+
     analytics = {
         "total_students": len(sheets),
         "max_marks": paper["total_marks"] or 10.0,
@@ -4245,6 +4290,8 @@ async def build_paper_reports_data(paper_id: str) -> Dict[str, Any]:
         "flag_rate": flag_rate,
         "teacher_change_rate": teacher_change_rate,
         "score_distribution": score_distribution,
+        "strictness_distribution": strictness_dist,
+        "paper_strictness": p_lvl,
         "is_single_sheet": len(sheets) <= 1,
     }
 

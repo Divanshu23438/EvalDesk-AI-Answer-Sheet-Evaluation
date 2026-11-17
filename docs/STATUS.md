@@ -1,7 +1,13 @@
 # STATUS (update at the end of every session)
 Date / author (agent or model name): 2026-11-17 / Antigravity (Gemini 3.8 Flash)
-Current phase and task: Phase P9.7 complete; starting Phase P9.8 (Hardening and cleanup).
+Current phase and task: Plan 2 Complete — All Phases P9.0 through P9.8 Fully Verified & Committed.
 Done (task id, commit, proof file):
+- Task P9.8: Hardening & Cleanup (`backend/main.py`, `.env.example`, `src/screens/ReportScreen.tsx`, `scripts/verify_p9_8.py`, `docs/proof/P9.8/`):
+  1. Concurrency gate (A16): Implemented global evaluation worker queue semaphore `get_eval_semaphore()` with configurable capacity via `EVAL_CONCURRENCY` environment variable (defaults to 1 for free-tier rate-limit protection), preventing free-tier 429 storms when multiple sheets are uploaded or resumed.
+  2. Paper Report Analytics: Added `strictness_distribution` and `paper_strictness` to `build_paper_reports_data`, displaying strictness level breakdown (Levels 1..5) in the Paper Analytics tab of `ReportScreen.tsx`.
+  3. Student Report Card: Added `e.strictness_used` and `paper_strictness` to `GET /api/sheets/{sheet_id}/report`, rendering `S.{level}` badges on individual questions whenever a question's strictness override differs from the paper level.
+  4. Clean repository root: Deleted temporary root files (`UploadScreen.diff`, `UPGRADE_PLAN.md`, `STRICTNESS_SPEC.md`), ensuring they remain permanently documented under `docs/`.
+  5. Verified via `scripts/verify_p9_8.py` and `scripts/check_all.py` (ALL PASS across banned strings, git secrets, 65 pytest passing, tsc clean, live provider health). Saved proof to `docs/proof/P9.8/p9_8_proof.json`. | docs/proof/P9.8/
 - Task P9.7: End-to-End Tests & Verification across Two Distinct Papers (`scripts/e2e_ui.py`, `docs/proof/P9.7/`):
   1. Ran two completely distinct papers end-to-end to prove zero hardcoding:
      - Paper 1: Computer Science / IT (Database Management Systems, Strictness 3, student Arjun Sharma, roll CS303-012).

@@ -35,6 +35,7 @@ interface QuestionReportItem {
   flags_json?: string;
   resolved?: boolean | number;
   is_overridden?: boolean | number;
+  strictness_used?: number;
 }
 
 interface StudentReportData {
@@ -43,6 +44,7 @@ interface StudentReportData {
   student_name: string;
   roll_number: string;
   paper_title: string;
+  paper_strictness?: number;
   total_score: number;
   max_marks: number;
   percentage: number;
@@ -59,6 +61,12 @@ interface StudentReportData {
 interface ScoreDistributionItem {
   range: string;
   label: string;
+  count: number;
+}
+
+interface StrictnessDistributionItem {
+  level: number;
+  name: string;
   count: number;
 }
 
@@ -82,6 +90,8 @@ interface PaperAnalytics {
   flag_rate?: number;
   teacher_change_rate?: number;
   score_distribution?: ScoreDistributionItem[];
+  strictness_distribution?: StrictnessDistributionItem[];
+  paper_strictness?: number;
   is_single_sheet?: boolean;
 }
 
@@ -613,7 +623,17 @@ export const ReportScreen: React.FC = () => {
                           className="hover:bg-[var(--surface-hover)] transition"
                         >
                           <td className="py-2.5 px-3 font-bold text-[var(--ink-primary)] font-mono">
-                            Q.{String(q.q_no).replace(/^[Qq]\.?\s*/, '')}
+                            <div className="flex items-center gap-1">
+                              <span>Q.{String(q.q_no).replace(/^[Qq]\.?\s*/, '')}</span>
+                              {q.strictness_used && studentReport?.paper_strictness && q.strictness_used !== studentReport.paper_strictness && (
+                                <span
+                                  className="px-1 py-0.2 rounded text-[9px] font-mono font-bold bg-purple-100 text-purple-700"
+                                  title={`Strictness Override: Level ${q.strictness_used}/5 (Paper is Level ${studentReport.paper_strictness})`}
+                                >
+                                  S.{q.strictness_used}
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td className="py-2.5 px-3 text-[var(--ink-primary)]">
                             <div className="line-clamp-2 leading-relaxed" title={q.question_text}>
@@ -775,6 +795,30 @@ export const ReportScreen: React.FC = () => {
                   )}
                 </div>
               </div>
+
+              {/* Strictness Level Distribution Card */}
+              {paperReport?.analytics?.strictness_distribution && (
+                <div className="panel border border-[var(--surface-border)] rounded-xl bg-[var(--surface-card)] p-3.5 shadow-sm shrink-0">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--ink-secondary)] flex items-center gap-1.5">
+                      <Target className="w-3.5 h-3.5 text-[var(--accent-indigo)]" />
+                      <span>Strictness Distribution</span>
+                    </h3>
+                    <span className="text-[10px] text-[var(--ink-muted)] font-mono">
+                      Standard: L.{paperReport.analytics.paper_strictness || 3}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-5 gap-1.5 text-center">
+                    {paperReport.analytics.strictness_distribution.map((item) => (
+                      <div key={item.level} className="p-1.5 rounded-lg bg-[var(--surface-subtle)] border border-[var(--surface-border)]">
+                        <span className="text-[10px] font-bold block text-[var(--ink-secondary)]">L.{item.level}</span>
+                        <span className="text-xs font-bold text-[var(--ink-primary)] block font-mono">{item.count}</span>
+                        <span className="text-[8px] text-[var(--ink-muted)] truncate block">{item.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Right Column: Question Stats & Pedagogical Feedback (7 cols) */}

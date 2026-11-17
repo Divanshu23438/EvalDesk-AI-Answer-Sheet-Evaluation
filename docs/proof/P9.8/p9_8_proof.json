@@ -1,0 +1,52 @@
+{
+  "timestamp": "2026-11-17T10:32:49.673562+00:00",
+  "checks": [
+    {
+      "check": "evaluation_concurrency_gate",
+      "eval_concurrency": 1,
+      "status": "pass"
+    },
+    {
+      "check": "paper_report_strictness_distribution",
+      "paper_id": "1082d2bd-ebc1-434e-abcd-2e5982db2f58",
+      "strictness_distribution": [
+        {
+          "level": 1,
+          "name": "Lenient",
+          "count": 0
+        },
+        {
+          "level": 2,
+          "name": "Supportive",
+          "count": 0
+        },
+        {
+          "level": 3,
+          "name": "Balanced",
+          "count": 2
+        },
+        {
+          "level": 4,
+          "name": "Rigorous",
+          "count": 1
+        },
+        {
+          "level": 5,
+          "name": "Strict",
+          "count": 0
+        }
+      ],
+      "paper_strictness": 1,
+      "status": "pass"
+    },
+    {
+      "check": "clean_root_directory",
+      "verified_absent": [
+        "UploadScreen.diff",
+        "UPGRADE_PLAN.md",
+        "STRICTNESS_SPEC.md"
+      ],
+      "status": "pass"
+    }
+  ]
+}
