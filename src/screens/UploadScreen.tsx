@@ -224,8 +224,20 @@ export const UploadScreen: React.FC = () => {
       const fetched = data.sheets || [];
       setSheets(fetched);
 
-      if (fetched.length > 0 && !state.sheetId) {
-        store.setSheet(fetched[0].id, fetched[0].student_name, fetched[0].roll);
+      if (fetched.length > 0) {
+        const matchingSheet = fetched.find((s) => s.id === state.sheetId);
+        if (matchingSheet) {
+          if (matchingSheet.student_name !== state.studentName || matchingSheet.roll !== state.rollNumber) {
+            store.setSheet(matchingSheet.id, matchingSheet.student_name, matchingSheet.roll);
+          }
+        } else {
+          // Current sheetId is missing or from another paper - select first sheet of this paper
+          store.setSheet(fetched[0].id, fetched[0].student_name, fetched[0].roll);
+        }
+      } else {
+        if (state.sheetId) {
+          store.setSheet(null);
+        }
       }
     } catch (err: any) {
       // Don't overwrite unless persistent
@@ -713,8 +725,9 @@ export const UploadScreen: React.FC = () => {
 
   const handleStartProcessingOrOpen = () => {
     if (sheets.length === 0) return;
-    const targetId = state.sheetId || sheets[0].id;
-    store.setStep('evaluate', targetId);
+    const targetSheet = sheets.find((s) => s.id === state.sheetId) || sheets[0];
+    store.setSheet(targetSheet.id, targetSheet.student_name, targetSheet.roll);
+    store.setStep('evaluate', targetSheet.id);
   };
 
   const readyCount = sheets.filter((s) => ['evaluated', 'ready'].includes(s.status)).length;

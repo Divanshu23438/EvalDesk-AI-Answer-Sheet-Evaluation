@@ -90,7 +90,19 @@ export const Shell: React.FC = () => {
     { id: 'report', label: 'Report', number: 3 },
   ];
 
-  const handleStepClick = (step: AppStep) => {
+  const handleStepClick = async (step: AppStep) => {
+    if ((step === 'evaluate' || step === 'report') && !state.sheetId && state.paperId) {
+      try {
+        const sheetsData = await apiClient.get<{ sheets: any[] }>(`/api/papers/${state.paperId}/sheets`);
+        const sheetsList = sheetsData.sheets || [];
+        if (sheetsList.length > 0) {
+          const target = sheetsList[0];
+          store.setSheet(target.id, target.student_name, target.roll);
+          store.setStep(step, target.id);
+          return;
+        }
+      } catch {}
+    }
     store.setStep(step);
   };
 

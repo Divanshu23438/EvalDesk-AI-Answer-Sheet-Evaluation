@@ -88,10 +88,40 @@ export const EvaluateScreen: React.FC = () => {
 
   // 1. Fetch Review Data from GET /api/sheets/{id}/review
   const loadReviewData = useCallback(async () => {
-    if (!state.sheetId) return;
+    let currentSheetId = state.sheetId;
+
+    // If no sheetId in state, recover sheet from active paper or server
+    if (!currentSheetId) {
+      setIsLoading(true);
+      try {
+        let paperId = state.paperId;
+        if (!paperId) {
+          const papersData = await apiClient.get<{ papers: any[] }>('/api/papers');
+          const papersList = papersData.papers || [];
+          if (papersList.length > 0) {
+            paperId = papersList[0].id;
+          }
+        }
+        if (paperId) {
+          const sheetsData = await apiClient.get<{ sheets: any[] }>(`/api/papers/${paperId}/sheets`);
+          const sheetsList = sheetsData.sheets || [];
+          if (sheetsList.length > 0) {
+            currentSheetId = sheetsList[0].id;
+            store.setSheet(currentSheetId, sheetsList[0].student_name, sheetsList[0].roll);
+            store.setStep('evaluate', currentSheetId);
+          }
+        }
+      } catch {}
+      if (!currentSheetId) {
+        setIsLoading(false);
+        store.setStep('upload');
+        return;
+      }
+    }
+
     setIsLoading(true);
     try {
-      const data = await apiClient.get<ReviewResponse>(`/api/sheets/${state.sheetId}/review`);
+      const data = await apiClient.get<ReviewResponse>(`/api/sheets/${currentSheetId}/review`);
       setReviewData(data);
 
       const qList = data.questions || [];
@@ -137,6 +167,33 @@ export const EvaluateScreen: React.FC = () => {
         store.setSheet(data.sheet.id, data.sheet.student_name, data.sheet.roll_number);
       }
     } catch (err: any) {
+      if (err.status === 404) {
+        // Sheet was deleted or invalid URL parameter. Auto-recover by finding active paper's sheets.
+        try {
+          let paperId = state.paperId;
+          if (!paperId) {
+            const papersData = await apiClient.get<{ papers: any[] }>('/api/papers');
+            const papersList = papersData.papers || [];
+            if (papersList.length > 0) {
+              paperId = papersList[0].id;
+            }
+          }
+          if (paperId) {
+            const sheetsData = await apiClient.get<{ sheets: any[] }>(`/api/papers/${paperId}/sheets`);
+            const sheetsList = sheetsData.sheets || [];
+            const validFallback = sheetsList.find((s) => s.id !== currentSheetId) || sheetsList[0];
+            if (validFallback) {
+              store.setSheet(validFallback.id, validFallback.student_name, validFallback.roll);
+              store.setStep('evaluate', validFallback.id);
+              return;
+            }
+          }
+        } catch {}
+        // If no valid sheets exist, return to upload screen cleanly
+        store.setSheet(null);
+        store.setStep('upload');
+        return;
+      }
       store.setError({
         code: err.code || 'REVIEW_FETCH_FAILED',
         message: err.message || 'Failed to fetch evaluation review data.',
@@ -144,7 +201,7 @@ export const EvaluateScreen: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [state.sheetId, state.activeQuestionKey, activeKey, store]);
+  }, [state.sheetId, state.paperId, state.activeQuestionKey, activeKey, store]);
 
   useEffect(() => {
     loadReviewData();

@@ -1,7 +1,19 @@
 # STATUS (update at the end of every session)
 Date / author (agent or model name): 2026-11-17 / Antigravity (Gemini 3.8 Flash)
-Current phase and task: SQLite Dictionary Row Helper & DictRow Implementation (`backend/db.py`, `backend/main.py`).
+Current phase and task: Stale Sheet Navigation & HTTP 404 Auto-Recovery Fix (`src/screens/EvaluateScreen.tsx`, `src/screens/UploadScreen.tsx`, `src/app/Shell.tsx`).
 Done (task id, commit, proof file):
+- Task: Stale Sheet Navigation & HTTP 404 Auto-Recovery Fix (`src/screens/EvaluateScreen.tsx`, `src/screens/UploadScreen.tsx`, `src/app/Shell.tsx`):
+  1. Stale Sheet ID Invalidation in Upload Screen (`src/screens/UploadScreen.tsx`):
+     - In `loadSheets`, validated `state.sheetId` against `fetched` sheets list. If `state.sheetId` points to an old/deleted sheet or another paper's sheet, automatically resets `sheetId` to the active paper's first valid sheet (`fetched[0].id`).
+     - In `handleStartProcessingOrOpen`, ensured `targetSheet` always resolves to an actual sheet currently in the queue (`sheets.find(s => s.id === state.sheetId) || sheets[0]`).
+  2. Automatic 404 Sheet Recovery in Evaluation Workspace (`src/screens/EvaluateScreen.tsx`):
+     - When `loadReviewData` encounters an HTTP 404 error (e.g. from an old URL hash or deleted sheet), it automatically queries the active paper's sheets (`/api/papers/${paperId}/sheets`) and redirects to a valid existing sheet (`f3dcbe8c...`), or returns cleanly to `#/upload` if no sheets exist.
+  3. Header Stepper Safe Navigation (`src/app/Shell.tsx`):
+     - When clicking "2. Evaluate" from the header bar without a selected sheet, queries the active paper's sheets and selects the first valid sheet before opening the workspace.
+  4. Verification:
+     - `npx tsc --noEmit` passed with 0 errors.
+     - `npm run build` completed cleanly (dist built in 5.73s).
+     - `python scripts/check_all.py --no-live` passed with `RESULT: ALL PASS`.
 - Task: SQLite Dictionary Row Helpers & DictRow (`backend/db.py`, `backend/main.py`, `backend/tests/test_backend.py`):
   1. DB Helpers (`backend/db.py`):
      - Added `fetchone(conn, sql, params=()) -> Optional[Dict[str, Any]]` and `fetchall(conn, sql, params=()) -> List[Dict[str, Any]]` helper functions to convert SQLite rows to plain Python dicts at the database helper level (Option A).
