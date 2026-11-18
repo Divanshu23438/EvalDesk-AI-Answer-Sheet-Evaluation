@@ -490,10 +490,12 @@ export const ReportScreen: React.FC = () => {
 
   return (
     <div
-      className="app h-screen w-screen overflow-hidden bg-[#F8FAFC] font-sans text-[#0F172A] antialiased flex flex-col select-none"
+      className="app h-full w-full overflow-hidden bg-[#F8FAFC] font-sans text-[#0F172A] antialiased flex flex-col select-none"
       style={{
-        height: '100dvh',
-        maxHeight: '100vh',
+        height: '100%',
+        maxHeight: '100%',
+        width: '100%',
+        maxWidth: '100%',
         overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',

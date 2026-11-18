@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-export type AppStep = 'upload' | 'evaluate' | 'report';
+export type AppStep = 'dashboard' | 'upload' | 'evaluate' | 'report' | 'history' | 'reports';
 
 export interface ProviderHealthState {
   isHealthy: boolean;
@@ -43,7 +43,7 @@ export interface SheetStoreState {
 
 // Initial state is strictly empty - server is sole source of truth
 const initialStoreState: SheetStoreState = {
-  step: 'upload',
+  step: 'dashboard',
   paperId: null,
   paperTitle: '',
   paperTotalMarks: 0,
@@ -175,17 +175,24 @@ export const sheetStore = {
   syncStateFromHash() {
     const hash = window.location.hash.replace(/^#\/?/, '');
     const parts = hash.split('/').filter(Boolean);
-    const stepPart = parts[0] || 'upload';
+    const stepPart = parts[0] || 'dashboard';
     const sheetIdPart = parts[1] || null;
 
-    let resolvedStep: AppStep = 'upload';
-    if (stepPart === 'evaluate' && sheetIdPart) {
+    let resolvedStep: AppStep = 'dashboard';
+    if (stepPart === 'dashboard') {
+      resolvedStep = 'dashboard';
+    } else if (stepPart === 'history') {
+      resolvedStep = 'history';
+    } else if (stepPart === 'reports') {
+      resolvedStep = 'reports';
+    } else if (stepPart === 'evaluate') {
       resolvedStep = 'evaluate';
-    } else if (stepPart === 'report' && sheetIdPart) {
+    } else if (stepPart === 'report') {
       resolvedStep = 'report';
-    } else {
-      // #/setup, #/processing, #/upload, or any legacy/unknown routes all cleanly route to #/upload
+    } else if (stepPart === 'upload' || stepPart === 'setup' || stepPart === 'processing') {
       resolvedStep = 'upload';
+    } else {
+      resolvedStep = 'dashboard';
     }
 
     globalState = {

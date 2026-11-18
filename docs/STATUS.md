@@ -1,7 +1,40 @@
 # STATUS (update at the end of every session)
 Date / author (agent or model name): 2026-11-18 / Antigravity (Gemini 3.8 Flash)
-Current phase and task: UI Layout & Text-Wrapping Hardening Complete across Evaluate & Report screens. All Tasks P0-P8 and U1-U5 fully verified and passing.
+Current phase and task: Collapsible Left Navigation Sidebar, Live Dashboard, Evaluation History with Teacher Filters, Reports Center (.xlsx & .pdf batch downloads), and Upload Screen Auto-Fetch/Auto-Fill complete and fully verified.
 Done (task id, commit, proof file):
+- Collapsible Left Navigation Sidebar, Dashboard, History, Reports Center, and Auto-Fetch (`src/components/AppSidebar.tsx`, `src/screens/DashboardScreen.tsx`, `src/screens/HistoryScreen.tsx`, `src/screens/ReportsCenterScreen.tsx`, `src/app/Shell.tsx`, `src/screens/UploadScreen.tsx`, `src/components/IdentityForm.tsx`, `src/components/QueueRow.tsx`, `backend/main.py`, `backend/db.py`, `backend/reports_generator.py`, `scripts/verify_nav_dashboard_reports.py`, `docs/proof/ui/navigation/`):
+  1. Collapsible Left Side Menu (`src/components/AppSidebar.tsx` & `src/app/Shell.tsx`):
+     - Persistent collapsible left navigation sidebar (`w-60` expanded vs `w-16` compact collapsed, persisted in `localStorage` key `evaldesk_sidebar_collapsed`).
+     - Includes 4 primary navigation items:
+       1. Dashboard (`#/dashboard`, `LayoutDashboard` icon)
+       2. Evaluate Sheets (`#/upload`, `FileCheck2` icon — stays active across active evaluation workflow `#/upload`, `#/evaluate/:id`, `#/report/:id`)
+       3. History (`#/history`, `History` icon)
+       4. Reports (`#/reports`, `FileSpreadsheet` icon)
+     - Shows compact `ED` logo + `PanelLeftOpen` expand button when collapsed, with hover tooltips and active state ring highlight.
+     - Top horizontal stepper (`1. Upload → 2. Evaluate → 3. Sheet Report`) is conditionally rendered only during active evaluation workflow.
+  2. Live Evaluation Dashboard (`src/screens/DashboardScreen.tsx` & `GET /api/dashboard/summary`):
+     - Backend computes real-time SQLite metrics: `total_evaluated`, `needs_review_count`, `avg_score_pct`, `avg_ocr_confidence`, `total_papers`, `subject_performance`, `score_distribution` (High ≥75%, Average 50-74%, Attention <50%), `evaluation_history_trend`, and last 8 `recent_sheets`.
+     - Frontend renders top header with `+ New Evaluation` CTA, 5 tabular font-mono KPI cards, 2-column responsive graphs (Subject-wise performance progress bars + Score mastery summary & daily evaluation activity), and Recent Evaluated Sheets table with direct `Evaluate` and `Report` links.
+  3. Evaluation History with Teacher Filters (`src/screens/HistoryScreen.tsx` & `GET /api/sheets/history`):
+     - Backend provides filtered query endpoint by `subject`, `exam`, `student_name`, `roll_no`, and `status`, returning matching evaluated sheets alongside distinct dropdown options.
+     - Frontend renders Teacher Filter Toolbar (Subject dropdown, Exam dropdown, Student search with clear icon, Roll No. font-mono search, Status pills `All | Ready | Needs Review`, and Reset Filters button) and full results table with marks, percentage, grade, status chips, and action buttons.
+  4. Sidebar Reports Center (`src/screens/ReportsCenterScreen.tsx` — distinct from `#/report/:sheetId`):
+     - Post-evaluation single-sheet inspector remains strictly isolated at `#/report/:sheetId` (booklet preview + OCR comparison + single-sheet analytics).
+     - `#/reports` provides the Batch & Student Result Download Center:
+       - Header with Assessment paper selector and Class filter dropdown (`All Classes` + distinct classes) and student search.
+       - One-Click Whole-Class Result Card with summary statistics (`Total Students`, `Passing Rate`, `Class Average`, `Highest Score`) and one-click export buttons:
+         1. `Download Whole Class Result (.xlsx)` via `GET /api/papers/{paperId}/export/excel`
+         2. `Download Whole Class Marksheet (.pdf)` via `GET /api/papers/{paperId}/export/class-pdf`
+       - Consolidated Class Result Ledger Table with row-level `Download Student Result (.pdf)` via `GET /api/sheets/{sheetId}/export/pdf` and `Preview` via `#/report/{sheetId}`.
+  5. Student Answer Sheet Auto-Fill & Question Paper Auto-Fetch:
+     - SQLite `sheets` schema extended with `class_name TEXT DEFAULT ''` column migration (`backend/db.py`).
+     - `POST /api/sheets/{id}/identity` updated to accept `class_name` and update database records.
+     - `IdentityForm.tsx` and `QueueRow.tsx` updated with Class input and inline badge display.
+     - Question Paper Card 1 in `UploadScreen.tsx` updated with `Auto-Fetch Exam Details` button (`Sparkles` icon) connecting to `POST /api/papers/auto-fetch-details` with animated confirmation badge.
+  6. Verification & Quality Gates:
+     - Automated end-to-end Playwright verification script (`scripts/verify_nav_dashboard_reports.py`) passed all backend endpoints and UI flows.
+     - Captured 7 proof screenshots in `docs/proof/ui/navigation/`.
+     - `python scripts/check_all.py --no-live` passes with `RESULT: ALL PASS` (banned strings, git secrets, pytest, tsc --noEmit).
 - UI Layout & Text-Wrapping Hardening (`src/components/QuestionPanel.tsx`, `src/components/report/ReportQuestionTab.tsx`, `src/components/report/ReportAnalyticsTab.tsx`, `scripts/verify_ui_fixes.py`, `docs/proof/ui/fixes/`):
   1. Clean Compact Icon Rail When Question Panel Is Collapsed (`src/components/QuestionPanel.tsx`):
      - Updated collapsed aside container to fixed `w-12` (48px) with `flex flex-col items-center bg-white border-l border-slate-200 overflow-x-hidden select-none`.

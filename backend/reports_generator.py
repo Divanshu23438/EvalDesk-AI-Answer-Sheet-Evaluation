@@ -703,3 +703,202 @@ def generate_paper_report_excel(
             sheet.column_dimensions[col_letter].width = max(max_len + 3, 12)
 
     wb.save(str(output_path))
+
+
+def generate_class_marksheet_pdf(
+    output_path: Path,
+    paper_title: str,
+    subject: str,
+    students: List[Dict[str, Any]],
+    total_marks: float,
+    class_name: Optional[str] = None,
+):
+    """
+    Generates a consolidated whole-class marksheet PDF with class summary KPIs
+    and a complete student results ledger table.
+    """
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    fonts = register_report_fonts()
+    regular = fonts["regular"]
+    bold = fonts["bold"]
+
+    doc = SimpleDocTemplate(
+        str(output_path),
+        pagesize=letter,
+        leftMargin=36,
+        rightMargin=36,
+        topMargin=36,
+        bottomMargin=36,
+    )
+
+    story = []
+    clean_title = sanitize_exam_title(paper_title)
+    max_m = float(total_marks or 10.0)
+
+    # Styles
+    title_style = ParagraphStyle(
+        "MarksheetTitle",
+        fontName=bold,
+        fontSize=15,
+        leading=18,
+        textColor=colors.HexColor("#0F172A"),
+    )
+    sub_style = ParagraphStyle(
+        "MarksheetSub",
+        fontName=regular,
+        fontSize=9,
+        leading=12,
+        textColor=colors.HexColor("#475569"),
+    )
+    th_style = ParagraphStyle(
+        "MarksheetTH",
+        fontName=bold,
+        fontSize=8,
+        leading=10,
+        alignment=1,
+        textColor=colors.white,
+    )
+    td_style = ParagraphStyle(
+        "MarksheetTD",
+        fontName=regular,
+        fontSize=8,
+        leading=10,
+        textColor=colors.HexColor("#1E293B"),
+    )
+    td_bold = ParagraphStyle(
+        "MarksheetTDBold",
+        fontName=bold,
+        fontSize=8,
+        leading=10,
+        textColor=colors.HexColor("#0F172A"),
+    )
+    td_center = ParagraphStyle(
+        "MarksheetTDCenter",
+        fontName=regular,
+        fontSize=8,
+        leading=10,
+        alignment=1,
+        textColor=colors.HexColor("#1E293B"),
+    )
+
+    # Header Card
+    header_left = [
+        Paragraph("<b>CONSOLIDATED CLASS MARKSHEET</b>", title_style),
+        Spacer(1, 3),
+        Paragraph(f"<b>Exam / Assessment:</b> {safe_xml(clean_title)}", sub_style),
+        Paragraph(f"<b>Subject:</b> {safe_xml(subject or 'General Subject')} &nbsp;|&nbsp; <b>Class:</b> {safe_xml(class_name or 'All Classes')} &nbsp;|&nbsp; <b>Max Marks:</b> {max_m:g}", sub_style),
+    ]
+
+    from datetime import datetime
+    gen_time = datetime.now().strftime("%d %b %Y, %I:%M %p")
+    header_right = [
+        Paragraph("<b>EvalDesk AI Assessment</b>", ParagraphStyle("HR1", fontName=bold, fontSize=10, leading=12, alignment=2, textColor=colors.HexColor("#4338CA"))),
+        Paragraph(f"Generated: {gen_time}", ParagraphStyle("HR2", fontName=regular, fontSize=8, leading=10, alignment=2, textColor=colors.HexColor("#64748B"))),
+        Paragraph("Status: Official Record", ParagraphStyle("HR3", fontName=bold, fontSize=8, leading=10, alignment=2, textColor=colors.HexColor("#15803D"))),
+    ]
+
+    header_table = Table([[header_left, header_right]], colWidths=[360, 180])
+    header_table.setStyle(TableStyle([
+        ('VALIGN', (0,0), (-1,-1), 'TOP'),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 8),
+    ]))
+    story.append(header_table)
+    story.append(Spacer(1, 8))
+
+    # Compute Summary Stats
+    total_count = len(students)
+    valid_scores = [float(s.get("total_score") or 0.0) for s in students if s.get("total_score") is not None]
+    avg_score = round(sum(valid_scores) / len(valid_scores), 1) if valid_scores else 0.0
+    avg_pct = round((avg_score / max_m) * 100.0, 1) if max_m > 0 else 0.0
+    highest_score = max(valid_scores) if valid_scores else 0.0
+    pass_count = sum(1 for sc in valid_scores if (sc / max_m) >= 0.40) if max_m > 0 else total_count
+    pass_pct = round((pass_count / total_count) * 100.0, 1) if total_count > 0 else 0.0
+
+    kpi_data = [
+        [
+            Paragraph("<b>TOTAL STUDENTS</b>", ParagraphStyle("K1", fontName=bold, fontSize=7, leading=8, alignment=1, textColor=colors.HexColor("#64748B"))),
+            Paragraph("<b>CLASS AVERAGE</b>", ParagraphStyle("K2", fontName=bold, fontSize=7, leading=8, alignment=1, textColor=colors.HexColor("#64748B"))),
+            Paragraph("<b>HIGHEST SCORE</b>", ParagraphStyle("K3", fontName=bold, fontSize=7, leading=8, alignment=1, textColor=colors.HexColor("#64748B"))),
+            Paragraph("<b>PASSING RATE</b>", ParagraphStyle("K4", fontName=bold, fontSize=7, leading=8, alignment=1, textColor=colors.HexColor("#64748B"))),
+        ],
+        [
+            Paragraph(f"<b>{total_count}</b>", ParagraphStyle("KV1", fontName=bold, fontSize=12, leading=14, alignment=1, textColor=colors.HexColor("#0F172A"))),
+            Paragraph(f"<b>{avg_score:g} / {max_m:g}</b> ({avg_pct}%)", ParagraphStyle("KV2", fontName=bold, fontSize=12, leading=14, alignment=1, textColor=colors.HexColor("#4338CA"))),
+            Paragraph(f"<b>{highest_score:g} / {max_m:g}</b>", ParagraphStyle("KV3", fontName=bold, fontSize=12, leading=14, alignment=1, textColor=colors.HexColor("#15803D"))),
+            Paragraph(f"<b>{pass_pct}%</b> ({pass_count}/{total_count})", ParagraphStyle("KV4", fontName=bold, fontSize=12, leading=14, alignment=1, textColor=colors.HexColor("#0369A1"))),
+        ],
+    ]
+    kpi_table = Table(kpi_data, colWidths=[135, 135, 135, 135])
+    kpi_table.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor("#F8FAFC")),
+        ('BOX', (0,0), (-1,-1), 0.5, colors.HexColor("#E2E8F0")),
+        ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor("#E2E8F0")),
+        ('TOPPADDING', (0,0), (-1,-1), 4),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+    ]))
+    story.append(kpi_table)
+    story.append(Spacer(1, 10))
+
+    # Ledger Table
+    table_headers = [
+        Paragraph("<b>S.No</b>", th_style),
+        Paragraph("<b>Roll No</b>", th_style),
+        Paragraph("<b>Student Name</b>", th_style),
+        Paragraph("<b>Class</b>", th_style),
+        Paragraph("<b>Marks</b>", th_style),
+        Paragraph("<b>%</b>", th_style),
+        Paragraph("<b>Grade</b>", th_style),
+        Paragraph("<b>Status</b>", th_style),
+    ]
+
+    col_widths = [30, 75, 145, 60, 60, 50, 45, 75]
+    table_rows = [table_headers]
+
+    for idx, s in enumerate(students, 1):
+        s_score = float(s.get("total_score") or 0.0)
+        s_pct = float(s.get("percentage") or (round((s_score / max_m) * 100.0, 1) if max_m > 0 else 0.0))
+        s_grade = s.get("grade") or ("A+" if s_pct >= 90 else "A" if s_pct >= 80 else "B" if s_pct >= 60 else "C" if s_pct >= 40 else "D")
+        s_status = str(s.get("status") or "Evaluated").capitalize()
+        s_class = s.get("class_name") or class_name or "—"
+
+        table_rows.append([
+            Paragraph(str(idx), td_center),
+            Paragraph(safe_xml(s.get("roll_number") or s.get("roll") or "—"), td_bold),
+            Paragraph(safe_xml(s.get("student_name") or "Student"), td_style),
+            Paragraph(safe_xml(s_class), td_center),
+            Paragraph(f"{s_score:g} / {max_m:g}", td_center),
+            Paragraph(f"{s_pct:.1f}%", td_center),
+            Paragraph(safe_xml(s_grade), td_center),
+            Paragraph(safe_xml(s_status), td_center),
+        ])
+
+    ledger_table = Table(table_rows, colWidths=col_widths, repeatRows=1)
+    ledger_table.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#4338CA")),
+        ('BOX', (0,0), (-1,-1), 0.5, colors.HexColor("#CBD5E1")),
+        ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor("#E2E8F0")),
+        ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, colors.HexColor("#F8FAFC")]),
+        ('TOPPADDING', (0,0), (-1,-1), 4),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+    ]))
+    story.append(ledger_table)
+    story.append(Spacer(1, 14))
+
+    # Signature & Footer Block
+    footer_data = [
+        [
+            Paragraph("<b>Evaluated By:</b> EvalDesk AI Assisted Engine", sub_style),
+            Paragraph("<b>Verified By (Teacher):</b> _______________________", sub_style),
+            Paragraph("<b>Signature & Date:</b> _______________________", sub_style),
+        ]
+    ]
+    footer_table = Table(footer_data, colWidths=[180, 180, 180])
+    footer_table.setStyle(TableStyle([
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('TOPPADDING', (0,0), (-1,-1), 6),
+    ]))
+    story.append(KeepTogether([footer_table]))
+
+    doc.build(story)
+

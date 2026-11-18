@@ -211,6 +211,7 @@ def init_db():
                 paper_id TEXT NOT NULL REFERENCES papers(id) ON DELETE CASCADE,
                 student_name TEXT DEFAULT '',
                 roll_number TEXT DEFAULT '',
+                class_name TEXT DEFAULT '',
                 consent_flag INTEGER NOT NULL DEFAULT 1,
                 status TEXT NOT NULL DEFAULT 'pending', -- 'pending', 'evaluating', 'evaluated', 'error'
                 stage_key TEXT, -- reading_identity|reading|matching|marking|flagging
@@ -382,6 +383,7 @@ def init_db():
         add_column_if_missing("papers", "instructions TEXT DEFAULT ''", "instructions")
         add_column_if_missing("papers", "subject_code TEXT NOT NULL DEFAULT ''", "subject_code")
         add_column_if_missing("papers", "exam_name TEXT NOT NULL DEFAULT ''", "exam_name")
+        add_column_if_missing("papers", "class_name TEXT DEFAULT ''", "class_name")
         add_column_if_missing("papers", "strictness_level INTEGER NOT NULL DEFAULT 3", "strictness_level")
         add_column_if_missing("papers", "subject_domain TEXT NOT NULL DEFAULT 'general'", "subject_domain")
 
@@ -391,6 +393,7 @@ def init_db():
         add_column_if_missing("questions", "word_limit INTEGER DEFAULT 150", "word_limit")
         add_column_if_missing("questions", "strictness_level_override INTEGER", "strictness_level_override")
 
+        add_column_if_missing("sheets", "class_name TEXT DEFAULT ''", "class_name")
         add_column_if_missing("sheets", "stage_key TEXT", "stage_key")
         add_column_if_missing("sheets", "failed_stage TEXT", "failed_stage")
         add_column_if_missing("sheets", "raw_filename TEXT DEFAULT ''", "raw_filename")

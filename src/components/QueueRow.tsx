@@ -22,6 +22,7 @@ export interface SheetQueueItem {
   filename: string;
   student_name: string;
   roll: string;
+  class_name?: string;
   status: string;
   stage: string;
   page_count: number;
@@ -292,6 +293,11 @@ export const QueueRow: React.FC<QueueRowProps> = ({
                     ({sheet.roll})
                   </span>
                 )}
+                {sheet.class_name && (
+                  <span className="text-[10px] text-indigo-700 bg-indigo-50 border border-indigo-200 px-1 rounded font-medium">
+                    {sheet.class_name}
+                  </span>
+                )}
                 <button
                   type="button"
                   onClick={(e) => {
@@ -348,6 +354,7 @@ export const QueueRow: React.FC<QueueRowProps> = ({
                 sheetId={sheet.id}
                 initialName={sheet.student_name || ''}
                 initialRoll={sheet.roll || ''}
+                initialClass={sheet.class_name || ''}
                 onSaved={() => {
                   setIsEditingIdentity(false);
                   if (onRefresh) onRefresh();

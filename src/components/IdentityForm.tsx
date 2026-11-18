@@ -6,6 +6,7 @@ interface IdentityFormProps {
   sheetId: string;
   initialName?: string;
   initialRoll?: string;
+  initialClass?: string;
   /** Called after the server accepted the identity (evaluation is auto-queued server-side). */
   onSaved: () => void;
   /** Optional cancel callback to close form when opened via manual edit button */
@@ -16,11 +17,13 @@ export const IdentityForm: React.FC<IdentityFormProps> = ({
   sheetId,
   initialName = '',
   initialRoll = '',
+  initialClass = '',
   onSaved,
   onCancel,
 }) => {
   const [name, setName] = useState(initialName);
   const [roll, setRoll] = useState(initialRoll);
+  const [className, setClassName] = useState(initialClass);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,6 +40,7 @@ export const IdentityForm: React.FC<IdentityFormProps> = ({
       await apiClient.post(`/api/sheets/${sheetId}/identity`, {
         student_name,
         roll_number: roll.trim(),
+        class_name: className.trim(),
       });
       onSaved();
     } catch (err: any) {
@@ -53,7 +57,7 @@ export const IdentityForm: React.FC<IdentityFormProps> = ({
         <span>Name not detected. Enter the student details and evaluation will start automatically.</span>
       </div>
 
-      <div className="grid grid-cols-5 gap-1.5">
+      <div className="grid grid-cols-6 gap-1.5">
         <input
           type="text"
           value={name}
@@ -68,7 +72,15 @@ export const IdentityForm: React.FC<IdentityFormProps> = ({
           onChange={(e) => setRoll(e.target.value)}
           placeholder="Roll no."
           aria-label="Roll number"
-          className="col-span-2 text-xs px-2 py-1 rounded-md border border-amber-300 bg-white focus:outline-none focus:border-indigo-500"
+          className="col-span-2 text-xs px-2 py-1 rounded-md border border-amber-300 bg-white focus:outline-none focus:border-indigo-500 font-mono"
+        />
+        <input
+          type="text"
+          value={className}
+          onChange={(e) => setClassName(e.target.value)}
+          placeholder="Class"
+          aria-label="Class"
+          className="col-span-1 text-xs px-2 py-1 rounded-md border border-amber-300 bg-white focus:outline-none focus:border-indigo-500"
         />
       </div>
 
