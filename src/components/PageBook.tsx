@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, AlertCircle, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { FlipQueue, FlipStep } from '../utils/flipQueue';
 
 export type PageStatus = 'waiting' | 'pending' | 'reading' | 'done' | 'failed';
 
@@ -40,14 +41,101 @@ export const PageBook: React.FC<PageBookProps> = ({
   const sortedPages = [...pages].sort((a, b) => a.n - b.n);
   const totalPages = sortedPages.length || 1;
 
-  // Local state for index when controlled prop is omitted or changes
-  const [internalIndex, setInternalIndex] = useState<number>(currentIndex);
+  // Reduced motion preference detection
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState<boolean>(() => {
+    if (typeof window !== 'undefined' && window.matchMedia) {
+      return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    }
+    return false;
+  });
 
   useEffect(() => {
-    if (currentIndex >= 0 && currentIndex < totalPages) {
-      setInternalIndex(currentIndex);
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const onChange = (e: MediaQueryListEvent) => setPrefersReducedMotion(e.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+
+  // Internal index & Active animation step state
+  const [internalIndex, setInternalIndex] = useState<number>(currentIndex);
+  const [activeStep, setActiveStep] = useState<FlipStep | null>(null);
+  const [flipProgress, setFlipProgress] = useState<number>(0); // 0 -> 1 during flip
+
+  // Initialize FlipQueue instance
+  const flipQueueRef = useRef<FlipQueue | null>(null);
+
+  if (!flipQueueRef.current) {
+    flipQueueRef.current = new FlipQueue({
+      initialIndex: currentIndex,
+      pageCount: totalPages,
+      flipDuration: 450,
+      reducedMotionDuration: 150,
+      isReducedMotion: prefersReducedMotion,
+      onFlipStart: (step) => {
+        setActiveStep(step);
+        setFlipProgress(0);
+      },
+      onFlipEnd: (step) => {
+        setInternalIndex(step.toIndex);
+        setActiveStep(null);
+        setFlipProgress(1);
+        onPageChange?.(step.toIndex);
+      },
+      onQueueIdle: (idx) => {
+        setInternalIndex(idx);
+        setActiveStep(null);
+      },
+      onPageChange: (idx) => {
+        setInternalIndex(idx);
+      },
+    });
+  }
+
+  // Synchronize configuration changes
+  useEffect(() => {
+    if (flipQueueRef.current) {
+      flipQueueRef.current.setPageCount(totalPages);
+      flipQueueRef.current.setReducedMotion(prefersReducedMotion);
+    }
+  }, [totalPages, prefersReducedMotion]);
+
+  // Synchronize incoming controlled currentIndex prop
+  useEffect(() => {
+    if (currentIndex >= 0 && currentIndex < totalPages && flipQueueRef.current) {
+      const currentQueueIdx = flipQueueRef.current.getCurrentIndex();
+      if (currentIndex !== currentQueueIdx && !flipQueueRef.current.isFlipping()) {
+        if (Math.abs(currentIndex - currentQueueIdx) <= 2) {
+          flipQueueRef.current.enqueue(currentIndex);
+        } else {
+          flipQueueRef.current.jumpTo(currentIndex);
+          setInternalIndex(currentIndex);
+        }
+      }
     }
   }, [currentIndex, totalPages]);
+
+  // Animate flip progress linearly across step duration using requestAnimationFrame
+  useEffect(() => {
+    if (!activeStep) return;
+
+    let startTs: number | null = null;
+    let animId: number;
+
+    const animate = (timestamp: number) => {
+      if (startTs === null) startTs = timestamp;
+      const elapsed = timestamp - startTs;
+      const progress = Math.min(elapsed / activeStep.duration, 1);
+      setFlipProgress(progress);
+
+      if (progress < 1) {
+        animId = requestAnimationFrame(animate);
+      }
+    };
+
+    animId = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(animId);
+  }, [activeStep]);
 
   const activeIndex = Math.min(Math.max(0, internalIndex), totalPages - 1);
   const activePage = sortedPages[activeIndex] || {
@@ -60,31 +148,28 @@ export const PageBook: React.FC<PageBookProps> = ({
 
   const handlePageSelect = useCallback((newIndex: number) => {
     if (newIndex < 0 || newIndex >= totalPages) return;
-    setInternalIndex(newIndex);
-    if (onPageChange) {
-      onPageChange(newIndex);
+    if (flipQueueRef.current) {
+      flipQueueRef.current.enqueue(newIndex);
     }
-  }, [totalPages, onPageChange]);
+  }, [totalPages]);
 
   const handlePrev = useCallback(() => {
-    if (activeIndex > 0) {
-      handlePageSelect(activeIndex - 1);
+    if (activeIndex > 0 && flipQueueRef.current) {
+      flipQueueRef.current.enqueue(activeIndex - 1);
     }
-  }, [activeIndex, handlePageSelect]);
+  }, [activeIndex]);
 
   const handleNext = useCallback(() => {
-    if (activeIndex < totalPages - 1) {
-      // In progress mode, only navigate if next page is done or current mode is browse
+    if (activeIndex < totalPages - 1 && flipQueueRef.current) {
       if (mode === 'browse' || sortedPages[activeIndex + 1]?.status === 'done') {
-        handlePageSelect(activeIndex + 1);
+        flipQueueRef.current.enqueue(activeIndex + 1);
       }
     }
-  }, [activeIndex, totalPages, mode, sortedPages, handlePageSelect]);
+  }, [activeIndex, totalPages, mode, sortedPages]);
 
   // Keyboard navigation
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      // Do not intercept if inside text input or textarea
       if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) {
         return;
       }
@@ -105,7 +190,7 @@ export const PageBook: React.FC<PageBookProps> = ({
   const touchStartYRef = useRef<number | null>(null);
 
   const handleTouchStart = (e: React.TouchEvent) => {
-    if (annotatable) return; // Drawing takes precedence
+    if (annotatable) return;
     const t = e.touches[0];
     touchStartXRef.current = t.clientX;
     touchStartYRef.current = t.clientY;
@@ -138,20 +223,47 @@ export const PageBook: React.FC<PageBookProps> = ({
   const isHighLegibility = showLegibility && legibility >= 0.80;
   const legibilityPercent = showLegibility ? Math.round(legibility * 100) : 0;
 
-  // Image source with memory optimization (only active and adjacent pages load full image)
-  const shouldLoadImage = (idx: number) => Math.abs(idx - activeIndex) <= 1;
+  // Image source resolution with memory optimization
+  const shouldLoadImage = (idx: number) => {
+    if (Math.abs(idx - activeIndex) <= 1) return true;
+    if (activeStep && (idx === activeStep.fromIndex || idx === activeStep.toIndex)) return true;
+    return false;
+  };
 
   const resolvedImageUrl = (page: PageItem) => {
     if (!page.imageUrl) return null;
     return page.imageUrl.includes('?') ? page.imageUrl : `${page.imageUrl}?w=1200`;
   };
 
+  // 3D Flip calculations: ease-in-out curve
+  const easeInOut = (t: number) => (t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t);
+  const easedProgress = easeInOut(flipProgress);
+
+  // Flip rotation angles: forward: 0deg -> -180deg; backward: -180deg -> 0deg
+  const isForward = activeStep?.direction === 'forward';
+  const flipAngle = isForward
+    ? -180 * easedProgress
+    : -180 + 180 * easedProgress;
+
+  // Moving curl shadow opacity and gradient position
+  const curlShadowOpacity = Math.sin(easedProgress * Math.PI) * 0.45;
+  const curlShadowX = easedProgress * 100;
+
+  const isFlipping = activeStep !== null;
+
+  // Target reveal page and flipping leaf page
+  const fromPage = activeStep ? sortedPages[activeStep.fromIndex] : activePage;
+  const toPage = activeStep ? sortedPages[activeStep.toIndex] : activePage;
+
   return (
     <div
       data-testid="page-book-root"
+      data-flipping={isFlipping ? 'true' : 'false'}
+      data-flip-direction={activeStep?.direction || 'none'}
+      data-current-page={activePage.n}
+      data-is-reduced-motion={prefersReducedMotion ? 'true' : 'false'}
       className={`page-book relative flex flex-col items-center justify-between h-full w-full select-none overflow-hidden bg-slate-900/60 p-2 text-slate-100 ${className}`}
       style={{
-        // Define root unit based on section 3: min(1vw, 1.6vh)
         ['--u' as any]: 'min(1vw, 1.6vh)',
       }}
       onTouchStart={handleTouchStart}
@@ -166,6 +278,11 @@ export const PageBook: React.FC<PageBookProps> = ({
           <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-slate-400 capitalize">
             {activePage.status === 'done' ? 'Read' : activePage.status}
           </span>
+          {isFlipping && (
+            <span className="text-[10px] font-mono text-indigo-400 animate-pulse uppercase tracking-wider">
+              {activeStep?.direction === 'forward' ? 'Turning forward...' : 'Turning back...'}
+            </span>
+          )}
         </div>
 
         {/* Legibility Chip */}
@@ -190,18 +307,22 @@ export const PageBook: React.FC<PageBookProps> = ({
         )}
       </div>
 
-      {/* Main Book Display Container */}
-      <div className="relative flex-1 min-h-0 w-full flex items-center justify-center p-1 overflow-hidden">
+      {/* Main Book Display Container with 3D Perspective */}
+      <div
+        className="relative flex-1 min-h-0 w-full flex items-center justify-center p-1 overflow-hidden"
+        style={{ perspective: '1800px' }}
+      >
         {/* Book Spine & Leaf Envelope with simulated page stack */}
         <div
           data-testid="book-leaf-envelope"
-          className="relative max-h-full aspect-[1/1.414] shadow-2xl rounded-sm transition-all duration-300 ease-out flex items-center justify-center overflow-hidden"
+          className="relative max-h-full aspect-[1/1.414] shadow-2xl rounded-sm flex items-center justify-center overflow-hidden"
           style={{
             height: 'calc(100% - 8px)',
             maxWidth: '100%',
             boxShadow: `${-leftStackPx}px 0 0 -1px rgba(255,255,255,0.06), ${rightStackPx}px 0 0 -1px rgba(255,255,255,0.06), 0 20px 30px -10px rgba(0,0,0,0.5)`,
             borderLeft: leftStackPx > 0 ? `${leftStackPx}px solid #cbd5e1` : '2px solid #94a3b8',
             borderRight: rightStackPx > 0 ? `${rightStackPx}px solid #cbd5e1` : '2px solid #94a3b8',
+            transformStyle: 'preserve-3d',
           }}
         >
           {/* Lined Paper Background / Base Layer */}
@@ -215,30 +336,123 @@ export const PageBook: React.FC<PageBookProps> = ({
             }}
           />
 
-          {/* Page Image Display Layer */}
-          {shouldLoadImage(activeIndex) && resolvedImageUrl(activePage) ? (
-            <img
-              src={resolvedImageUrl(activePage)!}
-              alt={`Page ${activePage.n}`}
-              className="absolute inset-0 w-full h-full object-contain pointer-events-none z-10"
-              loading="eager"
-            />
-          ) : (
-            <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-slate-500 z-10">
-              <span className="text-3xl font-light text-slate-400">Page {activePage.n}</span>
-              <span className="text-xs text-slate-400 mt-2">
-                {activePage.status === 'reading' ? 'Scanning handwriting...' : 'Sheet Page Scan'}
-              </span>
+          {/* ========================================================= */}
+          {/* BASE / DESTINATION PAGE (revealed underneath during flip) */}
+          {/* ========================================================= */}
+          <div
+            className="absolute inset-0 z-10 flex flex-col items-center justify-center overflow-hidden"
+            style={{
+              opacity: prefersReducedMotion && isFlipping ? easedProgress : 1,
+            }}
+          >
+            {shouldLoadImage(isFlipping ? activeStep!.toIndex : activeIndex) &&
+            resolvedImageUrl(isFlipping ? toPage : activePage) ? (
+              <img
+                src={resolvedImageUrl(isFlipping ? toPage : activePage)!}
+                alt={`Page ${(isFlipping ? toPage : activePage).n}`}
+                className="w-full h-full object-contain pointer-events-none"
+                loading="eager"
+              />
+            ) : (
+              <div className="flex flex-col items-center justify-center p-6 text-slate-500">
+                <span className="text-3xl font-light text-slate-400">
+                  Page {(isFlipping ? toPage : activePage).n}
+                </span>
+                <span className="text-xs text-slate-400 mt-2">
+                  {(isFlipping ? toPage : activePage).status === 'reading'
+                    ? 'Scanning handwriting...'
+                    : 'Sheet Page Scan'}
+                </span>
+              </div>
+            )}
+
+            {/* Soft Scan Line Indicator when Reading */}
+            {(isFlipping ? toPage : activePage).status === 'reading' && (
+              <div className="absolute left-0 right-0 h-1 bg-gradient-to-r from-indigo-500/20 via-indigo-400 to-indigo-500/20 shadow-[0_0_12px_rgba(99,102,241,0.9)] animate-bounce z-25 pointer-events-none top-1/2" />
+            )}
+
+            {/* Annotation Layer Slot on Base Page */}
+            {renderAnnotationLayer && (
+              <div className="absolute inset-0 z-20 pointer-events-auto">
+                {renderAnnotationLayer(
+                  isFlipping ? toPage : activePage,
+                  isFlipping ? activeStep!.toIndex : activeIndex,
+                  !isFlipping
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* ========================================================= */}
+          {/* FLIPPING LEAF (active during 3D flip animation)           */}
+          {/* ========================================================= */}
+          {isFlipping && !prefersReducedMotion && (
+            <div
+              data-testid="flipping-leaf"
+              className="absolute inset-0 z-30 pointer-events-none"
+              style={{
+                transformOrigin: 'left center',
+                transformStyle: 'preserve-3d',
+                transform: `rotateY(${flipAngle}deg)`,
+                willChange: 'transform',
+              }}
+            >
+              {/* Front Face: Outgoing leaf */}
+              <div
+                className="absolute inset-0 overflow-hidden"
+                style={{
+                  backfaceVisibility: 'hidden',
+                  WebkitBackfaceVisibility: 'hidden',
+                  ...LINED_PAPER,
+                }}
+              >
+                {resolvedImageUrl(fromPage) && (
+                  <img
+                    src={resolvedImageUrl(fromPage)!}
+                    alt={`Page ${fromPage.n}`}
+                    className="w-full h-full object-contain pointer-events-none"
+                  />
+                )}
+                {/* Dynamic curl shadow on front face */}
+                <div
+                  className="absolute inset-0 pointer-events-none"
+                  style={{
+                    opacity: curlShadowOpacity,
+                    background: `linear-gradient(to right, transparent 0%, rgba(0,0,0,0.15) ${Math.max(
+                      0,
+                      curlShadowX - 30
+                    )}%, rgba(0,0,0,0.4) ${curlShadowX}%, transparent ${Math.min(
+                      100,
+                      curlShadowX + 30
+                    )}%)`,
+                  }}
+                />
+              </div>
+
+              {/* Back Face: Turning back of leaf */}
+              <div
+                className="absolute inset-0 overflow-hidden"
+                style={{
+                  transform: 'rotateY(180deg)',
+                  backfaceVisibility: 'hidden',
+                  WebkitBackfaceVisibility: 'hidden',
+                  ...LINED_PAPER,
+                }}
+              >
+                {/* Back side lined texture with gentle shadow */}
+                <div
+                  className="absolute inset-0 pointer-events-none"
+                  style={{
+                    background:
+                      'linear-gradient(to left, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.05) 20%, transparent 100%)',
+                  }}
+                />
+              </div>
             </div>
           )}
 
-          {/* Soft Scan Line Indicator when Reading */}
-          {activePage.status === 'reading' && (
-            <div className="absolute left-0 right-0 h-1 bg-gradient-to-r from-indigo-500/20 via-indigo-400 to-indigo-500/20 shadow-[0_0_12px_rgba(99,102,241,0.9)] animate-bounce z-25 pointer-events-none top-1/2" />
-          )}
-
           {/* Failure Overlay & Retry button if page failed */}
-          {activePage.status === 'failed' && (
+          {activePage.status === 'failed' && !isFlipping && (
             <div
               data-testid="page-error-overlay"
               className="absolute inset-x-4 bottom-6 z-30 bg-rose-950/90 border border-rose-500/60 p-3 rounded-lg shadow-xl backdrop-blur-xs flex items-center justify-between"
@@ -263,19 +477,12 @@ export const PageBook: React.FC<PageBookProps> = ({
             </div>
           )}
 
-          {/* Annotation Layer Slot */}
-          {renderAnnotationLayer && (
-            <div className="absolute inset-0 z-20 pointer-events-auto">
-              {renderAnnotationLayer(activePage, activeIndex, true)}
-            </div>
-          )}
-
           {/* Left Edge Click Area for previous page */}
           <div
             data-testid="left-edge-click"
             onClick={handlePrev}
             className={`absolute top-0 bottom-0 left-0 w-[15%] z-20 flex items-center justify-start pl-2 transition-opacity ${
-              activeIndex > 0 && !annotatable
+              activeIndex > 0 && !annotatable && !isFlipping
                 ? 'cursor-pointer hover:bg-black/5 opacity-0 hover:opacity-100'
                 : 'pointer-events-none opacity-0'
             }`}
@@ -291,7 +498,7 @@ export const PageBook: React.FC<PageBookProps> = ({
             data-testid="right-edge-click"
             onClick={handleNext}
             className={`absolute top-0 bottom-0 right-0 w-[15%] z-20 flex items-center justify-end pr-2 transition-opacity ${
-              activeIndex < totalPages - 1 && !annotatable
+              activeIndex < totalPages - 1 && !annotatable && !isFlipping
                 ? 'cursor-pointer hover:bg-black/5 opacity-0 hover:opacity-100'
                 : 'pointer-events-none opacity-0'
             }`}
@@ -310,8 +517,8 @@ export const PageBook: React.FC<PageBookProps> = ({
           type="button"
           data-testid="btn-prev-page"
           onClick={handlePrev}
-          disabled={activeIndex <= 0}
-          className="p-1.5 rounded-md text-slate-300 hover:text-white hover:bg-slate-800/80 disabled:opacity-30 disabled:pointer-events-none transition-colors"
+          disabled={activeIndex <= 0 || isFlipping}
+          className="p-1.5 rounded-md text-slate-300 hover:text-white hover:bg-slate-800/80 disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
           title="Previous page (Left Arrow)"
         >
           <ChevronLeft className="w-5 h-5" />
@@ -351,8 +558,8 @@ export const PageBook: React.FC<PageBookProps> = ({
           type="button"
           data-testid="btn-next-page"
           onClick={handleNext}
-          disabled={activeIndex >= totalPages - 1}
-          className="p-1.5 rounded-md text-slate-300 hover:text-white hover:bg-slate-800/80 disabled:opacity-30 disabled:pointer-events-none transition-colors"
+          disabled={activeIndex >= totalPages - 1 || isFlipping}
+          className="p-1.5 rounded-md text-slate-300 hover:text-white hover:bg-slate-800/80 disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
           title="Next page (Right Arrow)"
         >
           <ChevronRight className="w-5 h-5" />

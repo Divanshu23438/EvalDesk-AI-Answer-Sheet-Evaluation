@@ -10,7 +10,7 @@
     "start": "vite",
     "test": "pytest backend/tests/test_backend.py -v",
     "test:python": "pytest backend/tests/test_backend.py -v",
-    "test:ts": "tsx --test src/utils/gradingEngine.test.ts src/utils/ocrAudit.test.ts src/utils/sectionChoice.test.ts",
+    "test:ts": "tsx --test src/utils/gradingEngine.test.ts src/utils/ocrAudit.test.ts src/utils/sectionChoice.test.ts src/utils/flipQueue.test.ts",
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist",

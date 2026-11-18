@@ -1,7 +1,26 @@
 # STATUS (update at the end of every session)
 Date / author (agent or model name): 2026-11-18 / Antigravity (Gemini 3.8 Flash)
-Current phase and task: Task P2 Complete - PageBook in browse mode. Ready for Task P3 (Flip animation with queueing and reduced motion).
+Current phase and task: Task P3 Complete - Flip animation with queueing and reduced motion. Ready for Task P4 (Progress mode driven by server, no-jump rule, Jump to latest).
 Done (task id, commit, proof file):
+- Task P3: Flip animation with queueing and reduced motion (`src/utils/flipQueue.ts`, `src/utils/flipQueue.test.ts`, `src/components/PageBook.tsx`, `scripts/verify_p3_flip.py`, `package.json`, `docs/proof/P3/`):
+  1. FlipQueue Class & Unit Test Suite (`src/utils/flipQueue.ts`, `src/utils/flipQueue.test.ts`):
+     - Implemented FIFO sequential page turn queue orchestrator guaranteeing non-overlapping transitions.
+     - Multi-page advancement requests (e.g. server reporting multiple pages done at once, or rapid user clicks) decompose into atomic single-page flips in strict order.
+     - 6 unit tests passing cleanly in `tsx --test` verifying: sequential order, backward flips, in-flight queue buffering, prefers-reduced-motion 150ms switch, boundary clamping, and instant `jumpTo` cancelation. Unit test log saved to `docs/proof/P3/flip_queue_unit_test.txt`.
+  2. 3D Flip Animation & Lined Leaf Structure (`src/components/PageBook.tsx`):
+     - 450 ms ease-in-out rotation (`cubic-bezier` / quadratic easing) about left spine (`transform-origin: left center`, `perspective: 1800px`, `transform-style: preserve-3d`).
+     - Front and back faces with `backface-visibility: hidden` and lined paper texture.
+     - Dynamic moving curl shadow across turning leaf during rotation (`opacity` peak at 90 deg, gradient sweep across leaf surface).
+     - Backward flip support (-180deg to 0deg).
+     - Full support for `prefers-reduced-motion` switching to 150 ms linear opacity crossfade without 3D rotation.
+  3. Verification & Video Screen Recording (`scripts/verify_p3_flip.py`, `docs/proof/P3/`):
+     - Verified single forward 3D flip (1 -> 2) and captured mid-flip snapshot `docs/proof/P3/pagebook_mid_flip_3d.png`.
+     - Verified rapid sequential queueing (rapid double-click advances 2 -> 3 -> 4 sequentially with zero overlap).
+     - Verified backward 3D flip (4 -> 3).
+     - Verified `prefers-reduced-motion` emulation with 150 ms crossfade and captured snapshot `docs/proof/P3/pagebook_reduced_motion_fade.png`.
+     - Saved full Playwright video screen recording to `docs/proof/P3/pagebook_flip_animation.webm` (1.8 MB).
+     - Saved telemetry proof to `docs/proof/P3/p3_proof.json`.
+     - `python scripts/check_all.py --no-live` reports `RESULT: ALL PASS`. | docs/proof/P3/
 - Task P2: PageBook in browse mode (`src/components/PageBook.tsx`, `src/components/SheetImageViewer.tsx`, `src/screens/EvaluateScreen.tsx`, `backend/main.py`, `scripts/verify_p2_pagebook.py`, `docs/proof/P2/`):
   1. Interactive PageBook Shared Component (`src/components/PageBook.tsx`):
      - Renders multi-page answer sheets in natural book presentation with realistic page stack borders (spine thickness on left that grows as pages are turned, right border for remaining pages).

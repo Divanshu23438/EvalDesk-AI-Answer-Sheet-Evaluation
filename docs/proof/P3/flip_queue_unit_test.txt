@@ -1,0 +1,46 @@
+TAP version 13
+# Subtest: FlipQueue: executes sequential forward flips in strict order with no overlap
+ok 1 - FlipQueue: executes sequential forward flips in strict order with no overlap
+  ---
+  duration_ms: 118.2962
+  type: 'test'
+  ...
+# Subtest: FlipQueue: executes backward flips when navigating to earlier page
+ok 2 - FlipQueue: executes backward flips when navigating to earlier page
+  ---
+  duration_ms: 81.7405
+  type: 'test'
+  ...
+# Subtest: FlipQueue: buffers additional enqueue calls while already flipping
+ok 3 - FlipQueue: buffers additional enqueue calls while already flipping
+  ---
+  duration_ms: 134.1719
+  type: 'test'
+  ...
+# Subtest: FlipQueue: prefers-reduced-motion replaces duration with 150ms reduced timing
+ok 4 - FlipQueue: prefers-reduced-motion replaces duration with 150ms reduced timing
+  ---
+  duration_ms: 1.1861
+  type: 'test'
+  ...
+# Subtest: FlipQueue: clamps out of bound target requests cleanly
+ok 5 - FlipQueue: clamps out of bound target requests cleanly
+  ---
+  duration_ms: 106.9964
+  type: 'test'
+  ...
+# Subtest: FlipQueue: jumpTo immediately updates index and cancels pending queue
+ok 6 - FlipQueue: jumpTo immediately updates index and cancels pending queue
+  ---
+  duration_ms: 0.843
+  type: 'test'
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 6
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1194.9253
