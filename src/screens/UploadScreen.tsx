@@ -26,6 +26,7 @@ import { PaperDetailsForm, type PaperMeta } from '../components/PaperDetailsForm
 import { StrictnessPicker } from '../components/StrictnessPicker';
 import { IdentityForm } from '../components/IdentityForm';
 import { PageFlipStrip, type SheetPageStatus } from '../components/PageFlipStrip';
+import { PageBook } from '../components/PageBook';
 
 interface PaperSummary {
   id: string;
@@ -1349,8 +1350,29 @@ export const UploadScreen: React.FC = () => {
                       }}
                     />
                   )}
-                  {((ACTIVE_STATUSES.includes(sheet.status) || sheet.status === 'needs_identity' || sheet.status === 'failed') && sheet.pages && sheet.pages.length > 0) && (
-                    <PageFlipStrip pages={sheet.pages} />
+                  {((ACTIVE_STATUSES.includes(sheet.status) || sheet.status === 'needs_identity' || sheet.status === 'failed' || sheet.status === 'evaluated' || sheet.status === 'ready') && sheet.pages && sheet.pages.length > 0) && (
+                    <div className="mt-2.5 h-[340px] w-full rounded-xl overflow-hidden border border-slate-700/60 shadow-lg">
+                      <PageBook
+                        pages={sheet.pages.map((p) => ({
+                          n: p.n,
+                          status: p.status as any,
+                          legibility: p.legibility,
+                          error: p.error,
+                          finished_at: (p as any).finished_at,
+                          imageUrl: p.image_url || `/api/sheets/${sheet.id}/pages/${p.n}/image`,
+                        }))}
+                        mode="progress"
+                        stageName={(sheet as any).current_stage || (sheet as any).stage_key}
+                        onRetryPage={async (pageNo) => {
+                          try {
+                            await apiClient.post(`/api/sheets/${sheet.id}/pages/${pageNo}/retry`);
+                            loadSheets();
+                          } catch (err: any) {
+                            store.setError(err);
+                          }
+                        }}
+                      />
+                    </div>
                   )}
                 </div>
               ))

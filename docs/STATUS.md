@@ -1,7 +1,29 @@
 # STATUS (update at the end of every session)
 Date / author (agent or model name): 2026-11-18 / Antigravity (Gemini 3.8 Flash)
-Current phase and task: Task P3 Complete - Flip animation with queueing and reduced motion. Ready for Task P4 (Progress mode driven by server, no-jump rule, Jump to latest).
+Current phase and task: Task P4 Complete - Progress mode driven by server, no-jump rule, Jump to latest. Ready for Task P5 (Annotation table, API, autosave, error banner).
 Done (task id, commit, proof file):
+- Task P4: Progress mode driven by server, no-jump rule, Jump to latest (`src/components/PageBook.tsx`, `src/screens/UploadScreen.tsx`, `scripts/verify_p4_progress.py`, `docs/proof/P4/`):
+  1. Live Server Progress Driven Engine (`src/components/PageBook.tsx`, `src/screens/UploadScreen.tsx`):
+     - Integrated `PageBook` in `mode="progress"` into `UploadScreen.tsx` sheet processing queue.
+     - Automatically renders active reading page with soft scanning laser line (`data-testid="soft-scan-line"`).
+     - Renders progress counter `Page X of Y read`, gradient progress bar, and dynamic stage subtitle.
+     - Flips strictly in synchronization with real server OCR completion timestamps without artificial timers.
+     - Transitions to terminal `All pages read` state upon 100% sheet completion.
+  2. No-Jump Rule & Jump to Latest Banner (`src/components/PageBook.tsx`):
+     - Allows teacher to click earlier page dots (or left arrows) to inspect previously read pages while OCR continues on subsequent pages.
+     - Enforces strict No-Jump Rule: when server finishes additional pages, the book remains pinned to the teacher's inspected page and NEVER auto-jumps forward.
+     - Surfaces prominent animated badge `Page X done` with `Jump to latest` button (`data-testid="badge-jump-to-latest"`).
+     - Clicking `Jump to latest` flips forward to the latest active server page.
+  3. Single-Page Failure & Per-Page Retry (`src/components/PageBook.tsx`, `src/screens/UploadScreen.tsx`):
+     - Renders red warning outline and failure card (`data-testid="page-error-overlay"`) displaying real server error message on failed pages.
+     - Integrated `Retry this page` CTA calling `POST /api/sheets/{id}/pages/{n}/retry` to restart OCR solely for the failed page.
+  4. Verification, Screen Recordings & Proof (`scripts/verify_p4_progress.py`, `docs/proof/P4/`):
+     - Live 9-page progression: verified 1/9 -> 9/9 synchronization with server updates and saved video `docs/proof/P4/pagebook_progress_9page_read.webm`.
+     - Verified No-Jump Rule and 'Jump to latest' forward navigation.
+     - Verified page failure overlay and per-page retry resumption, saving video `docs/proof/P4/pagebook_failure_and_retry.webm`.
+     - Captured 5 proof screenshots in `docs/proof/P4/` (`page1_reading.png`, `9page_complete.png`, `no_jump_badge.png`, `page_failure.png`, `page_retry_resumed.png`).
+     - Saved full telemetry trace in `docs/proof/P4/p4_proof.json`.
+     - `python scripts/check_all.py --no-live` reports `RESULT: ALL PASS`. | docs/proof/P4/
 - Task P3: Flip animation with queueing and reduced motion (`src/utils/flipQueue.ts`, `src/utils/flipQueue.test.ts`, `src/components/PageBook.tsx`, `scripts/verify_p3_flip.py`, `package.json`, `docs/proof/P3/`):
   1. FlipQueue Class & Unit Test Suite (`src/utils/flipQueue.ts`, `src/utils/flipQueue.test.ts`):
      - Implemented FIFO sequential page turn queue orchestrator guaranteeing non-overlapping transitions.

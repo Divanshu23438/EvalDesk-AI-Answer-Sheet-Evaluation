@@ -1,0 +1,65 @@
+{
+  "task": "P4",
+  "description": "Progress mode driven by server, no-jump rule, Jump to latest, and page failure retry",
+  "timestamp": "2026-11-18T08:32:23Z",
+  "sheet_id": "b34d437f-5af8-4332-91fa-5ea02fb42e42",
+  "paper_id": "05211eae-fac0-4524-9ff0-bb84a72970a6",
+  "steps": [
+    {
+      "page": 1,
+      "read_text": "Page 1 of 9 read",
+      "verified": true
+    },
+    {
+      "page": 2,
+      "read_text": "Page 2 of 9 read",
+      "verified": true
+    },
+    {
+      "page": 3,
+      "read_text": "Page 3 of 9 read",
+      "verified": true
+    },
+    {
+      "page": 4,
+      "read_text": "Page 4 of 9 read",
+      "verified": true
+    },
+    {
+      "page": 5,
+      "read_text": "Page 5 of 9 read",
+      "verified": true
+    },
+    {
+      "page": 6,
+      "read_text": "Page 6 of 9 read",
+      "verified": true
+    },
+    {
+      "page": 7,
+      "read_text": "Page 7 of 9 read",
+      "verified": true
+    },
+    {
+      "page": 8,
+      "read_text": "Page 8 of 9 read",
+      "verified": true
+    },
+    {
+      "page": 9,
+      "read_text": "Page 9 of 9 read",
+      "verified": true
+    }
+  ],
+  "videos": {
+    "9page_read": "docs\\proof\\P4\\pagebook_progress_9page_read.webm",
+    "failure_and_retry": "docs\\proof\\P4\\pagebook_failure_and_retry.webm"
+  },
+  "screenshots": {
+    "page1_reading": "docs\\proof\\P4\\pagebook_progress_page1_reading.png",
+    "all_9_pages_complete": "docs\\proof\\P4\\pagebook_progress_9page_complete.png",
+    "no_jump_badge": "docs\\proof\\P4\\pagebook_no_jump_badge.png",
+    "page_failure": "docs\\proof\\P4\\pagebook_page_failure.png",
+    "page_retry_resumed": "docs\\proof\\P4\\pagebook_page_retry_resumed.png"
+  }
+}

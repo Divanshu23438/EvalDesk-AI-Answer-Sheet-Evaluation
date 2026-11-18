@@ -1,5 +1,14 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, AlertCircle, RefreshCw, CheckCircle2 } from 'lucide-react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  AlertCircle,
+  RefreshCw,
+  CheckCircle2,
+  ArrowRight,
+  Sparkles,
+  Layers,
+} from 'lucide-react';
 import { FlipQueue, FlipStep } from '../utils/flipQueue';
 
 export type PageStatus = 'waiting' | 'pending' | 'reading' | 'done' | 'failed';
@@ -17,6 +26,7 @@ export interface PageBookProps {
   pages: PageItem[];
   currentIndex?: number; // 0-based index
   mode?: 'progress' | 'browse';
+  stageName?: string;
   annotatable?: boolean;
   onPageChange?: (index: number) => void;
   onRetryPage?: (pageNumber: number) => void;
@@ -32,6 +42,7 @@ export const PageBook: React.FC<PageBookProps> = ({
   pages,
   currentIndex = 0,
   mode = 'browse',
+  stageName,
   annotatable = false,
   onPageChange,
   onRetryPage,
@@ -61,6 +72,28 @@ export const PageBook: React.FC<PageBookProps> = ({
   const [internalIndex, setInternalIndex] = useState<number>(currentIndex);
   const [activeStep, setActiveStep] = useState<FlipStep | null>(null);
   const [flipProgress, setFlipProgress] = useState<number>(0); // 0 -> 1 during flip
+
+  // Progress mode: Server-driven status and No-Jump rule tracking
+  const donePages = sortedPages.filter((p) => p.status === 'done');
+  const doneCount = donePages.length;
+  const readingPage = sortedPages.find((p) => p.status === 'reading');
+  const failedPage = sortedPages.find((p) => p.status === 'failed');
+
+  let serverTargetIdx = 0;
+  if (failedPage) {
+    serverTargetIdx = sortedPages.findIndex((p) => p.n === failedPage.n);
+  } else if (readingPage) {
+    serverTargetIdx = sortedPages.findIndex((p) => p.n === readingPage.n);
+  } else if (donePages.length > 0) {
+    serverTargetIdx = Math.min(
+      totalPages - 1,
+      sortedPages.findIndex((p) => p.n === donePages[donePages.length - 1].n)
+    );
+  }
+  serverTargetIdx = Math.max(0, Math.min(serverTargetIdx, totalPages - 1));
+
+  const [isLookingBack, setIsLookingBack] = useState<boolean>(false);
+  const [jumpBadge, setJumpBadge] = useState<{ pageNum: number; donePageNum: number } | null>(null);
 
   // Initialize FlipQueue instance
   const flipQueueRef = useRef<FlipQueue | null>(null);
@@ -100,9 +133,40 @@ export const PageBook: React.FC<PageBookProps> = ({
     }
   }, [totalPages, prefersReducedMotion]);
 
-  // Synchronize incoming controlled currentIndex prop
+  // Server Progress Driver & No-Jump Rule
+  const prevServerTargetRef = useRef<number>(serverTargetIdx);
+  const prevDoneCountRef = useRef<number>(doneCount);
+
   useEffect(() => {
-    if (currentIndex >= 0 && currentIndex < totalPages && flipQueueRef.current) {
+    if (mode !== 'progress') return;
+
+    const hasNewDone = doneCount > prevDoneCountRef.current;
+    const targetChanged = serverTargetIdx !== prevServerTargetRef.current;
+
+    if (hasNewDone || targetChanged) {
+      if (isLookingBack) {
+        // NO-JUMP RULE: User is looking at an earlier page. Stay here!
+        const latestDone =
+          donePages.length > 0 ? donePages[donePages.length - 1].n : sortedPages[serverTargetIdx].n;
+        setJumpBadge({
+          pageNum: sortedPages[serverTargetIdx].n,
+          donePageNum: latestDone,
+        });
+      } else {
+        // Follow server progress live
+        setJumpBadge(null);
+        if (flipQueueRef.current) {
+          flipQueueRef.current.enqueue(serverTargetIdx);
+        }
+      }
+      prevServerTargetRef.current = serverTargetIdx;
+      prevDoneCountRef.current = doneCount;
+    }
+  }, [mode, serverTargetIdx, doneCount, isLookingBack, donePages, sortedPages]);
+
+  // Synchronize incoming controlled currentIndex prop in browse mode
+  useEffect(() => {
+    if (mode === 'browse' && currentIndex >= 0 && currentIndex < totalPages && flipQueueRef.current) {
       const currentQueueIdx = flipQueueRef.current.getCurrentIndex();
       if (currentIndex !== currentQueueIdx && !flipQueueRef.current.isFlipping()) {
         if (Math.abs(currentIndex - currentQueueIdx) <= 2) {
@@ -113,7 +177,7 @@ export const PageBook: React.FC<PageBookProps> = ({
         }
       }
     }
-  }, [currentIndex, totalPages]);
+  }, [mode, currentIndex, totalPages]);
 
   // Animate flip progress linearly across step duration using requestAnimationFrame
   useEffect(() => {
@@ -146,26 +210,52 @@ export const PageBook: React.FC<PageBookProps> = ({
     error: null,
   };
 
+  const maxClickableIndex = mode === 'progress' ? serverTargetIdx : totalPages - 1;
+
   const handlePageSelect = useCallback((newIndex: number) => {
     if (newIndex < 0 || newIndex >= totalPages) return;
+    if (mode === 'progress') {
+      if (newIndex > serverTargetIdx) return; // not clickable
+      if (newIndex < serverTargetIdx) {
+        setIsLookingBack(true);
+      } else {
+        setIsLookingBack(false);
+        setJumpBadge(null);
+      }
+    }
     if (flipQueueRef.current) {
       flipQueueRef.current.enqueue(newIndex);
     }
-  }, [totalPages]);
+  }, [totalPages, mode, serverTargetIdx]);
+
+  const handleJumpToLatest = useCallback(() => {
+    setIsLookingBack(false);
+    setJumpBadge(null);
+    if (flipQueueRef.current) {
+      flipQueueRef.current.enqueue(serverTargetIdx);
+    }
+  }, [serverTargetIdx]);
 
   const handlePrev = useCallback(() => {
     if (activeIndex > 0 && flipQueueRef.current) {
+      if (mode === 'progress') {
+        setIsLookingBack(true);
+      }
       flipQueueRef.current.enqueue(activeIndex - 1);
     }
-  }, [activeIndex]);
+  }, [activeIndex, mode]);
 
   const handleNext = useCallback(() => {
     if (activeIndex < totalPages - 1 && flipQueueRef.current) {
-      if (mode === 'browse' || sortedPages[activeIndex + 1]?.status === 'done') {
+      if (mode === 'browse' || sortedPages[activeIndex + 1]?.status === 'done' || activeIndex + 1 <= serverTargetIdx) {
+        if (mode === 'progress' && activeIndex + 1 >= serverTargetIdx) {
+          setIsLookingBack(false);
+          setJumpBadge(null);
+        }
         flipQueueRef.current.enqueue(activeIndex + 1);
       }
     }
-  }, [activeIndex, totalPages, mode, sortedPages]);
+  }, [activeIndex, totalPages, mode, sortedPages, serverTargetIdx]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -239,29 +329,28 @@ export const PageBook: React.FC<PageBookProps> = ({
   const easeInOut = (t: number) => (t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t);
   const easedProgress = easeInOut(flipProgress);
 
-  // Flip rotation angles: forward: 0deg -> -180deg; backward: -180deg -> 0deg
   const isForward = activeStep?.direction === 'forward';
-  const flipAngle = isForward
-    ? -180 * easedProgress
-    : -180 + 180 * easedProgress;
+  const flipAngle = isForward ? -180 * easedProgress : -180 + 180 * easedProgress;
 
-  // Moving curl shadow opacity and gradient position
   const curlShadowOpacity = Math.sin(easedProgress * Math.PI) * 0.45;
   const curlShadowX = easedProgress * 100;
 
   const isFlipping = activeStep !== null;
 
-  // Target reveal page and flipping leaf page
   const fromPage = activeStep ? sortedPages[activeStep.fromIndex] : activePage;
   const toPage = activeStep ? sortedPages[activeStep.toIndex] : activePage;
+
+  const isPageFailed = activePage.status === 'failed';
 
   return (
     <div
       data-testid="page-book-root"
+      data-mode={mode}
       data-flipping={isFlipping ? 'true' : 'false'}
       data-flip-direction={activeStep?.direction || 'none'}
       data-current-page={activePage.n}
       data-is-reduced-motion={prefersReducedMotion ? 'true' : 'false'}
+      data-is-looking-back={isLookingBack ? 'true' : 'false'}
       className={`page-book relative flex flex-col items-center justify-between h-full w-full select-none overflow-hidden bg-slate-900/60 p-2 text-slate-100 ${className}`}
       style={{
         ['--u' as any]: 'min(1vw, 1.6vh)',
@@ -269,23 +358,54 @@ export const PageBook: React.FC<PageBookProps> = ({
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      {/* Top Header Bar / Status Indicator */}
+      {/* ==================================================================== */}
+      {/* TOP HEADER BAR: Page indicator, Reading status, Jump badge, Chip   */}
+      {/* ==================================================================== */}
       <div className="w-full flex items-center justify-between px-3 py-1.5 shrink-0 z-30">
         <div className="flex items-center gap-2">
           <span className="text-xs font-semibold tracking-wide text-slate-300">
-            p. {activePage.n} / {totalPages}
+            {mode === 'progress' ? `p. ${activePage.n} / ${totalPages}` : `p. ${activePage.n} / ${totalPages}`}
           </span>
-          <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-slate-400 capitalize">
+          <span
+            className={`text-[11px] px-2 py-0.5 rounded-full border capitalize font-medium ${
+              activePage.status === 'done'
+                ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                : activePage.status === 'reading'
+                ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40 animate-pulse'
+                : activePage.status === 'failed'
+                ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+                : 'bg-slate-800 text-slate-400 border-slate-700'
+            }`}
+          >
             {activePage.status === 'done' ? 'Read' : activePage.status}
           </span>
           {isFlipping && (
             <span className="text-[10px] font-mono text-indigo-400 animate-pulse uppercase tracking-wider">
-              {activeStep?.direction === 'forward' ? 'Turning forward...' : 'Turning back...'}
+              {activeStep?.direction === 'forward' ? 'Turning...' : 'Turning back...'}
             </span>
           )}
         </div>
 
-        {/* Legibility Chip */}
+        {/* Center: "Page X done" + [Jump to latest] badge (No-Jump Rule) */}
+        {jumpBadge && isLookingBack && (
+          <div
+            data-testid="badge-jump-to-latest"
+            className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-indigo-600/90 text-white text-xs font-semibold shadow-lg border border-indigo-400/50 backdrop-blur-xs animate-bounce"
+          >
+            <span>Page {jumpBadge.donePageNum} done</span>
+            <button
+              type="button"
+              data-testid="btn-jump-to-latest"
+              onClick={handleJumpToLatest}
+              className="px-2 py-0.5 rounded-full bg-white text-indigo-700 hover:bg-indigo-50 font-bold text-[11px] flex items-center gap-1 transition-colors cursor-pointer shadow-xs"
+            >
+              <span>Jump to latest</span>
+              <ArrowRight className="w-3 h-3" />
+            </button>
+          </div>
+        )}
+
+        {/* Legibility Chip in Browse Mode (or when legibility exists) */}
         {showLegibility && (
           <div
             data-testid="legibility-chip"
@@ -307,21 +427,23 @@ export const PageBook: React.FC<PageBookProps> = ({
         )}
       </div>
 
-      {/* Main Book Display Container with 3D Perspective */}
+      {/* ==================================================================== */}
+      {/* MAIN BOOK DISPLAY CONTAINER WITH 3D PERSPECTIVE                      */}
+      {/* ==================================================================== */}
       <div
         className="relative flex-1 min-h-0 w-full flex items-center justify-center p-1 overflow-hidden"
         style={{ perspective: '1800px' }}
       >
-        {/* Book Spine & Leaf Envelope with simulated page stack */}
         <div
           data-testid="book-leaf-envelope"
-          className="relative max-h-full aspect-[1/1.414] shadow-2xl rounded-sm flex items-center justify-center overflow-hidden"
+          className="relative max-h-full aspect-[1/1.414] shadow-2xl rounded-sm flex items-center justify-center overflow-hidden transition-all duration-300"
           style={{
             height: 'calc(100% - 8px)',
             maxWidth: '100%',
             boxShadow: `${-leftStackPx}px 0 0 -1px rgba(255,255,255,0.06), ${rightStackPx}px 0 0 -1px rgba(255,255,255,0.06), 0 20px 30px -10px rgba(0,0,0,0.5)`,
             borderLeft: leftStackPx > 0 ? `${leftStackPx}px solid #cbd5e1` : '2px solid #94a3b8',
             borderRight: rightStackPx > 0 ? `${rightStackPx}px solid #cbd5e1` : '2px solid #94a3b8',
+            outline: isPageFailed ? '2px solid #ef4444' : 'none',
             transformStyle: 'preserve-3d',
           }}
         >
@@ -336,9 +458,7 @@ export const PageBook: React.FC<PageBookProps> = ({
             }}
           />
 
-          {/* ========================================================= */}
-          {/* BASE / DESTINATION PAGE (revealed underneath during flip) */}
-          {/* ========================================================= */}
+          {/* Base / Destination Page (revealed underneath during flip) */}
           <div
             className="absolute inset-0 z-10 flex flex-col items-center justify-center overflow-hidden"
             style={{
@@ -368,7 +488,10 @@ export const PageBook: React.FC<PageBookProps> = ({
 
             {/* Soft Scan Line Indicator when Reading */}
             {(isFlipping ? toPage : activePage).status === 'reading' && (
-              <div className="absolute left-0 right-0 h-1 bg-gradient-to-r from-indigo-500/20 via-indigo-400 to-indigo-500/20 shadow-[0_0_12px_rgba(99,102,241,0.9)] animate-bounce z-25 pointer-events-none top-1/2" />
+              <div
+                data-testid="soft-scan-line"
+                className="absolute left-0 right-0 h-1 bg-gradient-to-r from-indigo-500/20 via-indigo-400 to-indigo-500/20 shadow-[0_0_12px_rgba(99,102,241,0.9)] animate-bounce z-25 pointer-events-none top-1/2"
+              />
             )}
 
             {/* Annotation Layer Slot on Base Page */}
@@ -383,9 +506,7 @@ export const PageBook: React.FC<PageBookProps> = ({
             )}
           </div>
 
-          {/* ========================================================= */}
-          {/* FLIPPING LEAF (active during 3D flip animation)           */}
-          {/* ========================================================= */}
+          {/* Flipping Leaf (active during 3D flip animation) */}
           {isFlipping && !prefersReducedMotion && (
             <div
               data-testid="flipping-leaf"
@@ -439,7 +560,6 @@ export const PageBook: React.FC<PageBookProps> = ({
                   ...LINED_PAPER,
                 }}
               >
-                {/* Back side lined texture with gentle shadow */}
                 <div
                   className="absolute inset-0 pointer-events-none"
                   style={{
@@ -452,21 +572,24 @@ export const PageBook: React.FC<PageBookProps> = ({
           )}
 
           {/* Failure Overlay & Retry button if page failed */}
-          {activePage.status === 'failed' && !isFlipping && (
+          {isPageFailed && !isFlipping && (
             <div
               data-testid="page-error-overlay"
-              className="absolute inset-x-4 bottom-6 z-30 bg-rose-950/90 border border-rose-500/60 p-3 rounded-lg shadow-xl backdrop-blur-xs flex items-center justify-between"
+              className="absolute inset-x-4 bottom-6 z-30 bg-rose-950/95 border border-rose-500/80 p-3 rounded-lg shadow-2xl backdrop-blur-xs flex items-center justify-between"
             >
               <div className="flex items-center gap-2.5 text-rose-200">
                 <AlertCircle className="w-5 h-5 text-rose-400 shrink-0" />
                 <div className="text-xs">
                   <div className="font-semibold text-rose-300">OCR Failed on Page {activePage.n}</div>
-                  <div className="text-rose-200/80 line-clamp-1">{activePage.error || 'Network error or unreadable page.'}</div>
+                  <div className="text-rose-200/80 line-clamp-1">
+                    {activePage.error || 'Network connection dropped or scan was unreadable.'}
+                  </div>
                 </div>
               </div>
               {onRetryPage && (
                 <button
                   type="button"
+                  data-testid="btn-retry-page"
                   onClick={() => onRetryPage(activePage.n)}
                   className="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
                 >
@@ -477,7 +600,7 @@ export const PageBook: React.FC<PageBookProps> = ({
             </div>
           )}
 
-          {/* Left Edge Click Area for previous page */}
+          {/* Left Edge Click Area */}
           <div
             data-testid="left-edge-click"
             onClick={handlePrev}
@@ -493,12 +616,12 @@ export const PageBook: React.FC<PageBookProps> = ({
             </div>
           </div>
 
-          {/* Right Edge Click Area for next page */}
+          {/* Right Edge Click Area */}
           <div
             data-testid="right-edge-click"
             onClick={handleNext}
             className={`absolute top-0 bottom-0 right-0 w-[15%] z-20 flex items-center justify-end pr-2 transition-opacity ${
-              activeIndex < totalPages - 1 && !annotatable && !isFlipping
+              activeIndex < maxClickableIndex && !annotatable && !isFlipping
                 ? 'cursor-pointer hover:bg-black/5 opacity-0 hover:opacity-100'
                 : 'pointer-events-none opacity-0'
             }`}
@@ -511,59 +634,100 @@ export const PageBook: React.FC<PageBookProps> = ({
         </div>
       </div>
 
-      {/* Bottom Controls: Navigation Arrows, Page Dots, and Status */}
-      <div className="w-full flex items-center justify-between px-4 py-2 shrink-0 z-30 bg-slate-950/40 border-t border-slate-800/80">
-        <button
-          type="button"
-          data-testid="btn-prev-page"
-          onClick={handlePrev}
-          disabled={activeIndex <= 0 || isFlipping}
-          className="p-1.5 rounded-md text-slate-300 hover:text-white hover:bg-slate-800/80 disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
-          title="Previous page (Left Arrow)"
-        >
-          <ChevronLeft className="w-5 h-5" />
-        </button>
+      {/* ==================================================================== */}
+      {/* BOTTOM SECTION: Progress Bar + Stage Status (Progress) OR Dots (Browse) */}
+      {/* ==================================================================== */}
+      <div className="w-full flex flex-col shrink-0 z-30 bg-slate-950/50 border-t border-slate-800/80 px-4 py-2 gap-1.5">
+        {mode === 'progress' && (
+          <div className="w-full space-y-1.5">
+            {/* Top row: Page count status & Stage Name */}
+            <div className="flex items-center justify-between text-xs font-medium">
+              <span className="text-slate-300 font-mono" data-testid="progress-read-count">
+                Page {doneCount} of {totalPages} read
+              </span>
+              <span className="text-indigo-300 font-semibold flex items-center gap-1.5">
+                {doneCount === totalPages ? (
+                  <>
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>All pages read</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-3.5 h-3.5 text-indigo-400 animate-spin" />
+                    <span>{stageName || (activePage.status === 'reading' ? 'Reading handwriting...' : 'Processing...')}</span>
+                  </>
+                )}
+              </span>
+            </div>
 
-        {/* Page Dots Indicator */}
-        <div data-testid="page-dots-bar" className="flex items-center gap-1.5 max-w-[60%] overflow-x-auto py-1 px-2">
-          {sortedPages.map((page, idx) => {
-            const isCurrent = idx === activeIndex;
-            const isDone = page.status === 'done';
-            const isReading = page.status === 'reading';
-            const isFailed = page.status === 'failed';
-
-            let dotColor = 'bg-slate-600';
-            if (isDone) dotColor = 'bg-emerald-400';
-            else if (isReading) dotColor = 'bg-indigo-400 animate-pulse';
-            else if (isFailed) dotColor = 'bg-rose-500';
-
-            return (
-              <button
-                key={page.n}
-                type="button"
-                data-testid={`page-dot-${page.n}`}
-                onClick={() => handlePageSelect(idx)}
-                className={`transition-all rounded-full cursor-pointer ${
-                  isCurrent
-                    ? 'w-6 h-2.5 ring-2 ring-indigo-400 ring-offset-1 ring-offset-slate-950 ' + dotColor
-                    : 'w-2.5 h-2.5 hover:scale-125 opacity-70 hover:opacity-100 ' + dotColor
-                }`}
-                title={`Page ${page.n} (${page.status})`}
+            {/* Progress Bar */}
+            <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-indigo-500 to-emerald-400 transition-all duration-300 rounded-full"
+                style={{ width: `${Math.round((doneCount / totalPages) * 100)}%` }}
               />
-            );
-          })}
-        </div>
+            </div>
+          </div>
+        )}
 
-        <button
-          type="button"
-          data-testid="btn-next-page"
-          onClick={handleNext}
-          disabled={activeIndex >= totalPages - 1 || isFlipping}
-          className="p-1.5 rounded-md text-slate-300 hover:text-white hover:bg-slate-800/80 disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
-          title="Next page (Right Arrow)"
-        >
-          <ChevronRight className="w-5 h-5" />
-        </button>
+        {/* Navigation Dots and Prev/Next buttons */}
+        <div className="flex items-center justify-between pt-0.5">
+          <button
+            type="button"
+            data-testid="btn-prev-page"
+            onClick={handlePrev}
+            disabled={activeIndex <= 0 || isFlipping}
+            className="p-1.5 rounded-md text-slate-300 hover:text-white hover:bg-slate-800/80 disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
+            title="Previous page (Left Arrow)"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+
+          {/* Page Dots Indicator */}
+          <div data-testid="page-dots-bar" className="flex items-center gap-1.5 max-w-[60%] overflow-x-auto py-1 px-2">
+            {sortedPages.map((page, idx) => {
+              const isCurrent = idx === activeIndex;
+              const isDone = page.status === 'done';
+              const isReading = page.status === 'reading';
+              const isFailed = page.status === 'failed';
+              const isClickable = idx <= maxClickableIndex;
+
+              let dotColor = 'bg-slate-600';
+              if (isDone) dotColor = 'bg-emerald-400';
+              else if (isReading) dotColor = 'bg-indigo-400 animate-pulse';
+              else if (isFailed) dotColor = 'bg-rose-500';
+
+              return (
+                <button
+                  key={page.n}
+                  type="button"
+                  data-testid={`page-dot-${page.n}`}
+                  onClick={() => handlePageSelect(idx)}
+                  disabled={!isClickable}
+                  className={`transition-all rounded-full ${
+                    isClickable ? 'cursor-pointer hover:scale-125' : 'cursor-not-allowed opacity-35'
+                  } ${
+                    isCurrent
+                      ? 'w-6 h-2.5 ring-2 ring-indigo-400 ring-offset-1 ring-offset-slate-950 ' + dotColor
+                      : 'w-2.5 h-2.5 opacity-70 hover:opacity-100 ' + dotColor
+                  }`}
+                  title={`Page ${page.n} (${page.status})${!isClickable ? ' - not yet read' : ''}`}
+                />
+              );
+            })}
+          </div>
+
+          <button
+            type="button"
+            data-testid="btn-next-page"
+            onClick={handleNext}
+            disabled={activeIndex >= maxClickableIndex || isFlipping}
+            className="p-1.5 rounded-md text-slate-300 hover:text-white hover:bg-slate-800/80 disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
+            title="Next page (Right Arrow)"
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
+        </div>
       </div>
     </div>
   );
