@@ -1,0 +1,33 @@
+{
+  "task": "P0",
+  "description": "Fix bug B2: 9-page PDF upload and evaluation without sqlite3.Row attribute error",
+  "timestamp": "2026-11-18T04:38:03Z",
+  "paper_id": "1a972fc6-59cc-4259-ac7c-e7dbb1155702",
+  "sheet_id": "11329230-ca01-4b42-8a6f-9f70ffb7cd8a",
+  "student_name": "Aditya Verma",
+  "roll_number": "CS-2026-909",
+  "pages_count": 9,
+  "final_status": "evaluated",
+  "final_stage_key": "evaluated",
+  "error_message": null,
+  "b2_bug_prevented": true,
+  "poll_trace": [
+    {
+      "time_offset_s": 1,
+      "status": "evaluating",
+      "stage": "reading",
+      "pages_read": 0,
+      "pages_total": 9,
+      "pages_done": 0
+    },
+    {
+      "time_offset_s": 3,
+      "status": "evaluated",
+      "stage": "evaluated",
+      "pages_read": 9,
+      "pages_total": 9,
+      "pages_done": 9
+    }
+  ],
+  "screenshot": "docs\\proof\\P0\\p0_b2_9page_upload_success.png"
+}

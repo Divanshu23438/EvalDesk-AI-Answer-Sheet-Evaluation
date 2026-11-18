@@ -13,7 +13,6 @@ Upload screen completion verification:
 """
 import io
 import json
-import sqlite3
 import sys
 import time
 import urllib.request
@@ -24,7 +23,8 @@ from PIL import Image, ImageDraw
 from playwright.sync_api import sync_playwright
 
 ROOT = Path(__file__).resolve().parent.parent
-DB_PATH = ROOT / "data" / "app.db"
+sys.path.insert(0, str(ROOT))
+from backend.db import get_db_connection
 PROOF_DIR = ROOT / "docs" / "proof" / "P9.5"
 PROOF_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -41,8 +41,7 @@ def main():
 
     # 1. Database Setup:
     # Paper has EMPTY subject and strictness_level = 4 (Rigorous), locked, no teacher key
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
+    conn = get_db_connection()
     cur = conn.cursor()
 
     cur.execute(

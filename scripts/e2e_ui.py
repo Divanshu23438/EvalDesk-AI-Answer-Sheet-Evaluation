@@ -19,7 +19,6 @@ User journey for each paper:
 6. Saves 12 screenshots and telemetry JSON into docs/proof/P9.7/.
 """
 import json
-import sqlite3
 import sys
 import time
 import urllib.request
@@ -30,7 +29,8 @@ from PIL import Image, ImageDraw
 from playwright.sync_api import sync_playwright
 
 ROOT = Path(__file__).resolve().parent.parent
-DB_PATH = ROOT / "data" / "app.db"
+sys.path.insert(0, str(ROOT))
+from backend.db import get_db, get_db_connection
 PROOF_DIR = ROOT / "docs" / "proof" / "P9.7"
 PROOF_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -55,8 +55,7 @@ def setup_paper_and_sheet(
     paper_id = str(uuid.uuid4())
     sheet_id = str(uuid.uuid4())
 
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
+    conn = get_db_connection()
     cur = conn.cursor()
 
     # 1. Insert Paper
@@ -423,7 +422,7 @@ def main():
         page.wait_for_timeout(2000)
 
         # Update sheet status to evaluated for review workspace testing
-        with sqlite3.connect(DB_PATH) as c:
+        with get_db() as c:
             c.execute(
                 "UPDATE sheets SET status = 'needs_review', stage_key = 'needs_review', total_score = 17.0, percentage = 85.0, grade = 'A' WHERE id = ?",
                 (p1_sheet_id,)
@@ -471,7 +470,7 @@ def main():
         page.wait_for_timeout(1000)
 
         # Approve and finish to report
-        with sqlite3.connect(DB_PATH) as c:
+        with get_db() as c:
             c.execute("UPDATE evaluations SET resolved = 1 WHERE sheet_id = ?", (p1_sheet_id,))
             c.execute("UPDATE sheets SET status = 'evaluated', stage_key = 'evaluated' WHERE id = ?", (p1_sheet_id,))
 
@@ -517,7 +516,7 @@ def main():
         page.wait_for_timeout(2000)
 
         # Update sheet status to evaluated for review workspace testing
-        with sqlite3.connect(DB_PATH) as c:
+        with get_db() as c:
             c.execute(
                 "UPDATE sheets SET status = 'needs_review', stage_key = 'needs_review', total_score = 21.5, percentage = 86.0, grade = 'A' WHERE id = ?",
                 (p2_sheet_id,)
@@ -562,7 +561,7 @@ def main():
         page.wait_for_timeout(1000)
 
         # Approve and finish to report
-        with sqlite3.connect(DB_PATH) as c:
+        with get_db() as c:
             c.execute("UPDATE evaluations SET resolved = 1 WHERE sheet_id = ?", (p2_sheet_id,))
             c.execute("UPDATE sheets SET status = 'evaluated', stage_key = 'evaluated' WHERE id = ?", (p2_sheet_id,))
 

@@ -649,6 +649,54 @@ def evaluate_rubric_point(
     }
 
 
+def extract_normalized_key_points(
+    ref: Optional[Dict[str, Any]],
+    question: Dict[str, Any],
+    max_m: float
+) -> List[Dict[str, Any]]:
+    """Extract and normalize key points into a list of dicts with 'text', 'point', and 'marks'."""
+    key_points = []
+    if ref:
+        kp_raw = ref.get("key_points_json") or ref.get("key_points")
+        if isinstance(kp_raw, str):
+            try:
+                parsed = json.loads(kp_raw)
+                if isinstance(parsed, list):
+                    key_points = parsed
+                elif isinstance(parsed, dict):
+                    key_points = [parsed]
+            except Exception:
+                key_points = []
+        elif isinstance(kp_raw, list):
+            key_points = list(kp_raw)
+        elif isinstance(kp_raw, dict):
+            key_points = [kp_raw]
+
+    if not key_points:
+        model_ans = (ref.get("model_answer") if ref else "") or question.get("question_text", "")
+        return [{"text": model_ans, "point": model_ans, "marks": max_m}]
+
+    per_point = round_to_half_step(max_m / len(key_points)) if key_points else max_m
+    norm_kp = []
+    for kp in key_points:
+        if isinstance(kp, str):
+            norm_kp.append({"text": kp, "point": kp, "marks": per_point})
+        elif isinstance(kp, dict):
+            d = dict(kp)
+            if "text" not in d and "point" in d:
+                d["text"] = d["point"]
+            elif "point" not in d and "text" in d:
+                d["point"] = d["text"]
+            if "marks" not in d:
+                d["marks"] = per_point
+            norm_kp.append(d)
+        else:
+            txt = str(kp)
+            norm_kp.append({"text": txt, "point": txt, "marks": per_point})
+
+    return norm_kp
+
+
 async def grade_answer(
     question: Dict[str, Any],
     ref: Optional[Dict[str, Any]],
@@ -694,19 +742,7 @@ async def grade_answer(
                 "reason": "Question not attempted.",
             })
         else:
-            key_points = []
-            if ref:
-                kp_raw = ref.get("key_points_json") or ref.get("key_points")
-                if isinstance(kp_raw, str):
-                    try:
-                        key_points = json.loads(kp_raw)
-                    except Exception:
-                        key_points = []
-                elif isinstance(kp_raw, list):
-                    key_points = kp_raw
-            if not key_points:
-                model_ans = (ref.get("model_answer") if ref else "") or question.get("question_text", "")
-                key_points = [{"text": model_ans, "marks": max_m}]
+            key_points = extract_normalized_key_points(ref, question, max_m)
 
             for idx, kp in enumerate(key_points):
                 pt_alloc = float(kp.get("marks", max_m / len(key_points)))
@@ -814,20 +850,7 @@ async def grade_answer(
     if check_suspicious_text(raw_student):
         flags.append({"code": "suspicious_text", "message": "Suspicious text in the answer (possible prompt injection).", "severity": "critical"})
 
-    key_points = []
-    if ref:
-        kp_raw = ref.get("key_points_json") or ref.get("key_points")
-        if isinstance(kp_raw, str):
-            try:
-                key_points = json.loads(kp_raw)
-            except Exception:
-                key_points = []
-        elif isinstance(kp_raw, list):
-            key_points = kp_raw
-
-    if not key_points:
-        model_ans = (ref.get("model_answer") if ref else "") or question.get("question_text", "")
-        key_points = [{"text": model_ans, "marks": max_m}]
+    key_points = extract_normalized_key_points(ref, question, max_m)
 
     anchors = extract_question_anchors(question.get("question_text", ""))
     explicit_count = anchors.get("explicit_count")

@@ -14,7 +14,6 @@ Captures:
 """
 import io
 import json
-import sqlite3
 import sys
 import time
 import urllib.request
@@ -23,7 +22,8 @@ from pathlib import Path
 from PIL import Image, ImageDraw
 
 ROOT = Path(__file__).resolve().parent.parent
-DB_PATH = ROOT / "data" / "app.db"
+sys.path.insert(0, str(ROOT))
+from backend.db import get_db_connection
 PROOF_DIR = ROOT / "docs" / "proof" / "P9.4"
 PROOF_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -60,8 +60,7 @@ def main():
         page_paths.append(img_path)
 
     # 1. Database Setup
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
+    conn = get_db_connection()
     cur = conn.cursor()
 
     cur.execute(

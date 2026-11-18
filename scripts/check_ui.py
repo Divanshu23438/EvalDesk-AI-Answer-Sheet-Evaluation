@@ -26,12 +26,15 @@ VIEWPORTS = [
 
 def get_sample_sheet_id():
     try:
-        import sqlite3
-        conn = sqlite3.connect(ROOT / "data" / "app.db")
-        row = conn.execute("SELECT id FROM sheets WHERE status = 'evaluated' ORDER BY total_score DESC LIMIT 1").fetchone()
-        if not row:
-            row = conn.execute("SELECT id FROM sheets ORDER BY created_at DESC LIMIT 1").fetchone()
-        return row[0] if row else ""
+        from backend.db import get_db_connection
+        conn = get_db_connection()
+        try:
+            row = conn.execute("SELECT id FROM sheets WHERE status = 'evaluated' ORDER BY total_score DESC LIMIT 1").fetchone()
+            if not row:
+                row = conn.execute("SELECT id FROM sheets ORDER BY created_at DESC LIMIT 1").fetchone()
+            return row[0] if row else ""
+        finally:
+            conn.close()
     except Exception:
         return ""
 

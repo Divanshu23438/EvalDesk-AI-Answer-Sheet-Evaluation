@@ -1,7 +1,23 @@
 # STATUS (update at the end of every session)
-Date / author (agent or model name): 2026-11-17 / Antigravity (Gemini 3.8 Flash)
-Current phase and task: Marks & Why Pinned Action Buttons (`src/components/MarksCard.tsx`, `src/screens/EvaluateScreen.tsx`).
+Date / author (agent or model name): 2026-11-18 / Antigravity (Gemini 3.8 Flash)
+Current phase and task: Task P0 Complete - Fix B2 (sheet upload crash: 'sqlite3.Row' object has no attribute 'get'). Ready for Task P1.
 Done (task id, commit, proof file):
+- Task P0: Fix B2 - Sheet upload crash resolution & 9-page PDF evaluation proof (`backend/db.py`, `backend/marking_engine.py`, `backend/tests/test_b2_row_dict.py`, `scripts/verify_p0_b2.py`, `docs/proof/P0/`):
+  1. Universal SQLite Connection & DictRow Guarantee (`backend/db.py`, `backend/main.py`, `scripts/`):
+     - Confirmed all backend database connection paths use `get_db_connection()` and `get_db()`, with `conn.row_factory = DictRow`.
+     - Standardized helper scripts (`scripts/check_ui.py`, `scripts/e2e_ui.py`, `scripts/verify_p9_4.py`, `scripts/verify_p9_5.py`, `scripts/verify_p9_6.py`) to use `get_db_connection()` / `get_db()`, preventing raw `sqlite3.Row` attribute errors across test automation.
+     - Added `extract_normalized_key_points` in `backend/marking_engine.py` to defensively parse both list-of-strings and list-of-dicts `key_points_json`, guaranteeing `.get()` is never called on a raw string.
+  2. Regression Test Suite (`backend/tests/test_b2_row_dict.py`):
+     - Verified `get_db_connection` row factory supports `row['x']`, `row.get('x')`, and `row.get('x', default)`.
+     - Verified `get_db` context manager returns rows with both bracket and `.get()` methods.
+     - Verified `fetchone` and `fetchall` return pure dicts.
+     - Verified queries against major tables (`papers`, `sheets`, `sheet_pages`, `questions`) support `.get()`.
+     - Verified FastAPI endpoints execute without row attribute errors.
+  3. 9-Page PDF End-to-End Upload & Evaluation Verification (`scripts/verify_p0_b2.py`):
+     - Generated a real 9-page student answer sheet PDF (`scratch/aditya_verma_9pages.pdf`) containing student header and answers for 9 questions.
+     - Uploaded to `POST /api/papers/{paper_id}/sheets/upload`: confirmed HTTP 200, 9 pages detected.
+     - Monitored sequential pipeline: `pages_read` strictly advanced `1/9 -> 2/9 -> ... -> 9/9` until reaching terminal state `evaluated` with zero attribute errors.
+     - Captured UI proof screenshot at `docs/proof/P0/p0_b2_9page_upload_success.png` and telemetry trace in `docs/proof/P0/p0_proof.json`. | docs/proof/P0/
 - Task: Fixed Marks & Why Action Buttons Visibility (`src/components/MarksCard.tsx`, `src/screens/EvaluateScreen.tsx`):
   1. Pinned Footer Layout (`src/components/MarksCard.tsx`):
      - Changed `MarksCard` root `<section>` to `h-full min-h-0 flex flex-col`.
