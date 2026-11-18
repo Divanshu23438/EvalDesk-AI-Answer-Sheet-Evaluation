@@ -16,7 +16,7 @@ sys.path.insert(0, str(ROOT))
 from scripts.check_all import BANNED
 SCAN_EXT = {".py", ".ts", ".tsx", ".js", ".jsx", ".json", ".html", ".css"}
 SKIP_DIRS = {".git", "node_modules", "dist", "__pycache__", ".reader_cache", "data",
-             "legacy", "docs", "tests", ".venv", "venv", "proof", "scratch", "stitch_evaldesk_exam_evaluation_workspace"}
+             "legacy", "docs", "tests", ".venv", "venv", "proof", "scratch", "stitch_evaldesk_exam_evaluation_workspace", "stitch_report_export"}
 SKIP_FILES = {"check_all.py", "check_ui.py", "package-lock.json"}
 
 VIEWPORTS = [

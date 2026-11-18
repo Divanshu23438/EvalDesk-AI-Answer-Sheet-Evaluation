@@ -210,6 +210,9 @@ def get_or_create_answer_crop_path(
     if not bboxes:
         return None
 
+    if isinstance(bboxes[0], (int, float)) and len(bboxes) == 4:
+        bboxes = [bboxes]
+
     try:
         from PIL import Image, ImageDraw
 

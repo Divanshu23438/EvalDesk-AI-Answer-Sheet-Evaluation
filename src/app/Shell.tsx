@@ -115,6 +115,10 @@ export const Shell: React.FC = () => {
     }
   }, [state.step, state.sheetId]);
 
+  if (state.step === 'report') {
+    return <ReportScreen />;
+  }
+
   return (
     <div className="app">
       {/* 48px Top Bar */}
@@ -264,7 +268,6 @@ export const Shell: React.FC = () => {
       <main ref={mainRef} className="min-h-0 overflow-hidden relative bg-slate-50 flex-1">
         {state.step === 'upload' && <UploadScreen />}
         {state.step === 'evaluate' && <EvaluateScreen />}
-        {state.step === 'report' && <ReportScreen />}
       </main>
 
       {/* 56px Bottom Action Bar */}
@@ -316,16 +319,6 @@ export const Shell: React.FC = () => {
                 </div>
               )}
             </div>
-          ) : state.step === 'report' ? (
-            <button
-              type="button"
-              onClick={() => window.dispatchEvent(new CustomEvent('evaldesk:report:back-review'))}
-              className="p-1 px-2.5 rounded border border-slate-200 hover:bg-slate-100 text-slate-700 flex items-center gap-1 font-medium text-xs transition shadow-2xs"
-              title="Return to Evaluation Review"
-            >
-              <ChevronLeft className="w-3.5 h-3.5" />
-              <span>Back to Review</span>
-            </button>
           ) : (
             <div className="flex items-center space-x-2 text-xs">
               <div className="flex items-center space-x-1.5 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded">
@@ -388,19 +381,6 @@ export const Shell: React.FC = () => {
                 </kbd>{' '}
                 Recheck
               </div>
-            </div>
-          ) : state.step === 'report' ? (
-            <div className="flex items-center gap-2 text-xs text-slate-600">
-              <span className="font-semibold text-slate-800">
-                {state.studentName || 'Student Report'}
-              </span>
-              {state.rollNumber && (
-                <span className="tabular-nums text-slate-500">
-                  · Roll {state.rollNumber}
-                </span>
-              )}
-              <span className="text-slate-300">·</span>
-              <span>Complete Assessment Report & Class Analytics</span>
             </div>
           ) : (
             <div className="hidden lg:flex items-center gap-3 text-[11px] text-slate-500">
@@ -471,33 +451,6 @@ export const Shell: React.FC = () => {
                     {(state.reviewMetrics?.flagged || 0) + (state.reviewMetrics?.failed || 0)} flagged left (Jump)
                   </span>
                 )}
-              </button>
-            </div>
-          ) : state.step === 'report' ? (
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => window.dispatchEvent(new CustomEvent('evaldesk:report:download-pdf'))}
-                className="px-2.5 py-1.5 text-xs font-medium rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 transition flex items-center gap-1 shadow-2xs"
-              >
-                <FileText className="w-3.5 h-3.5 text-rose-500" />
-                <span>PDF</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => window.dispatchEvent(new CustomEvent('evaldesk:report:download-excel'))}
-                className="px-2.5 py-1.5 text-xs font-medium rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 transition flex items-center gap-1 shadow-2xs"
-              >
-                <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Excel</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => window.dispatchEvent(new CustomEvent('evaldesk:report:next-sheet'))}
-                className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 transition flex items-center gap-1 shadow-sm"
-              >
-                <span>Next Sheet</span>
-                <ChevronRight className="w-3.5 h-3.5" />
               </button>
             </div>
           ) : (

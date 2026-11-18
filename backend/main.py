@@ -4518,7 +4518,7 @@ async def build_paper_reports_data(paper_id: str) -> Dict[str, Any]:
             kps = json.loads(ref.get("key_points_json") or "[]") if ref else []
             max_m = qe["max_marks"]
             score = qe["final_marks"]
-            is_att = bool(qe.get("extracted_text", "").strip()) and "not_attempted" not in str(qe.get("flags_json", ""))
+            is_att = bool((qe.get("extracted_text") or "").strip()) and "not_attempted" not in str(qe.get("flags_json") or "")
 
             if max_m > 0 and score >= max_m * 0.75:
                 achieved_topics.append(f"{format_q_number(qe['q_no'])} ({qe['question_text'][:60]})")
