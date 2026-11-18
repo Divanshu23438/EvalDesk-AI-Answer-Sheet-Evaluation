@@ -12,7 +12,7 @@ export interface PaperMeta {
 }
 
 export interface PaperDetailsFormProps {
-  meta: PaperMeta;
+  meta?: PaperMeta | null;
   hasTeacherKey?: boolean;
   onSave: (patch: Partial<PaperMeta>) => Promise<void> | void;
 }
@@ -27,20 +27,20 @@ export const SUBJECT_DOMAINS = [
 ];
 
 export const PaperDetailsForm: React.FC<PaperDetailsFormProps> = ({ meta, hasTeacherKey = false, onSave }) => {
-  const [title, setTitle] = useState(meta.title || '');
-  const [subject, setSubject] = useState(meta.subject || '');
-  const [subjectCode, setSubjectCode] = useState(meta.subject_code || '');
-  const [examName, setExamName] = useState(meta.exam_name || '');
-  const [strictnessLevel, setStrictnessLevel] = useState<number>(meta.strictness_level || 3);
-  const [subjectDomain, setSubjectDomain] = useState(meta.subject_domain || 'general');
+  const [title, setTitle] = useState(meta?.title || '');
+  const [subject, setSubject] = useState(meta?.subject || '');
+  const [subjectCode, setSubjectCode] = useState(meta?.subject_code || '');
+  const [examName, setExamName] = useState(meta?.exam_name || '');
+  const [strictnessLevel, setStrictnessLevel] = useState<number>(meta?.strictness_level || 3);
+  const [subjectDomain, setSubjectDomain] = useState(meta?.subject_domain || 'general');
 
   useEffect(() => {
-    setTitle(meta.title || '');
-    setSubject(meta.subject || '');
-    setSubjectCode(meta.subject_code || '');
-    setExamName(meta.exam_name || '');
-    setStrictnessLevel(meta.strictness_level || 3);
-    setSubjectDomain(meta.subject_domain || 'general');
+    setTitle(meta?.title || '');
+    setSubject(meta?.subject || '');
+    setSubjectCode(meta?.subject_code || '');
+    setExamName(meta?.exam_name || '');
+    setStrictnessLevel(meta?.strictness_level || 3);
+    setSubjectDomain(meta?.subject_domain || 'general');
   }, [meta]);
 
   const handleBlurField = (field: keyof PaperMeta, currentVal: any, originalVal: any) => {
@@ -80,7 +80,7 @@ export const PaperDetailsForm: React.FC<PaperDetailsFormProps> = ({ meta, hasTea
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            onBlur={() => handleBlurField('title', title.trim(), meta.title)}
+            onBlur={() => handleBlurField('title', title.trim(), meta?.title)}
             placeholder={!title.trim() ? "Not detected — enter manually" : "Assessment Title"}
             className={`w-full px-2 py-1 rounded border text-xs bg-white text-slate-800 focus:outline-none focus:border-indigo-500 transition ${
               !title.trim() ? 'border-amber-400 bg-amber-50/20 placeholder:text-amber-700/70 font-medium' : 'border-slate-300'
@@ -102,7 +102,7 @@ export const PaperDetailsForm: React.FC<PaperDetailsFormProps> = ({ meta, hasTea
             type="text"
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
-            onBlur={() => handleBlurField('subject', subject.trim(), meta.subject)}
+            onBlur={() => handleBlurField('subject', subject.trim(), meta?.subject)}
             placeholder={!subject.trim() ? "Not detected — enter manually" : "e.g. Computer Science"}
             className={`w-full px-2 py-1 rounded border text-xs bg-white text-slate-800 focus:outline-none focus:border-indigo-500 transition ${
               !subject.trim() ? 'border-amber-400 bg-amber-50/20 placeholder:text-amber-700/70 font-medium' : 'border-slate-300'
@@ -124,7 +124,7 @@ export const PaperDetailsForm: React.FC<PaperDetailsFormProps> = ({ meta, hasTea
             type="text"
             value={subjectCode}
             onChange={(e) => setSubjectCode(e.target.value)}
-            onBlur={() => handleBlurField('subject_code', subjectCode.trim(), meta.subject_code)}
+            onBlur={() => handleBlurField('subject_code', subjectCode.trim(), meta?.subject_code)}
             placeholder={!subjectCode.trim() ? "Not detected — enter manually" : "e.g. CS-402"}
             className={`w-full px-2 py-1 rounded border text-xs bg-white text-slate-800 focus:outline-none focus:border-indigo-500 uppercase font-mono transition ${
               !subjectCode.trim() ? 'border-amber-400 bg-amber-50/20 placeholder:text-amber-700/70 font-medium' : 'border-slate-300'
@@ -146,7 +146,7 @@ export const PaperDetailsForm: React.FC<PaperDetailsFormProps> = ({ meta, hasTea
             type="text"
             value={examName}
             onChange={(e) => setExamName(e.target.value)}
-            onBlur={() => handleBlurField('exam_name', examName.trim(), meta.exam_name)}
+            onBlur={() => handleBlurField('exam_name', examName.trim(), meta?.exam_name)}
             placeholder={!examName.trim() ? "Not detected — enter manually" : "e.g. End Semester 2026"}
             className={`w-full px-2 py-1 rounded border text-xs bg-white text-slate-800 focus:outline-none focus:border-indigo-500 transition ${
               !examName.trim() ? 'border-amber-400 bg-amber-50/20 placeholder:text-amber-700/70 font-medium' : 'border-slate-300'

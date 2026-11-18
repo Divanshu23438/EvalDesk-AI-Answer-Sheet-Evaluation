@@ -116,7 +116,7 @@ export const UploadScreen: React.FC = () => {
   const loadPapers = useCallback(async () => {
     try {
       const data = await apiClient.get<{ papers: PaperSummary[] }>('/api/papers');
-      const paperList = data.papers || [];
+      const paperList = Array.isArray(data?.papers) ? data.papers : [];
       setPapers(paperList);
 
       if (paperList.length > 0) {
@@ -149,23 +149,25 @@ export const UploadScreen: React.FC = () => {
   const loadPaperDetails = useCallback(async (paperId: string) => {
     try {
       const details = await apiClient.get<any>(`/api/papers/${paperId}`);
-      const paperObj = details.paper || details;
+      const paperObj = details?.paper || details || {};
 
-      const qList: QuestionItem[] = (details.questions || []).map((q: any) => ({
-        id: q.id,
-        key: q.key || q.q_no,
-        q_no: q.q_no,
-        question_text: q.question_text || q.text || '',
-        max_marks: q.max_marks || q.marks || 1,
-        question_type: q.question_type || q.type || 'short',
-        section_name: q.section_name || q.section || 'Part I',
-        strictness_override: q.strictness_override ?? null,
-      }));
+      const qList: QuestionItem[] = Array.isArray(details?.questions)
+        ? details.questions.map((q: any) => ({
+            id: q.id,
+            key: q.key || q.q_no,
+            q_no: q.q_no,
+            question_text: q.question_text || q.text || '',
+            max_marks: q.max_marks || q.marks || 1,
+            question_type: q.question_type || q.type || 'short',
+            section_name: q.section_name || q.section || 'Part I',
+            strictness_override: q.strictness_override ?? null,
+          }))
+        : [];
 
       // Match references if present
       const refMap = new Map<string, any>();
       let hasTeacherKey = Boolean(paperObj.has_answer_key);
-      (details.references || []).forEach((r: any) => {
+      (Array.isArray(details?.references) ? details.references : []).forEach((r: any) => {
         if (r.key) refMap.set(r.key, r);
         if (r.question_id) refMap.set(r.question_id, r);
         if (r.source === 'teacher_key') hasTeacherKey = true;
@@ -185,7 +187,7 @@ export const UploadScreen: React.FC = () => {
       });
 
       setQuestions(enriched);
-      setSections(details.sections || []);
+      setSections(Array.isArray(details?.sections) ? details.sections : []);
       setHasAnswerKey(hasTeacherKey);
 
       store.setPaper({
@@ -224,7 +226,7 @@ export const UploadScreen: React.FC = () => {
       const data = await apiClient.get<{ sheets: SheetRow[] }>(
         `/api/papers/${state.paperId}/sheets`
       );
-      const fetched = data.sheets || [];
+      const fetched = Array.isArray(data?.sheets) ? data.sheets : [];
       setSheets(fetched);
 
       if (fetched.length > 0) {
@@ -257,12 +259,13 @@ export const UploadScreen: React.FC = () => {
   useEffect(() => {
     if (!state.paperId) return;
 
-    const hasActiveJobs = sheets.some((s) => ACTIVE_STATUSES.includes(s.status));
+    const safeSheets = Array.isArray(sheets) ? sheets : [];
+    const hasActiveJobs = safeSheets.some((s) => ACTIVE_STATUSES.includes(s.status));
 
     if (!hasActiveJobs) return;
 
-    const hasReading = sheets.some(
-      (s: any) => s.stage_key === 'reading' || (s.pages && s.pages.some((p: any) => p.status === 'reading'))
+    const hasReading = safeSheets.some(
+      (s: any) => s.stage_key === 'reading' || (Array.isArray(s.pages) && s.pages.some((p: any) => p.status === 'reading'))
     );
     const intervalTime = hasReading ? 1000 : 1500;
 
@@ -768,15 +771,18 @@ export const UploadScreen: React.FC = () => {
   };
 
   const handleStartProcessingOrOpen = () => {
-    if (sheets.length === 0) return;
+    if (!Array.isArray(sheets) || sheets.length === 0) return;
     const targetSheet = sheets.find((s) => s.id === state.sheetId) || sheets[0];
-    store.setSheet(targetSheet.id, targetSheet.student_name, targetSheet.roll);
-    store.setStep('evaluate', targetSheet.id);
+    if (targetSheet) {
+      store.setSheet(targetSheet.id, targetSheet.student_name, targetSheet.roll);
+      store.setStep('evaluate', targetSheet.id);
+    }
   };
 
-  const readyCount = sheets.filter((s) => ['evaluated', 'ready'].includes(s.status)).length;
-  const flaggedCount = sheets.filter((s) => ['needs_review', 'flagged', 'needs_identity'].includes(s.status)).length;
-  const failedCount = sheets.filter((s) => ['failed', 'error'].includes(s.status)).length;
+  const safeSheets = Array.isArray(sheets) ? sheets : [];
+  const readyCount = safeSheets.filter((s) => ['evaluated', 'ready'].includes(s.status)).length;
+  const flaggedCount = safeSheets.filter((s) => ['needs_review', 'flagged', 'needs_identity'].includes(s.status)).length;
+  const failedCount = safeSheets.filter((s) => ['failed', 'error'].includes(s.status)).length;
 
   return (
     <div className="panel h-full min-h-0 bg-slate-50 p-3 overflow-hidden select-none relative">
@@ -1397,6 +1403,7 @@ export const UploadScreen: React.FC = () => {
                       sheetId={sheet.id}
                       initialName={sheet.student_name || ''}
                       initialRoll={sheet.roll || ''}
+                      initialClass={sheet.class_name || ''}
                       onSaved={() => {
                         setEditingIdentitySheetIds((prev) => {
                           const next = new Set(prev);
@@ -1414,7 +1421,7 @@ export const UploadScreen: React.FC = () => {
                       }}
                     />
                   )}
-                  {((ACTIVE_STATUSES.includes(sheet.status) || sheet.status === 'needs_identity' || sheet.status === 'failed' || sheet.status === 'evaluated' || sheet.status === 'ready') && sheet.pages && sheet.pages.length > 0) && (
+                  {((ACTIVE_STATUSES.includes(sheet.status) || sheet.status === 'needs_identity' || sheet.status === 'failed' || sheet.status === 'evaluated' || sheet.status === 'ready') && Array.isArray(sheet.pages) && sheet.pages.length > 0) && (
                     <div className="mt-2.5 h-[340px] w-full rounded-xl overflow-hidden border border-slate-700/60 shadow-lg">
                       <PageBook
                         pages={sheet.pages.map((p) => ({

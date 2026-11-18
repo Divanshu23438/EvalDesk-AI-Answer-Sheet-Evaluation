@@ -63,6 +63,8 @@ export const QueueRow: React.FC<QueueRowProps> = ({
   onError,
   onEditIdentity,
 }) => {
+  if (!sheet) return null;
+
   const [isRetrying, setIsRetrying] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [thumbError, setThumbError] = useState(false);
@@ -76,7 +78,7 @@ export const QueueRow: React.FC<QueueRowProps> = ({
     'matching',
     'marking',
     'flagging',
-  ].includes(sheet.status);
+  ].includes(sheet.status || '');
 
   // Map sheet status to StatusChip configuration
   const getChipProps = (): { status: StatusType; label: string } => {
@@ -98,7 +100,7 @@ export const QueueRow: React.FC<QueueRowProps> = ({
       case 'needs_review':
         return {
           status: 'flagged',
-          label: sheet.flags_open > 0 ? `${sheet.flags_open} flagged` : 'Review needed',
+          label: (sheet.flags_open ?? 0) > 0 ? `${sheet.flags_open} flagged` : 'Review needed',
         };
       case 'evaluated':
         return { status: 'approved', label: 'Evaluated' };

@@ -43,7 +43,7 @@ export interface SheetStoreState {
 
 // Initial state is strictly empty - server is sole source of truth
 const initialStoreState: SheetStoreState = {
-  step: 'dashboard',
+  step: 'upload',
   paperId: null,
   paperTitle: '',
   paperTotalMarks: 0,
@@ -161,24 +161,26 @@ export const sheetStore = {
 
   // Synchronize browser URL hash with state
   updateHashFromState() {
+    if (typeof window === 'undefined') return;
     const { step, sheetId } = globalState;
     let targetHash = `#/${step}`;
     if ((step === 'evaluate' || step === 'report') && sheetId) {
       targetHash = `#/${step}/${sheetId}`;
     }
     if (window.location.hash !== targetHash) {
-      window.history.replaceState(null, '', targetHash);
+      window.location.hash = targetHash;
     }
   },
 
   // Parse browser URL hash into state
   syncStateFromHash() {
-    const hash = window.location.hash.replace(/^#\/?/, '');
+    const rawHash = typeof window !== 'undefined' ? window.location.hash : '';
+    const hash = rawHash.replace(/^#\/?/, '');
     const parts = hash.split('/').filter(Boolean);
-    const stepPart = parts[0] || 'dashboard';
+    const stepPart = parts[0] || 'upload';
     const sheetIdPart = parts[1] || null;
 
-    let resolvedStep: AppStep = 'dashboard';
+    let resolvedStep: AppStep = 'upload';
     if (stepPart === 'dashboard') {
       resolvedStep = 'dashboard';
     } else if (stepPart === 'history') {
@@ -192,7 +194,7 @@ export const sheetStore = {
     } else if (stepPart === 'upload' || stepPart === 'setup' || stepPart === 'processing') {
       resolvedStep = 'upload';
     } else {
-      resolvedStep = 'dashboard';
+      resolvedStep = 'upload';
     }
 
     globalState = {

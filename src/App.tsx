@@ -1,5 +1,591 @@
-import { Shell } from './app/Shell';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { useSheetStore, AppStep } from './state/useSheetStore';
+import { apiClient } from './api/client';
+import { AppSidebar } from './components/AppSidebar';
+import { ErrorBanner } from './components/ErrorBanner';
+import { ActionBar } from './components/ActionBar';
+import { DashboardScreen } from './screens/DashboardScreen';
+import { UploadScreen } from './screens/UploadScreen';
+import { EvaluateScreen } from './screens/EvaluateScreen';
+import { ReportScreen } from './screens/ReportScreen';
+import { HistoryScreen } from './screens/HistoryScreen';
+import { ReportsCenterScreen } from './screens/ReportsCenterScreen';
+import {
+  FileText,
+  FileSpreadsheet,
+  CheckCircle,
+  Activity,
+  ArrowRight,
+  ChevronLeft,
+  ChevronRight,
+  Check,
+  AlertTriangle,
+  RotateCcw,
+} from 'lucide-react';
+
+interface ErrorBoundaryProps {
+  children: React.ReactNode;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+  errorInfo?: React.ErrorInfo | null;
+}
+
+export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false, error: null, errorInfo: null };
+  }
+
+  static getDerivedStateFromError(error: Error): Partial<ErrorBoundaryState> {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('EvalDesk Runtime Error caught by ErrorBoundary:', error, errorInfo);
+    this.setState({ errorInfo });
+  }
+
+  componentDidMount() {
+    window.addEventListener('hashchange', this.handleHashChange);
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener('hashchange', this.handleHashChange);
+  }
+
+  handleHashChange = () => {
+    if (this.state.hasError) {
+      this.setState({ hasError: false, error: null, errorInfo: null });
+    }
+  };
+
+  handleReload = () => {
+    this.setState({ hasError: false, error: null, errorInfo: null });
+    window.location.hash = '#/upload';
+    window.location.reload();
+  };
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <main className="flex-1 min-w-0 h-screen overflow-y-auto bg-slate-50 p-6 flex flex-col items-center justify-center select-text">
+          <div className="max-w-lg w-full bg-white border border-rose-200 rounded-2xl p-6 shadow-sm text-center space-y-4">
+            <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto shadow-xs">
+              <AlertTriangle className="w-6 h-6" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-slate-900">Application Error Encountered</h2>
+              <p className="text-xs text-slate-600 mt-1.5 leading-relaxed">
+                {this.state.error?.message || 'An unexpected rendering error occurred in this view.'}
+              </p>
+            </div>
+            {this.state.error?.stack && (
+              <pre className="text-[10px] text-left font-mono bg-slate-50 border border-slate-200 p-3 rounded-xl max-h-40 overflow-y-auto text-slate-700 whitespace-pre-wrap leading-tight">
+                {this.state.error.stack}
+              </pre>
+            )}
+            <div className="flex items-center justify-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={this.handleReload}
+                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-xs transition cursor-pointer flex items-center gap-1.5"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Reload Evaluation Workspace</span>
+              </button>
+            </div>
+          </div>
+        </main>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 export default function App() {
-  return <Shell />;
+  const [state, store] = useSheetStore();
+  const [currentRoute, setCurrentRoute] = useState<AppStep>('upload');
+  const [routeSheetId, setRouteSheetId] = useState<string | null>(null);
+
+  const [providerStatus, setProviderStatus] = useState<'online' | 'degraded' | 'offline'>('online');
+  const [providerLabel, setProviderLabel] = useState<string>('Checking AI...');
+
+  const mainRef = useRef<HTMLElement | null>(null);
+
+  // 1. URL Hash-based Routing Parser
+  const parseHash = useCallback(() => {
+    const rawHash = typeof window !== 'undefined' ? window.location.hash : '';
+    const cleanHash = rawHash.replace(/^#\/?/, '');
+    const parts = cleanHash.split('/').filter(Boolean);
+    const stepPart = parts[0] || 'upload';
+    const sheetIdPart = parts[1] || null;
+
+    let targetStep: AppStep = 'upload';
+    if (stepPart === 'dashboard') {
+      targetStep = 'dashboard';
+    } else if (stepPart === 'history') {
+      targetStep = 'history';
+    } else if (stepPart === 'reports') {
+      targetStep = 'reports';
+    } else if (stepPart === 'evaluate') {
+      targetStep = 'evaluate';
+    } else if (stepPart === 'report') {
+      targetStep = 'report';
+    } else if (stepPart === 'upload' || stepPart === 'setup' || stepPart === 'processing') {
+      targetStep = 'upload';
+    } else {
+      targetStep = 'upload';
+    }
+
+    setCurrentRoute(targetStep);
+    setRouteSheetId(sheetIdPart);
+
+    if (state.step !== targetStep || (sheetIdPart && state.sheetId !== sheetIdPart)) {
+      store.syncStateFromHash();
+    }
+  }, [state.step, state.sheetId, store]);
+
+  // Initial mount & hashchange event listener
+  useEffect(() => {
+    parseHash();
+
+    const onHashChange = () => {
+      parseHash();
+    };
+
+    window.addEventListener('hashchange', onHashChange);
+    return () => {
+      window.removeEventListener('hashchange', onHashChange);
+    };
+  }, [parseHash]);
+
+  // Sync state.step when store changes
+  useEffect(() => {
+    if (state.step && state.step !== currentRoute) {
+      setCurrentRoute(state.step);
+    }
+    if (state.sheetId !== routeSheetId) {
+      setRouteSheetId(state.sheetId);
+    }
+  }, [state.step, state.sheetId, currentRoute, routeSheetId]);
+
+  // 2. Fetch Provider & Quota Health
+  useEffect(() => {
+    let isCancelled = false;
+
+    const checkHealth = async () => {
+      try {
+        const data = await apiClient.get<Record<string, any>>('/api/health/providers');
+        if (isCancelled) return;
+
+        const geminiText = data.gemini_text?.status === 'online';
+        const geminiImg = data.gemini_image?.status === 'online';
+        const groqImg = data.groq_image?.status === 'online';
+
+        if (geminiText && (geminiImg || groqImg)) {
+          setProviderStatus('online');
+          setProviderLabel('AI Online');
+        } else if (geminiText || geminiImg || groqImg) {
+          setProviderStatus('degraded');
+          setProviderLabel('AI Degraded');
+        } else {
+          setProviderStatus('offline');
+          setProviderLabel('AI Offline');
+        }
+
+        store.setProviderHealth({
+          isHealthy: geminiText,
+          providers: data,
+        });
+      } catch (err) {
+        if (isCancelled) return;
+        setProviderStatus('offline');
+        setProviderLabel('AI Offline');
+      }
+    };
+
+    checkHealth();
+    const interval = setInterval(checkHealth, 30000);
+    return () => {
+      isCancelled = true;
+      clearInterval(interval);
+    };
+  }, [store]);
+
+  // Scroll to top on step or sheet switch
+  useEffect(() => {
+    if (mainRef.current) {
+      mainRef.current.scrollTop = 0;
+    }
+  }, [currentRoute, routeSheetId]);
+
+  // 3. Workflow Stepper: Strictly 3 Steps (1. Upload > 2. Evaluate > 3. Report)
+  const stepperSteps: { id: AppStep; label: string; number: number }[] = [
+    { id: 'upload', label: 'Upload', number: 1 },
+    { id: 'evaluate', label: 'Evaluate', number: 2 },
+    { id: 'report', label: 'Report', number: 3 },
+  ];
+
+  const handleStepClick = async (step: AppStep) => {
+    if ((step === 'evaluate' || step === 'report') && !state.sheetId && state.paperId) {
+      try {
+        const sheetsData = await apiClient.get<{ sheets: any[] }>(`/api/papers/${state.paperId}/sheets`);
+        const sheetsList = Array.isArray(sheetsData?.sheets) ? sheetsData.sheets : [];
+        if (sheetsList.length > 0) {
+          const target = sheetsList[0];
+          store.setSheet(target.id, target.student_name, target.roll);
+          store.setStep(step, target.id);
+          window.location.hash = `#/${step}/${target.id}`;
+          return;
+        }
+      } catch {}
+    }
+    store.setStep(step);
+    window.location.hash = `#/${step}`;
+  };
+
+  const isEvalWorkflow = currentRoute === 'upload' || currentRoute === 'evaluate' || currentRoute === 'report';
+
+  return (
+    <div className="flex h-screen w-screen overflow-hidden bg-slate-50 font-sans select-none">
+      {/* 1. Persistent Collapsible Left Navigation Sidebar */}
+      <AppSidebar />
+
+      {/* 2. Main Content Area with inline ErrorBoundary */}
+      <ErrorBoundary>
+        <main
+          ref={mainRef}
+          className="flex-1 min-w-0 h-screen overflow-y-auto bg-slate-50 flex flex-col"
+        >
+          {/* Top evaluation workflow stepper header (for upload and evaluate) */}
+          {isEvalWorkflow && currentRoute !== 'report' && (
+            <header
+              role="banner"
+              className="h-[48px] bg-white border-b border-slate-200 px-4 flex items-center justify-between select-none z-30 shrink-0 shadow-2xs"
+            >
+              {/* Left: Breadcrumbs or Section Context */}
+              <div className="flex items-center gap-3 min-w-0">
+                {currentRoute === 'evaluate' && state.studentName ? (
+                  <div className="flex items-center gap-1.5 truncate text-xs">
+                    <span className="font-semibold text-slate-700 truncate">{state.paperTitle || 'Assessment Paper'}</span>
+                    <span className="text-slate-300">/</span>
+                    <div className="flex items-center gap-1.5 font-semibold text-slate-800 bg-slate-50 px-2 py-0.5 rounded border border-slate-200">
+                      <span>{state.studentName}</span>
+                      {state.rollNumber && (
+                        <span className="text-[11px] font-normal text-slate-500 font-mono">
+                          ({state.rollNumber})
+                        </span>
+                      )}
+                    </div>
+                    {state.reviewMetrics && (
+                      <div className="flex items-center gap-1.5 tabular-nums text-[11px]">
+                        <span className="text-slate-300">/</span>
+                        <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-bold border border-emerald-200">
+                          {state.reviewMetrics.checked}/{state.reviewMetrics.total} marked
+                        </span>
+                        {state.reviewMetrics.flagged > 0 && (
+                          <span className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 font-semibold border border-amber-200 flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                            {state.reviewMetrics.flagged} flagged
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border border-slate-200 bg-slate-50 text-slate-700"
+                    title="Target Assessment Paper"
+                  >
+                    <FileText className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                    <span className="truncate max-w-[240px] font-semibold text-slate-800">
+                      {state.paperTitle || 'Assessment Paper'}
+                    </span>
+                    {state.paperTotalMarks > 0 && (
+                      <span className="text-[11px] text-slate-500 font-mono tabular-nums">
+                        ({state.paperTotalMarks}M)
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Center: Streamlined 3-Step Stepper */}
+              <nav aria-label="Workflow Stepper" className="hidden md:flex items-center gap-1.5">
+                {stepperSteps.map((step, idx) => {
+                  const stepIndex = stepperSteps.findIndex((s) => s.id === step.id);
+                  const currentStepIndex = stepperSteps.findIndex((s) => s.id === currentRoute);
+                  const isActive = currentRoute === step.id;
+                  const isPast = currentStepIndex > stepIndex;
+
+                  return (
+                    <React.Fragment key={step.id}>
+                      {idx > 0 && (
+                        <span className="text-slate-300 text-xs px-0.5">›</span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleStepClick(step.id)}
+                        className={`px-3 py-1 rounded-full text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer ${
+                          isActive
+                            ? 'bg-indigo-50 border border-indigo-200 text-indigo-700 shadow-2xs'
+                            : isPast
+                            ? 'text-slate-700 hover:bg-slate-100'
+                            : 'text-slate-400 hover:text-slate-600'
+                        }`}
+                      >
+                        <span
+                          className={`w-4 h-4 rounded-full text-[10px] font-bold flex items-center justify-center ${
+                            isActive
+                              ? 'bg-indigo-600 text-white'
+                              : isPast
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : 'border border-slate-300 text-slate-400'
+                          }`}
+                        >
+                          {isPast ? <Check className="w-2.5 h-2.5" /> : step.number}
+                        </span>
+                        <span>{step.label}</span>
+                        {isActive && (
+                          <span className="text-[9px] uppercase tracking-wider bg-indigo-600 text-white px-1 rounded font-bold">
+                            Active
+                          </span>
+                        )}
+                      </button>
+                    </React.Fragment>
+                  );
+                })}
+              </nav>
+
+              {/* Right: Telemetry & AI Status Indicator */}
+              <div className="flex items-center gap-2 shrink-0">
+                <div
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-slate-200 bg-slate-50 text-[11px] font-medium text-slate-700"
+                  title="Live AI Provider Status"
+                >
+                  <span
+                    className={`w-2 h-2 rounded-full ${
+                      providerStatus === 'online'
+                        ? 'bg-emerald-500'
+                        : providerStatus === 'degraded'
+                        ? 'bg-amber-500'
+                        : 'bg-rose-500'
+                    }`}
+                  />
+                  <Activity className="w-3 h-3 text-slate-400" />
+                  <span>{providerLabel}</span>
+                </div>
+              </div>
+            </header>
+          )}
+
+          {/* Sliding Error Banner (Overlay) */}
+          <ErrorBanner
+            error={state.error}
+            onDismiss={() => store.clearError()}
+          />
+
+          {/* Screen Route Dispatcher */}
+          <div className="flex-1 min-h-0 min-w-0 flex flex-col">
+            {currentRoute === 'dashboard' && <DashboardScreen />}
+            {currentRoute === 'upload' && <UploadScreen />}
+            {currentRoute === 'evaluate' && <EvaluateScreen />}
+            {currentRoute === 'report' && <ReportScreen />}
+            {currentRoute === 'history' && <HistoryScreen />}
+            {currentRoute === 'reports' && <ReportsCenterScreen />}
+          </div>
+
+          {/* 56px Bottom Action Bar (only on upload or evaluate) */}
+          {(currentRoute === 'upload' || currentRoute === 'evaluate') && (
+            <ActionBar
+              leftContent={
+                currentRoute === 'evaluate' ? (
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => window.dispatchEvent(new CustomEvent('evaldesk:prev'))}
+                      className="p-1 rounded border border-slate-200 hover:bg-slate-100 text-slate-600 flex items-center gap-1 font-medium text-xs transition"
+                      title="Previous Question (←)"
+                    >
+                      <ChevronLeft className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">Prev</span>
+                    </button>
+                    <span className="font-semibold text-xs text-slate-800 tabular-nums">
+                      Q {state.reviewMetrics?.currentIndex || 1} of {state.reviewMetrics?.total || 1}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => window.dispatchEvent(new CustomEvent('evaldesk:next'))}
+                      className="p-1 rounded border border-slate-200 hover:bg-slate-100 text-slate-600 flex items-center gap-1 font-medium text-xs transition"
+                      title="Next Question (→)"
+                    >
+                      <span className="hidden sm:inline">Next</span>
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                    {state.reviewMetrics && state.reviewMetrics.total > 0 && (
+                      <div className="hidden lg:flex w-24 h-2 rounded-full bg-slate-200 overflow-hidden">
+                        <div
+                          className="bg-emerald-500 h-full transition-all duration-300"
+                          style={{
+                            width: `${(state.reviewMetrics.checked / state.reviewMetrics.total) * 100}%`,
+                          }}
+                        />
+                        <div
+                          className="bg-amber-500 h-full transition-all duration-300"
+                          style={{
+                            width: `${(state.reviewMetrics.flagged / state.reviewMetrics.total) * 100}%`,
+                          }}
+                        />
+                        <div
+                          className="bg-rose-500 h-full transition-all duration-300"
+                          style={{
+                            width: `${(state.reviewMetrics.failed / state.reviewMetrics.total) * 100}%`,
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex items-center space-x-2 text-xs">
+                    <div className="flex items-center space-x-1.5 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded">
+                      {state.paperIsLocked ? (
+                        <>
+                          <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+                          <span className="font-bold text-slate-800">Locked Paper Scheme:</span>
+                          <span className="text-slate-600 font-medium">
+                            {state.paperTitle || 'Assessment Paper'} · {state.paperQuestionCount} Questions · {state.paperTotalMarks} Max Marks
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+                          <span className="font-bold text-slate-800">Draft Assessment:</span>
+                          <span className="text-slate-600 font-medium">
+                            {state.paperTitle || 'Untitled Paper'} · {state.paperQuestionCount} Questions (Unlocked)
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )
+              }
+              centerContent={
+                currentRoute === 'evaluate' ? (
+                  <div className="flex items-center gap-3 text-xs">
+                    <span className="text-emerald-700 font-semibold tabular-nums">
+                      ✔ {state.reviewMetrics?.checked || 0} checked
+                    </span>
+                    <span>·</span>
+                    <span
+                      className={`font-semibold tabular-nums ${
+                        (state.reviewMetrics?.flagged || 0) > 0
+                          ? 'text-amber-700'
+                          : 'text-slate-400'
+                      }`}
+                    >
+                      ⚑ {state.reviewMetrics?.flagged || 0} flagged
+                    </span>
+                    {(state.reviewMetrics?.failed || 0) > 0 && (
+                      <>
+                        <span>·</span>
+                        <span className="text-rose-600 font-semibold tabular-nums">
+                          ✕ {state.reviewMetrics?.failed} failed
+                        </span>
+                      </>
+                    )}
+                    <div className="hidden xl:flex items-center gap-1.5 text-[10px] text-slate-500 ml-2">
+                      <kbd className="px-1 py-0.5 rounded bg-slate-100 border border-slate-200 font-mono">
+                        A
+                      </kbd>{' '}
+                      Approve
+                      <kbd className="px-1 py-0.5 rounded bg-slate-100 border border-slate-200 font-mono">
+                        F
+                      </kbd>{' '}
+                      Flag
+                      <kbd className="px-1 py-0.5 rounded bg-slate-100 border border-slate-200 font-mono">
+                        R
+                      </kbd>{' '}
+                      Recheck
+                    </div>
+                  </div>
+                ) : (
+                  <div className="hidden lg:flex items-center gap-3 text-[11px] text-slate-500">
+                    <span>Shortcuts:</span>
+                    <kbd className="px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200 font-mono text-[10px]">
+                      A
+                    </kbd>{' '}
+                    Approve
+                    <kbd className="px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200 font-mono text-[10px]">
+                      F
+                    </kbd>{' '}
+                    Next Flag
+                    <kbd className="px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200 font-mono text-[10px]">
+                      ← / →
+                    </kbd>{' '}
+                    Navigate
+                    <kbd className="px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200 font-mono text-[10px]">
+                      [
+                    </kbd>{' '}
+                    Toggle Sidebar
+                  </div>
+                )
+              }
+              rightContent={
+                currentRoute === 'upload' ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (state.sheetId) {
+                        store.setStep('evaluate', state.sheetId);
+                        window.location.hash = `#/evaluate/${state.sheetId}`;
+                      }
+                    }}
+                    disabled={!state.sheetId}
+                    className="px-4 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center gap-1.5 shadow-sm"
+                  >
+                    <span>Open Evaluation Workspace</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => window.dispatchEvent(new CustomEvent('evaldesk:help'))}
+                      className="p-1.5 rounded border border-slate-200 hover:bg-slate-100 text-slate-600 transition"
+                      title="Keyboard Shortcuts (?)"
+                    >
+                      <span className="font-mono text-xs font-bold">?</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => window.dispatchEvent(new CustomEvent('evaldesk:approve-all'))}
+                      className="px-3 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs border border-slate-200 transition"
+                    >
+                      Approve All
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => window.dispatchEvent(new CustomEvent('evaldesk:finish'))}
+                      className={`px-3.5 py-1 rounded font-semibold text-xs transition flex items-center gap-1 shadow-sm text-white ${
+                        state.reviewMetrics?.allResolved
+                          ? 'bg-indigo-600 hover:bg-indigo-700'
+                          : 'bg-amber-600 hover:bg-amber-700'
+                      }`}
+                    >
+                      <span>{state.reviewMetrics?.allResolved ? 'Finish & Report' : 'Review Remaining'}</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </button>
+                  </div>
+                )
+              }
+            />
+          )}
+        </main>
+      </ErrorBoundary>
+    </div>
+  );
 }

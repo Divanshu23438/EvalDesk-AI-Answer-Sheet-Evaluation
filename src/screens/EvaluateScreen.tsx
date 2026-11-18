@@ -97,14 +97,14 @@ export const EvaluateScreen: React.FC = () => {
         let paperId = state.paperId;
         if (!paperId) {
           const papersData = await apiClient.get<{ papers: any[] }>('/api/papers');
-          const papersList = papersData.papers || [];
+          const papersList = Array.isArray(papersData?.papers) ? papersData.papers : [];
           if (papersList.length > 0) {
             paperId = papersList[0].id;
           }
         }
         if (paperId) {
           const sheetsData = await apiClient.get<{ sheets: any[] }>(`/api/papers/${paperId}/sheets`);
-          const sheetsList = sheetsData.sheets || [];
+          const sheetsList = Array.isArray(sheetsData?.sheets) ? sheetsData.sheets : [];
           if (sheetsList.length > 0) {
             currentSheetId = sheetsList[0].id;
             store.setSheet(currentSheetId, sheetsList[0].student_name, sheetsList[0].roll);
@@ -124,7 +124,7 @@ export const EvaluateScreen: React.FC = () => {
       const data = await apiClient.get<ReviewResponse>(`/api/sheets/${currentSheetId}/review`);
       setReviewData(data);
 
-      const qList = data.questions || [];
+      const qList = Array.isArray(data?.questions) ? data.questions : [];
       if (qList.length > 0) {
         // Selection rule: select the first flagged question on initial load!
         // If already selected a valid question, keep it.
@@ -141,7 +141,7 @@ export const EvaluateScreen: React.FC = () => {
       }
 
       // Sync paper & student details
-      if (data.paper) {
+      if (data?.paper) {
         store.setPaper({
           id: data.paper.id,
           title: data.paper.title,
@@ -154,7 +154,7 @@ export const EvaluateScreen: React.FC = () => {
         try {
           const sheetsRes = await apiClient.get<{ sheets: any[] }>(`/api/papers/${data.paper.id}/sheets`);
           setPaperSheets(
-            (sheetsRes.sheets || []).map((s: any) => ({
+            (Array.isArray(sheetsRes?.sheets) ? sheetsRes.sheets : []).map((s: any) => ({
               id: s.id,
               student_name: s.student_name,
               roll: s.roll || s.roll_number,
@@ -163,7 +163,7 @@ export const EvaluateScreen: React.FC = () => {
         } catch {}
       }
 
-      if (data.sheet) {
+      if (data?.sheet) {
         store.setSheet(data.sheet.id, data.sheet.student_name, data.sheet.roll_number);
       }
     } catch (err: any) {
@@ -173,14 +173,14 @@ export const EvaluateScreen: React.FC = () => {
           let paperId = state.paperId;
           if (!paperId) {
             const papersData = await apiClient.get<{ papers: any[] }>('/api/papers');
-            const papersList = papersData.papers || [];
+            const papersList = Array.isArray(papersData?.papers) ? papersData.papers : [];
             if (papersList.length > 0) {
               paperId = papersList[0].id;
             }
           }
           if (paperId) {
             const sheetsData = await apiClient.get<{ sheets: any[] }>(`/api/papers/${paperId}/sheets`);
-            const sheetsList = sheetsData.sheets || [];
+            const sheetsList = Array.isArray(sheetsData?.sheets) ? sheetsData.sheets : [];
             const validFallback = sheetsList.find((s) => s.id !== currentSheetId) || sheetsList[0];
             if (validFallback) {
               store.setSheet(validFallback.id, validFallback.student_name, validFallback.roll);
@@ -593,7 +593,12 @@ export const EvaluateScreen: React.FC = () => {
       <div className="flex-1 flex min-h-0 overflow-hidden">
         {/* MAIN LEFT AREA (1fr, 2 side-by-side sub-columns): Question Details + Image on Left, OCR + Marks on Right */}
         <main className="flex-1 min-h-0 h-full p-2.5 overflow-hidden">
-          {activeQuestion ? (
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center h-full w-full space-y-3">
+              <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+              <span className="text-xs text-slate-500 font-medium">Loading evaluation workspace...</span>
+            </div>
+          ) : activeQuestion ? (
             <div className="grid grid-cols-2 gap-2.5 h-full min-h-0 overflow-hidden">
               {/* SUB-COLUMN 1: Selected Question Prompt on top + SheetImageViewer filling rest of height */}
               <div className="flex flex-col h-full min-h-0 overflow-hidden gap-2">

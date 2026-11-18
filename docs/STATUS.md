@@ -1,7 +1,34 @@
 # STATUS (update at the end of every session)
 Date / author (agent or model name): 2026-11-18 / Antigravity (Gemini 3.8 Flash)
-Current phase and task: Collapsible Left Navigation Sidebar, Live Dashboard, Evaluation History with Teacher Filters, Reports Center (.xlsx & .pdf batch downloads), and Upload Screen Auto-Fetch/Auto-Fill complete and fully verified.
+Current phase and task: App Layout Shell, Hash Routing inside <main>, Inline ErrorBoundary, Undefined Property Hardening, and Multi-Route Visual Verification complete and verified.
 Done (task id, commit, proof file):
+- App Layout Shell, Consistent Hash Routing inside `<main>`, Inline ErrorBoundary & Screen Hardening (`src/App.tsx`, `src/state/useSheetStore.ts`, `src/screens/UploadScreen.tsx`, `src/screens/EvaluateScreen.tsx`, `src/components/PaperDetailsForm.tsx`, `src/components/QueueRow.tsx`, `scripts/verify_all_routes.py`, `docs/proof/ui/routes/`):
+  1. Root Route Rendering & Viewport Shell (`src/App.tsx`):
+     - Restructured `src/App.tsx` into the persistent outer layout shell `<div className="flex h-screen w-screen overflow-hidden bg-slate-50 font-sans select-none">`.
+     - Placed `<AppSidebar />` on the left and wrapped the main content in an inline React `ErrorBoundary`.
+     - Rendered all screens inside `<main className="flex-1 min-w-0 h-screen overflow-y-auto bg-slate-50 flex flex-col">`:
+       - `#/dashboard` -> `<DashboardScreen />`
+       - `#/upload` (and default `#/` or empty hash) -> `<UploadScreen />`
+       - `#/evaluate/:sheetId` -> `<EvaluateScreen />`
+       - `#/report/:sheetId` -> `<ReportScreen />`
+       - `#/history` -> `<HistoryScreen />`
+       - `#/reports` -> `<ReportsCenterScreen />`
+     - Retained the top 48px stepper header (`1. Upload → 2. Evaluate → 3. Sheet Report`) and live AI telemetry status indicator during the active evaluation workflow (`upload` and `evaluate`), and rendered bottom `ActionBar` for question navigation and status metrics.
+  2. Inline React ErrorBoundary (`src/App.tsx`):
+     - Added React class `ErrorBoundary` catching any runtime rendering exception.
+     - Displays a user-friendly error card with error message, stack trace, and "Reload Evaluation Workspace" action button instead of a silent blank white screen.
+     - Automatically resets its error state on `hashchange` so navigating via sidebar immediately recovers the view.
+  3. Elimination of Runtime Crashes & Undefined Property Access:
+     - `src/components/PaperDetailsForm.tsx`: Guarded all accesses (`meta?.title`, `meta?.subject`, `meta?.subject_code`, `meta?.exam_name`, `meta?.strictness_level`, `meta?.subject_domain`), eliminating `TypeError: Cannot read properties of undefined/null`.
+     - `src/components/QueueRow.tsx`: Added `if (!sheet) return null;` safety check, guarded `flags_open ?? 0`, and passed `initialClass={sheet.class_name || ''}` to `IdentityForm`.
+     - `src/screens/UploadScreen.tsx`: Guarded `data?.papers`, `details?.questions`, `details?.references`, `data?.sheets` with `Array.isArray(...)`, and guarded `sheets.some` and `sheets.filter`.
+     - `src/screens/EvaluateScreen.tsx`: Guarded `papersList`, `sheetsList`, `qList`, added loading spinner state during `isLoading` instead of rendering empty state prematurely, and protected sheet/paper null accesses.
+     - `src/state/useSheetStore.ts`: Defaulted initial state and empty hash (`#/` or `""`) to `'upload'`, and ensured `window.location.hash` remains in two-way sync.
+  4. Comprehensive Playwright Route Verification (`scripts/verify_all_routes.py`):
+     - Verified all 6 routes in headless Chromium: default `/` (redirects to upload), `#/upload`, `#/dashboard`, `#/history`, `#/reports`, `#/evaluate/:sheet_id`, and `#/report/:sheet_id`.
+     - Verified `<aside>` (AppSidebar) and `<main>` with full viewport dimensions (1200x900) across all screens with zero console errors.
+     - Captured 7 proof screenshots in `docs/proof/ui/routes/`.
+     - `python scripts/check_all.py --no-live` passes with `RESULT: ALL PASS`. | docs/proof/ui/routes/
 - Collapsible Left Navigation Sidebar, Dashboard, History, Reports Center, and Auto-Fetch (`src/components/AppSidebar.tsx`, `src/screens/DashboardScreen.tsx`, `src/screens/HistoryScreen.tsx`, `src/screens/ReportsCenterScreen.tsx`, `src/app/Shell.tsx`, `src/screens/UploadScreen.tsx`, `src/components/IdentityForm.tsx`, `src/components/QueueRow.tsx`, `backend/main.py`, `backend/db.py`, `backend/reports_generator.py`, `scripts/verify_nav_dashboard_reports.py`, `docs/proof/ui/navigation/`):
   1. Collapsible Left Side Menu (`src/components/AppSidebar.tsx` & `src/app/Shell.tsx`):
      - Persistent collapsible left navigation sidebar (`w-60` expanded vs `w-16` compact collapsed, persisted in `localStorage` key `evaldesk_sidebar_collapsed`).
