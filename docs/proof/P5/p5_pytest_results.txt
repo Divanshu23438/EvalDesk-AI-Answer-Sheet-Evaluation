@@ -1,0 +1,18 @@
+============================= test session starts =============================
+platform win32 -- Python 3.13.2, pytest-9.2.0, pluggy-1.7.0 -- F:\PYTHON\python.exe
+cachedir: .pytest_cache
+rootdir: F:\EvalDesk-AI-Answer-Sheet-Evaluation-main
+configfile: pytest.ini
+plugins: anyio-4.16.0
+collecting ... collected 2 items
+
+backend/tests/test_p5_annotations.py::test_annotations_crud_lifecycle PASSED [ 50%]
+backend/tests/test_p5_annotations.py::test_annotations_typed_error_handling PASSED [100%]
+
+============================== warnings summary ===============================
+..\PYTHON\Lib\site-packages\starlette\testclient.py:45
+  F:\PYTHON\Lib\site-packages\starlette\testclient.py:45: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+    _PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================== 2 passed, 1 warning in 0.98s =========================

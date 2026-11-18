@@ -1,7 +1,29 @@
 # STATUS (update at the end of every session)
 Date / author (agent or model name): 2026-11-18 / Antigravity (Gemini 3.8 Flash)
-Current phase and task: Task P4 Complete - Progress mode driven by server, no-jump rule, Jump to latest. Ready for Task P5 (Annotation table, API, autosave, error banner).
+Current phase and task: Task P5 Complete - Annotation table, API, autosave, error banner. Ready for Task P6 (Read-only annotation layer inside page).
 Done (task id, commit, proof file):
+- Task P5: Annotation table, API, autosave, error banner (`backend/db.py`, `backend/main.py`, `backend/tests/test_p5_annotations.py`, `src/utils/useAnnotations.ts`, `scripts/verify_p5_annotations.py`, `docs/proof/P5/`):
+  1. Vector Annotations Database Schema (`backend/db.py`):
+     - Created `annotations(id, sheet_id, page_no, question_key NULL, kind, data_json, color, width, visibility, created_by, created_at, updated_at, deleted_at, version)` with index on `(sheet_id, page_no)`.
+     - Supports kinds: `pen`, `highlight`, `tick`, `cross`, `text`.
+     - Visibility options: `'student'` ("For student") and `'private'` ("Private").
+     - Version counter for optimistic concurrency and conflict detection.
+  2. REST API Endpoints & Typed Errors (`backend/main.py`):
+     - `GET /api/sheets/{id}/annotations?page=N`: retrieves active annotations, parsing `data_json` to structured objects.
+     - `PUT /api/sheets/{id}/annotations`: batch upsert endpoint supporting creation, updates, and soft deletion (`deleted: True`). Enforces optimistic locking (`409 VERSION_CONFLICT`).
+     - `POST /api/sheets/{id}/annotations/clear?page=N`: soft-deletes active annotations on page N.
+     - Strictly implements typed error contract: `{code, message, detail, stage, retryable}`.
+  3. Frontend Autosave & Concurrency Hook (`src/utils/useAnnotations.ts`):
+     - Debounces saves to ~600ms after last stroke or edit.
+     - Optimistic local state updates with in-memory pending changes buffer.
+     - Preserves all ink in memory during network or save failures with Retry capability.
+     - Listens to `beforeunload` to prevent accidental loss of unsaved changes.
+  4. Verification & Proof (`scripts/verify_p5_annotations.py`, `backend/tests/test_p5_annotations.py`, `docs/proof/P5/`):
+     - Executed Pytest integration test suite (2 tests passing cleanly in 0.98s): CRUD lifecycle, page filtering, soft-delete, version conflict, and typed error handling. Pytest logs saved to `docs/proof/P5/p5_pytest_results.txt`.
+     - Live API verification on running server: confirmed 200 OK on batch PUT, page-filtered GET, and 409 VERSION_CONFLICT on stale updates.
+     - Verified Error Banner with Retry CTA on forced save failure and captured screenshot `docs/proof/P5/p5_evaluate_screen_ready.png`.
+     - Saved full telemetry trace in `docs/proof/P5/p5_proof.json`.
+     - `python scripts/check_all.py --no-live` reports `RESULT: ALL PASS`. | docs/proof/P5/
 - Task P4: Progress mode driven by server, no-jump rule, Jump to latest (`src/components/PageBook.tsx`, `src/screens/UploadScreen.tsx`, `scripts/verify_p4_progress.py`, `docs/proof/P4/`):
   1. Live Server Progress Driven Engine (`src/components/PageBook.tsx`, `src/screens/UploadScreen.tsx`):
      - Integrated `PageBook` in `mode="progress"` into `UploadScreen.tsx` sheet processing queue.

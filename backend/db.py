@@ -351,6 +351,27 @@ def init_db():
             )
         """)
 
+        # 15. annotations (vector overlay stored separately from original scans)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS annotations (
+                id TEXT PRIMARY KEY,
+                sheet_id TEXT NOT NULL REFERENCES sheets(id) ON DELETE CASCADE,
+                page_no INTEGER NOT NULL,
+                question_key TEXT,
+                kind TEXT NOT NULL, -- 'pen', 'highlight', 'tick', 'cross', 'text'
+                data_json TEXT NOT NULL DEFAULT '{}',
+                color TEXT NOT NULL DEFAULT '#ef4444',
+                width REAL NOT NULL DEFAULT 2.0,
+                visibility TEXT NOT NULL DEFAULT 'student', -- 'student', 'private'
+                created_by TEXT DEFAULT 'teacher',
+                created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+                deleted_at TEXT,
+                version INTEGER NOT NULL DEFAULT 1
+            )
+        """)
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_annotations_sheet_page ON annotations(sheet_id, page_no)")
+
         # Column migrations for existing tables
         def add_column_if_missing(table: str, column_def: str, col_name: str):
             cursor.execute(f"PRAGMA table_info({table})")

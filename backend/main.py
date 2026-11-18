@@ -3313,6 +3313,212 @@ async def retry_sheet_page(sheet_id: str, page_number: int, background_tasks: Ba
         "message": f"Page {page_number} retry initiated.",
     }
 
+# ----------------- ANNOTATIONS (PAGE_VIEWER_PLAN TASK P5) -----------------
+
+class AnnotationItemIn(BaseModel):
+    id: str
+    page_no: int
+    question_key: Optional[str] = None
+    kind: str
+    data: Any
+    color: Optional[str] = "#ef4444"
+    width: Optional[float] = 2.0
+    visibility: Optional[str] = "student"
+    created_by: Optional[str] = "teacher"
+    version: Optional[int] = 1
+    deleted: Optional[bool] = False
+
+class AnnotationBatchIn(BaseModel):
+    annotations: List[AnnotationItemIn]
+
+
+@app.get("/api/sheets/{sheet_id}/annotations")
+def get_sheet_annotations(sheet_id: str, page: Optional[int] = None):
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM sheets WHERE id = ?", (sheet_id,))
+        if not cursor.fetchone():
+            raise HTTPException(
+                status_code=404,
+                detail={"code": "SHEET_NOT_FOUND", "message": f"Sheet {sheet_id} not found", "stage": "annotations", "retryable": False}
+            )
+
+        if page is not None:
+            cursor.execute(
+                """
+                SELECT id, sheet_id, page_no, question_key, kind, data_json, color, width, visibility,
+                       created_by, created_at, updated_at, deleted_at, version
+                FROM annotations
+                WHERE sheet_id = ? AND page_no = ? AND deleted_at IS NULL
+                ORDER BY page_no ASC, created_at ASC
+                """,
+                (sheet_id, page),
+            )
+        else:
+            cursor.execute(
+                """
+                SELECT id, sheet_id, page_no, question_key, kind, data_json, color, width, visibility,
+                       created_by, created_at, updated_at, deleted_at, version
+                FROM annotations
+                WHERE sheet_id = ? AND deleted_at IS NULL
+                ORDER BY page_no ASC, created_at ASC
+                """,
+                (sheet_id,),
+            )
+
+        rows = cursor.fetchall()
+        result = []
+        for r in rows:
+            d = dict(r)
+            try:
+                d["data"] = json.loads(d.get("data_json") or "{}")
+            except Exception:
+                d["data"] = {}
+            result.append(d)
+
+        return {"sheet_id": sheet_id, "annotations": result, "count": len(result)}
+
+
+@app.put("/api/sheets/{sheet_id}/annotations")
+def save_sheet_annotations(sheet_id: str, payload: AnnotationBatchIn):
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM sheets WHERE id = ?", (sheet_id,))
+        if not cursor.fetchone():
+            raise HTTPException(
+                status_code=404,
+                detail={"code": "SHEET_NOT_FOUND", "message": f"Sheet {sheet_id} not found", "stage": "annotations", "retryable": False}
+            )
+
+        saved = []
+        for item in payload.annotations:
+            cursor.execute("SELECT id, version FROM annotations WHERE id = ?", (item.id,))
+            existing = cursor.fetchone()
+
+            data_str = json.dumps(item.data) if not isinstance(item.data, str) else item.data
+
+            if existing:
+                cur_ver = int(existing["version"])
+                if item.version is not None and item.version < cur_ver:
+                    raise HTTPException(
+                        status_code=409,
+                        detail={
+                            "code": "VERSION_CONFLICT",
+                            "message": f"Version conflict on annotation {item.id} (client v{item.version} < server v{cur_ver})",
+                            "stage": "annotations",
+                            "retryable": True,
+                        }
+                    )
+
+                if item.deleted:
+                    cursor.execute(
+                        """
+                        UPDATE annotations
+                        SET deleted_at = datetime('now'), updated_at = datetime('now'), version = version + 1
+                        WHERE id = ?
+                        """,
+                        (item.id,),
+                    )
+                else:
+                    cursor.execute(
+                        """
+                        UPDATE annotations
+                        SET page_no = ?, question_key = ?, kind = ?, data_json = ?, color = ?,
+                            width = ?, visibility = ?, updated_at = datetime('now'), version = version + 1, deleted_at = NULL
+                        WHERE id = ?
+                        """,
+                        (
+                            item.page_no,
+                            item.question_key,
+                            item.kind,
+                            data_str,
+                            item.color or "#ef4444",
+                            item.width or 2.0,
+                            item.visibility or "student",
+                            item.id,
+                        ),
+                    )
+            else:
+                if not item.deleted:
+                    cursor.execute(
+                        """
+                        INSERT INTO annotations (
+                            id, sheet_id, page_no, question_key, kind, data_json, color, width,
+                            visibility, created_by, version
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+                        """,
+                        (
+                            item.id,
+                            sheet_id,
+                            item.page_no,
+                            item.question_key,
+                            item.kind,
+                            data_str,
+                            item.color or "#ef4444",
+                            item.width or 2.0,
+                            item.visibility or "student",
+                            item.created_by or "teacher",
+                        ),
+                    )
+            saved.append(item.id)
+
+        # Return active annotations for this sheet
+        cursor.execute(
+            """
+            SELECT id, sheet_id, page_no, question_key, kind, data_json, color, width, visibility,
+                   created_by, created_at, updated_at, deleted_at, version
+            FROM annotations
+            WHERE sheet_id = ? AND deleted_at IS NULL
+            ORDER BY page_no ASC, created_at ASC
+            """,
+            (sheet_id,),
+        )
+        out_rows = cursor.fetchall()
+        annos = []
+        for r in out_rows:
+            d = dict(r)
+            try:
+                d["data"] = json.loads(d.get("data_json") or "{}")
+            except Exception:
+                d["data"] = {}
+            annos.append(d)
+
+        return {"success": True, "saved_count": len(saved), "annotations": annos}
+
+
+@app.post("/api/sheets/{sheet_id}/annotations/clear")
+def clear_sheet_annotations(sheet_id: str, page: Optional[int] = None):
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM sheets WHERE id = ?", (sheet_id,))
+        if not cursor.fetchone():
+            raise HTTPException(
+                status_code=404,
+                detail={"code": "SHEET_NOT_FOUND", "message": f"Sheet {sheet_id} not found", "stage": "annotations", "retryable": False}
+            )
+
+        if page is not None:
+            cursor.execute(
+                """
+                UPDATE annotations
+                SET deleted_at = datetime('now'), updated_at = datetime('now'), version = version + 1
+                WHERE sheet_id = ? AND page_no = ? AND deleted_at IS NULL
+                """,
+                (sheet_id, page),
+            )
+        else:
+            cursor.execute(
+                """
+                UPDATE annotations
+                SET deleted_at = datetime('now'), updated_at = datetime('now'), version = version + 1
+                WHERE sheet_id = ? AND deleted_at IS NULL
+                """,
+                (sheet_id,),
+            )
+        cleared_count = cursor.rowcount
+
+        return {"success": True, "cleared_count": cleared_count}
+
 # ----------------- SCREEN 4: REVIEW (SPLIT VIEW & POPUP) -----------------
 
 @app.get("/api/sheets/{sheet_id}/review")

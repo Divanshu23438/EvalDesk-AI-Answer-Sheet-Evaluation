@@ -1,0 +1,29 @@
+{
+  "task": "P5",
+  "description": "Annotation table, API, autosave, error banner",
+  "timestamp": "2026-11-18T08:57:07Z",
+  "sheet_id": "5cd6e342-f65d-44ba-a94a-c699f4ccb615",
+  "paper_id": "31df2a69-57d6-4e17-8bed-588af76f1c5b",
+  "annotation_id": "5b8f04da-e741-4169-b1d7-185b44e04840",
+  "tests": [
+    {
+      "name": "pytest_annotations_crud",
+      "passed": true
+    },
+    {
+      "name": "live_api_put_get",
+      "passed": true
+    },
+    {
+      "name": "live_api_version_conflict",
+      "passed": true
+    },
+    {
+      "name": "forced_save_failure_error_banner",
+      "passed": true
+    }
+  ],
+  "screenshots": {
+    "evaluate_screen": "docs\\proof\\P5\\p5_evaluate_screen_ready.png"
+  }
+}
