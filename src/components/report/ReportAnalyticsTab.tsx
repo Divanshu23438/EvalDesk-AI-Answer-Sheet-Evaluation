@@ -450,7 +450,7 @@ export const ReportAnalyticsTab: React.FC<ReportAnalyticsTabProps> = ({
                 <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
                   Total Marks Distribution Split
                 </h4>
-                <span className="text-[10px] font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded">
+                <span className="text-[10px] font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded whitespace-nowrap shrink-0">
                   Max {maxMarks.toFixed(1)} M
                 </span>
               </div>
@@ -532,7 +532,7 @@ export const ReportAnalyticsTab: React.FC<ReportAnalyticsTabProps> = ({
                 <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
                   Sectional Marks Breakdown
                 </h4>
-                <span className="text-[10px] font-mono text-slate-500">
+                <span className="text-[10px] font-mono text-slate-500 whitespace-nowrap shrink-0">
                   {sectionalList.length} Exam Sections
                 </span>
               </div>
@@ -595,7 +595,7 @@ export const ReportAnalyticsTab: React.FC<ReportAnalyticsTabProps> = ({
                 <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
                   Deductions by Error Category
                 </h4>
-                <span className="text-[10px] font-mono text-rose-600 font-bold bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
+                <span className="text-[10px] font-mono text-rose-600 font-bold bg-rose-50 px-2 py-0.5 rounded border border-rose-200 whitespace-nowrap shrink-0">
                   -{totalLost.toFixed(1)} M
                 </span>
               </div>
@@ -662,7 +662,7 @@ export const ReportAnalyticsTab: React.FC<ReportAnalyticsTabProps> = ({
                     Ranked Deductions
                   </span>
                 </div>
-                <span className="text-[10px] font-mono text-indigo-600 font-semibold">
+                <span className="text-[10px] font-mono text-indigo-600 font-semibold whitespace-nowrap shrink-0">
                   Line: Cumulative %
                 </span>
               </div>
@@ -804,17 +804,17 @@ export const ReportAnalyticsTab: React.FC<ReportAnalyticsTabProps> = ({
           <div className="grid grid-cols-2 gap-4">
             {/* 3.1 100% Stacked Bar Chart across Question Formats */}
             <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-xs space-y-3">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-3">
                 <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
                   Marks Earned vs Lost by Question Format
                 </h4>
-                <div className="flex items-center space-x-2 text-[10px] font-mono">
-                  <span className="flex items-center space-x-1">
-                    <span className="w-2 h-2 rounded bg-emerald-500" />
+                <div className="flex items-center gap-3 shrink-0">
+                  <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs font-medium">
+                    <span className="w-2 h-2 rounded bg-emerald-500 shrink-0" />
                     <span className="text-slate-600">Earned %</span>
                   </span>
-                  <span className="flex items-center space-x-1">
-                    <span className="w-2 h-2 rounded bg-rose-500" />
+                  <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs font-medium">
+                    <span className="w-2 h-2 rounded bg-rose-500 shrink-0" />
                     <span className="text-slate-600">Lost %</span>
                   </span>
                 </div>
@@ -849,11 +849,11 @@ export const ReportAnalyticsTab: React.FC<ReportAnalyticsTabProps> = ({
 
             {/* 3.2 Question Attempt Status Donut Chart */}
             <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-xs space-y-3">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-3">
                 <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
                   Question Attempt &amp; Mastery Breakdown
                 </h4>
-                <span className="text-[10px] font-mono text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 font-bold">
+                <span className="whitespace-nowrap shrink-0 text-[10px] font-mono text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 font-bold">
                   {questions.length} Total Qs
                 </span>
               </div>
@@ -861,7 +861,8 @@ export const ReportAnalyticsTab: React.FC<ReportAnalyticsTabProps> = ({
                 Question attempt completion and scoring mastery distribution across all items.
               </p>
 
-              <div className="flex items-center justify-center gap-6 pt-2">
+              {/* Centered Donut Chart */}
+              <div className="flex justify-center pt-2">
                 <div className="relative w-32 h-32 shrink-0 flex items-center justify-center">
                   <svg className="w-32 h-32 -rotate-90" viewBox="0 0 120 120">
                     <circle cx="60" cy="60" fill="transparent" r="48" stroke="#F1F5F9" strokeWidth="14" />
@@ -890,25 +891,26 @@ export const ReportAnalyticsTab: React.FC<ReportAnalyticsTabProps> = ({
                     </span>
                   </div>
                 </div>
+              </div>
 
-                <div className="space-y-1.5 text-xs font-mono flex-1">
-                  {attemptCategories.map((cat, i) => (
-                    <div
-                      key={i}
-                      className="flex items-center justify-between p-1.5 rounded bg-slate-50/70 border border-slate-200"
-                    >
-                      <div className="flex items-center space-x-1.5">
-                        <span className={`w-2 h-2 rounded-sm ${cat.dotClass}`} />
-                        <span className="font-sans text-slate-700 text-[11px] truncate max-w-[130px]">
-                          {cat.label}
-                        </span>
-                      </div>
-                      <span className="font-bold text-slate-800 text-[11px]">
-                        {cat.count} Qs ({cat.pct}%)
+              {/* 4 Mastery Legend Rows stacked below in full-width list */}
+              <div className="w-full space-y-2 mt-4">
+                {attemptCategories.map((cat, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg bg-slate-50/80 border border-slate-100"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className={`w-2 h-2 rounded-full shrink-0 ${cat.dotClass}`} />
+                      <span className="text-xs font-medium text-slate-700 truncate">
+                        {cat.label}
                       </span>
                     </div>
-                  ))}
-                </div>
+                    <span className="whitespace-nowrap shrink-0 font-mono text-xs font-semibold text-slate-800">
+                      {cat.count} Qs ({cat.pct}%)
+                    </span>
+                  </div>
+                ))}
               </div>
             </div>
           </div>

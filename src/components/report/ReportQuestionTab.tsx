@@ -137,28 +137,30 @@ export const ReportQuestionTab: React.FC<ReportQuestionTabProps> = ({ question }
         )}
       </div>
 
-      {/* Compact 2-Column Comparison Box */}
-      <div className="grid grid-cols-2 gap-3 text-xs">
+      {/* Auto-Sized 2-Column Comparison Box */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-stretch">
         {/* Left Column: Student Answer (OCR) */}
-        <div className="p-3.5 bg-white border border-slate-200 rounded-xl space-y-1.5 flex flex-col">
-          <div className="flex items-center justify-between font-bold text-slate-700 text-[11px]">
-            <span>Student Answer (OCR)</span>
-            <span className="font-mono text-slate-400">Match {legDisplay}%</span>
+        <div className="rounded-xl bg-slate-50/90 border border-slate-200/80 p-3.5 flex flex-col justify-start">
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <span className="text-xs font-semibold text-slate-700">Student Answer (OCR)</span>
+            <span className="whitespace-nowrap shrink-0 text-[11px] font-mono text-slate-500">
+              Match {legDisplay}%
+            </span>
           </div>
-          <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100 font-mono text-[11px] text-slate-700 leading-normal flex-1 overflow-y-auto max-h-56 whitespace-pre-wrap select-text">
+          <div className="text-[13px] text-slate-800 leading-relaxed whitespace-pre-wrap break-words select-text">
             {question.ocr_text || '(No OCR extracted text for this question)'}
           </div>
         </div>
 
         {/* Right Column: Expected Answer */}
-        <div className="p-3.5 bg-white border border-slate-200 rounded-xl space-y-1.5 flex flex-col">
-          <div className="flex items-center justify-between font-bold text-emerald-800 text-[11px]">
-            <span>Expected Answer</span>
-            <span className="font-mono text-emerald-600 truncate max-w-[140px]">
+        <div className="rounded-xl bg-indigo-50/35 border border-indigo-100 p-3.5 flex flex-col justify-start">
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <span className="text-xs font-semibold text-slate-700">Expected Answer</span>
+            <span className="whitespace-nowrap shrink-0 text-[11px] font-mono text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
               {question.reference?.source || 'Model Key'}
             </span>
           </div>
-          <div className="bg-emerald-50/30 p-2.5 rounded-lg border border-emerald-100 text-[11px] text-slate-700 leading-normal flex-1 overflow-y-auto max-h-56 select-text whitespace-pre-wrap">
+          <div className="text-[13px] text-slate-700 leading-relaxed whitespace-pre-wrap break-words select-text">
             {question.reference?.model_answer ? (
               question.reference.model_answer
             ) : question.reference?.key_points && question.reference.key_points.length > 0 ? (

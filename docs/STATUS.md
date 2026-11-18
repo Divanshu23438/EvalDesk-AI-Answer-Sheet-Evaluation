@@ -1,7 +1,28 @@
 # STATUS (update at the end of every session)
 Date / author (agent or model name): 2026-11-18 / Antigravity (Gemini 3.8 Flash)
-Current phase and task: Phase U4 Complete & Task P8 Complete - Report Page UI from stitch_report_export/code.html implemented in src/screens/ReportScreen.tsx, 100% wired to backend with zero hardcoding, locked 100dvh layout, and full Playwright verification.
+Current phase and task: UI Layout & Text-Wrapping Hardening Complete across Evaluate & Report screens. All Tasks P0-P8 and U1-U5 fully verified and passing.
 Done (task id, commit, proof file):
+- UI Layout & Text-Wrapping Hardening (`src/components/QuestionPanel.tsx`, `src/components/report/ReportQuestionTab.tsx`, `src/components/report/ReportAnalyticsTab.tsx`, `scripts/verify_ui_fixes.py`, `docs/proof/ui/fixes/`):
+  1. Clean Compact Icon Rail When Question Panel Is Collapsed (`src/components/QuestionPanel.tsx`):
+     - Updated collapsed aside container to fixed `w-12` (48px) with `flex flex-col items-center bg-white border-l border-slate-200 overflow-x-hidden select-none`.
+     - Rendered uniform `w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:text-indigo-600 hover:bg-indigo-50` expand button (`<ChevronLeft />`, `title="Expand question panel"`).
+     - Rendered vertical badge list with uniform `w-8 h-8 shrink-0 rounded-lg flex items-center justify-center font-mono text-[11px] font-bold leading-none whitespace-nowrap` displaying only short sequential numbers (`1`, `2`, `3`... `19`), eliminating multi-part string wrapping.
+     - Full question details, marks, and evaluation status are displayed in the button's `title` tooltip on hover.
+     - Styled clean status states: active question gets `ring-2 ring-indigo-600 ring-offset-1`, approved gets `bg-emerald-500 text-white`, flagged gets `bg-amber-500 text-white`, and pending/ungraded gets `bg-slate-100 text-slate-700 hover:bg-slate-200`.
+  2. Auto-Sized Student Answer (OCR) & Expected Answer Cards (`src/components/report/ReportQuestionTab.tsx`):
+     - Removed fixed tall min-height constraints (`min-h-[120px]`, `h-32`, `max-h-56`) so both cards hug their text cleanly with `h-auto min-h-0` and zero wasted whitespace on short answers.
+     - Rendered in a balanced 2-column grid (`grid grid-cols-1 md:grid-cols-2 gap-3 items-stretch`).
+     - Student Answer (OCR) card uses `rounded-xl bg-slate-50/90 border border-slate-200/80 p-3.5 flex flex-col justify-start` with single-line header and `text-[13px] text-slate-800 leading-relaxed whitespace-pre-wrap break-words`.
+     - Expected Answer card uses `rounded-xl bg-indigo-50/35 border border-indigo-100 p-3.5 flex flex-col justify-start` with single-line header, source pill, and `text-[13px] text-slate-700 leading-relaxed whitespace-pre-wrap break-words`.
+  3. Text Wrapping & Card Border Clipping in Analytics & Charts (`src/components/report/ReportAnalyticsTab.tsx`):
+     - Marks Earned vs Lost header legend: styled with `flex items-center gap-3 shrink-0` and wrapped items in `inline-flex items-center gap-1.5 whitespace-nowrap text-xs font-medium`, preventing `%` line breaks.
+     - Total Qs badge: added `whitespace-nowrap shrink-0` so `Qs` stays on the same line.
+     - Stacked Donut Chart + Mastery Legend: centered the donut chart on top and placed the 4 mastery rows (`Full Marks (≥90%)`, `Partial Marks`, `Heavy Deductions / Zero`, `Unattempted`) cleanly below it in a full-width vertical list (`w-full space-y-2 mt-4`), with dot + label on left and `X Qs (Y%)` on right inside card padding.
+     - Added `whitespace-nowrap shrink-0` across chart badges and legends.
+  4. Playwright Visual Verification (`scripts/verify_ui_fixes.py`):
+     - Verified all 3 UI fixes on running backend & frontend with 19 questions.
+     - Saved screenshot proofs: `docs/proof/ui/fixes/evaluate_collapsed_rail.png`, `docs/proof/ui/fixes/report_question_cards.png`, `docs/proof/ui/fixes/report_analytics_section3.png`.
+     - `python scripts/check_all.py --no-live` passes with `RESULT: ALL PASS`. | docs/proof/ui/fixes/
 - Task U4: Report Page UI implementation with live backend integration (`src/screens/ReportScreen.tsx`, `src/components/report/`, `scripts/verify_report_page.py`, `scripts/seed_demo_eval.py`, `docs/proof/ui/`):
   1. Strict Zero-Hardcoding & Data Parity:
      - Replaced all mock/banned strings (`Kanak Patel`, `SGSU250489`, `MST-I`, `B.C.A 2nd Sem Linux`, etc.) with dynamic data from backend endpoints (`/api/sheets/{id}/report`, `/api/sheets/{id}/review`, `/api/papers/{id}/sheets`, `/api/papers/{id}/reports`).

@@ -70,50 +70,51 @@ export const QuestionPanel: React.FC<QuestionPanelProps> = ({
   };
 
   // ----------------------------------------------------
-  // Collapsed 44px Rail View
+  // Collapsed 48px (w-12) Rail View
   // ----------------------------------------------------
   if (isCollapsed) {
     return (
       <aside
         aria-label="Question Navigation Rail"
-        className="w-[44px] shrink-0 border-l border-slate-200 bg-slate-50 flex flex-col items-center py-2 select-none z-10 transition-all duration-200"
+        className="w-12 shrink-0 flex flex-col items-center bg-white border-l border-slate-200 overflow-x-hidden select-none z-10 transition-all duration-200"
       >
-        <button
-          type="button"
-          data-testid="expand-question-panel"
-          onClick={onToggleCollapse}
-          className="p-1.5 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 mb-2 transition"
-          title="Expand Question Panel ([)"
-          aria-label="Expand Question Panel"
-        >
-          <ChevronLeft className="w-4 h-4" />
-        </button>
+        <div className="pt-2 pb-1 shrink-0">
+          <button
+            type="button"
+            data-testid="expand-question-panel"
+            onClick={onToggleCollapse}
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer"
+            title="Expand question panel"
+            aria-label="Expand question panel"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+        </div>
 
-        <div className="flex-1 w-full overflow-y-auto space-y-1.5 px-1 py-1 flex flex-col items-center">
+        <div className="flex-1 w-full overflow-y-auto overflow-x-hidden flex flex-col items-center gap-1.5 py-2 px-1.5">
           {questions.map((q, idx) => {
             const key = q.question_key || q.key;
             const isActive = key === activeKey;
             const status = getQuestionStatus(q);
-            const dotColor =
-              status === 'failed'
-                ? 'bg-rose-500 text-white'
-                : status === 'flagged'
-                ? 'bg-amber-500 text-white'
-                : status === 'approved'
+            const badgeColor =
+              status === 'approved'
                 ? 'bg-emerald-500 text-white'
-                : 'bg-slate-200 text-slate-600';
+                : status === 'flagged' || status === 'failed'
+                ? 'bg-amber-500 text-white'
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200';
+            const activeRing = isActive ? 'ring-2 ring-indigo-600 ring-offset-1' : '';
+            const marksText = `${q.final_marks !== undefined ? q.final_marks : q.ai_marks} / ${q.max_marks}`;
 
             return (
               <button
                 key={key}
                 type="button"
                 onClick={() => onSelectQuestion(key)}
-                className={`w-7 h-7 rounded-md font-mono text-[10px] font-bold flex items-center justify-center transition-all ${dotColor} ${
-                  isActive ? 'ring-2 ring-indigo-600 scale-105' : 'hover:opacity-90'
-                }`}
-                title={`Q.${q.q_no} · ${q.final_marks !== undefined ? q.final_marks : q.ai_marks}/${q.max_marks}M (${status})`}
+                className={`w-8 h-8 shrink-0 rounded-lg flex items-center justify-center font-mono text-[11px] font-bold leading-none whitespace-nowrap transition-all cursor-pointer ${badgeColor} ${activeRing}`}
+                title={`Question ${q.q_no || idx + 1} (${marksText}) · ${status}`}
+                aria-label={`Question ${q.q_no || idx + 1}`}
               >
-                {q.q_no}
+                {idx + 1}
               </button>
             );
           })}
