@@ -232,9 +232,6 @@ class AIGateway:
         - Typed AIError exceptions (never silent error dicts).
         - Optional Pydantic validation with 1 retry.
         """
-        if not GEMINI_API_KEY:
-            raise AIError("auth", "GEMINI_API_KEY is not configured on the server.", provider="gemini")
-
         normalized_list: List[Tuple[bytes, str]] = []
         if images_bytes:
             for b in images_bytes:
@@ -242,6 +239,9 @@ class AIGateway:
                     normalized_list.append(self.prepare_media_input(b, declared_mime=mime_type))
         elif image_bytes:
             normalized_list.append(self.prepare_media_input(image_bytes, declared_mime=mime_type))
+
+        if not GEMINI_API_KEY:
+            raise AIError("auth", "GEMINI_API_KEY is not configured on the server.", provider="gemini")
 
         all_media_bytes = b"".join(n[0] for n in normalized_list) if normalized_list else None
         cache_key = get_content_cache_key("gemini", task, prompt, all_media_bytes)

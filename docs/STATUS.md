@@ -1,7 +1,23 @@
 # STATUS (update at the end of every session)
 Date / author (agent or model name): 2026-11-18 / Antigravity (Gemini 3.8 Flash)
-Current phase and task: Task P5 Complete - Annotation table, API, autosave, error banner. Ready for Task P6 (Read-only annotation layer inside page).
+Current phase and task: Phase U4 Complete - Report Page UI from stitch_report_export/code.html implemented in src/screens/ReportScreen.tsx, 100% wired to backend with zero hardcoding, locked 100dvh layout, and full Playwright verification.
 Done (task id, commit, proof file):
+- Task U4: Report Page UI implementation with live backend integration (`src/screens/ReportScreen.tsx`, `src/components/report/`, `scripts/verify_report_page.py`, `scripts/seed_demo_eval.py`, `docs/proof/ui/`):
+  1. Strict Zero-Hardcoding & Data Parity:
+     - Replaced all mock/banned strings (`Kanak Patel`, `SGSU250489`, `MST-I`, `B.C.A 2nd Sem Linux`, etc.) with dynamic data from backend endpoints (`/api/sheets/{id}/report`, `/api/sheets/{id}/review`, `/api/papers/{id}/sheets`, `/api/papers/{id}/reports`).
+     - Verified `git grep -E "Kanak|SGSU250489|MST-I" -- src/` returns 0 matches.
+  2. Locked 100dvh 3-Row Layout & Modular Subcomponents (`src/components/report/`):
+     - `ReportTopBar.tsx` (48px): dynamic paper/student breadcrumbs, 3-step stepper (`1. Upload` ✓ -> `2. Evaluate` ✓ -> `3. Report` active), `A- | A | A+` font scale toggle, and Reset Layout.
+     - `ReportBookletPreview.tsx`: Left pane with zoom in/out/Fit controls, page pagination, page image loader (`/api/sheets/{id}/pages/{n}/image`), and normalized `bbox` highlight overlay that auto-jumps to question page.
+     - `ReportOverviewTab.tsx` (Tab 1): Student summary card, 3 KPI cards (Total Score, Grade & Percentage, Avg OCR Accuracy), AI diagnostic feedback pills (strengths & weak concepts), question summary table, and sectional performance table.
+     - `ReportQuestionTab.tsx` (Tab 2): Selected question header, AI diagnostic feedback, 2-column Student OCR vs Expected Answer comparison, and 4 collapsible `<details>` dropdowns (`✓ Correct`, `⊗ Deductions`, `⚠ Missing Points`, `🛡 OCR Review Note`).
+     - `ReportAnalyticsTab.tsx` (Tab 3): Filter category pills (`All Visualizations`, `1. Question & Section Marks`, `2. Error & Remark Diagnostics`, `3. Formats & Attempt Status`) rendering dynamic SVG/CSS charts (Question marks bar chart with cohort comparison line, Total Marks Split donut, Sectional Progress bars, Deduction donut, Pareto chart with 80% cutoff line, Question Format stacked bars, Attempt Status donut).
+     - `ReportBottomBar.tsx` (56px): `← Back to Evaluate` navigation, `Sheet X of Y` counter, real Excel export download (`/api/papers/{id}/export/excel`), student PDF report card download (`/api/sheets/{id}/report/pdf`), and `Next Sheet →` navigation.
+     - Draggable resizable vertical divider handle between Left and Right panes, persisted in `localStorage`.
+  3. Gate Tests & Browser Verification:
+     - Automated Playwright browser verification (`scripts/verify_report_page.py`) verified 1366x768 and 1920x1080 viewports with zero console errors, zero page scrollbars (`scrollHeight <= innerHeight`), all 3 tabs, zoom, UI scale, collapsible dropdowns, downloads, and sheet navigation.
+     - `python scripts/check_all.py --no-live` reports `RESULT: ALL PASS` (banned strings, git secrets, pytest, tsc).
+     - `python scripts/check_ui.py` reports `RESULT: ALL PASS` across all app routes and viewports.
 - Task P5: Annotation table, API, autosave, error banner (`backend/db.py`, `backend/main.py`, `backend/tests/test_p5_annotations.py`, `src/utils/useAnnotations.ts`, `scripts/verify_p5_annotations.py`, `docs/proof/P5/`):
   1. Vector Annotations Database Schema (`backend/db.py`):
      - Created `annotations(id, sheet_id, page_no, question_key NULL, kind, data_json, color, width, visibility, created_by, created_at, updated_at, deleted_at, version)` with index on `(sheet_id, page_no)`.

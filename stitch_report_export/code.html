@@ -1,0 +1,1506 @@
+<!DOCTYPE html>
+
+<html class="h-full" lang="en" style="height: 100dvh; max-height: 100vh; overflow: hidden; margin: 0px; padding: 0px;"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>EvalDesk — Report Workspace</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600&amp;family=JetBrains+Mono:wght@400;500;600;700&amp;family=Noto+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS v3 -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Noto Sans', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+            handwriting: ['Caveat', 'cursive'],
+          },
+          colors: {
+            brand: {
+              50: '#EEF2FF',
+              100: '#E0E7FF',
+              500: '#6366F1',
+              600: '#4F46E5',
+              700: '#4338CA',
+            }
+          }
+        }
+      }
+    }
+  </script>
+<style>
+    /* Clean custom scrollbars */
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+    .ruled-paper {
+      background-color: #ffffff;
+      background-image: linear-gradient(#e2e8f0 1px, transparent 1px);
+      background-size: 100% 28px;
+      line-height: 28px;
+    }
+    .margin-line {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 44px;
+      width: 1.5px;
+      background-color: #fca5a5;
+    }
+  </style>
+</head>
+<body class="h-screen w-screen overflow-hidden bg-[#F8FAFC] font-sans text-[#0F172A] antialiased flex flex-col select-none" style="height: 100dvh; max-height: 100vh; overflow: hidden; display: flex; flex-direction: column; margin: 0px; padding: 0px;">
+<!-- ============================================== -->
+<!-- 1. TOP BAR (48px height, locked uncluttered)   -->
+<!-- ============================================== -->
+<header class="h-12 bg-white border-b border-[#E2E8F0] px-5 flex items-center justify-between shrink-0 z-30" style="height: 48px; min-height: 48px; max-height: 48px; flex-shrink: 0;">
+<!-- Left: Logo & Breadcrumbs -->
+<div class="flex items-center space-x-3 text-xs">
+<div class="flex items-center space-x-2 font-bold text-brand-600 text-sm tracking-tight">
+<svg class="w-5 h-5 text-brand-600 shrink-0" fill="currentColor" viewbox="0 0 24 24">
+<path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
+</svg>
+<span class="text-[#0F172A] font-bold text-base tracking-tight">EvalDesk</span>
+</div>
+<span class="text-slate-300">/</span>
+<div class="flex items-center space-x-2 text-slate-500 font-medium">
+<span>B.C.A 2nd Sem Linux</span>
+<span class="text-slate-300">/</span>
+<span class="text-slate-900 font-semibold">Kanak Patel</span>
+</div>
+</div>
+<!-- Center: Minimalist 3-Step Horizontal Stepper -->
+<nav aria-label="Workflow Stepper" class="hidden md:flex items-center space-x-2 text-xs">
+<!-- Step 1 -->
+<div class="flex items-center space-x-1.5 text-slate-500 font-medium">
+<span class="w-4 h-4 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">
+<svg class="w-2.5 h-2.5" fill="currentColor" viewbox="0 0 20 20">
+<path clip-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" fill-rule="evenodd"></path>
+</svg>
+</span>
+<span>1. Upload</span>
+</div>
+<svg class="w-3.5 h-3.5 text-slate-300" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<!-- Step 2 -->
+<div class="flex items-center space-x-1.5 text-slate-500 font-medium">
+<span class="w-4 h-4 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">
+<svg class="w-2.5 h-2.5" fill="currentColor" viewbox="0 0 20 20">
+<path clip-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" fill-rule="evenodd"></path>
+</svg>
+</span>
+<span>2. Evaluate</span>
+</div>
+<svg class="w-3.5 h-3.5 text-slate-300" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<!-- Step 3 (Active) -->
+<div class="flex items-center space-x-1.5 px-3 py-1 rounded-full bg-brand-600 text-white font-medium text-xs shadow-xs">
+<span class="w-1.5 h-1.5 rounded-full bg-white"></span>
+<span>3. Report</span>
+</div>
+</nav>
+<!-- Right Controls: Text Size Toggle & Reset -->
+<div class="flex items-center space-x-3 text-xs">
+<div class="flex items-center bg-slate-100 rounded-lg p-0.5 border border-slate-200">
+<button class="px-2 py-0.5 text-[11px] font-medium text-slate-600 hover:text-slate-900 rounded" type="button">A-</button>
+<button class="px-2 py-0.5 text-[11px] font-semibold text-brand-600 bg-white rounded shadow-xs" type="button">A</button>
+<button class="px-2 py-0.5 text-[11px] font-medium text-slate-600 hover:text-slate-900 rounded" type="button">A+</button>
+</div>
+<button class="flex items-center space-x-1.5 text-slate-600 hover:text-slate-900 px-2.5 py-1 rounded-lg border border-slate-200 bg-white text-xs font-medium transition-colors" type="button">
+<svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+<span>Reset Layout</span>
+</button>
+</div>
+</header>
+<!-- ============================================== -->
+<!-- 2. MAIN WORKSPACE (flex-1 h-full min-h-0)     -->
+<!-- ============================================== -->
+<main class="flex-1 flex gap-4 p-4 min-h-0 overflow-hidden bg-[#F8FAFC]" style="flex: 1 1 0%; min-height: 0px; height: calc(-104px + 100vh); max-height: calc(-104px + 100vh); overflow: hidden; padding: 12px; gap: 12px;">
+<!-- ==================== LEFT PANE (45%) ==================== -->
+<section class="w-[45%] h-full bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col overflow-hidden" style="height: 100%; max-height: 100%; display: flex; flex-direction: column; overflow: hidden;">
+<!-- Single-row Header (h-12) -->
+<div class="h-12 border-b border-slate-200 px-4 flex items-center justify-between shrink-0 bg-white">
+<div class="flex items-center space-x-2">
+<h2 class="font-semibold text-slate-900 text-sm">Answer Booklet Preview</h2>
+<span class="text-xs font-mono text-slate-400 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded">kanak_patel_mst1.pdf</span>
+</div>
+<!-- Minimal inline controls -->
+<div class="flex items-center space-x-2 text-xs">
+<div class="flex items-center space-x-1 bg-slate-50 border border-slate-200 rounded-md px-1.5 py-0.5">
+<button class="p-1 hover:text-brand-600 text-slate-500" title="Zoom Out" type="button">
+<svg class="w-3 h-3" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M20 12H4" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</button>
+<span class="font-mono text-[11px] font-semibold text-slate-700 px-1">100%</span>
+<button class="p-1 hover:text-brand-600 text-slate-500" title="Zoom In" type="button">
+<svg class="w-3 h-3" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M12 4v16m8-8H4" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</button>
+</div>
+<button class="px-2 py-1 rounded-md text-xs font-medium bg-slate-50 text-slate-600 hover:text-slate-900 border border-slate-200 transition-colors" type="button">
+            Fit
+          </button>
+<div class="flex items-center space-x-1 text-slate-600 border border-slate-200 bg-slate-50 rounded-md px-2 py-0.5 font-mono text-xs">
+<button class="hover:text-slate-900 p-0.5" type="button">‹</button>
+<span class="font-semibold text-slate-900">Page 3</span>
+<span class="text-slate-400">of 9</span>
+<button class="hover:text-slate-900 p-0.5" type="button">›</button>
+</div>
+</div>
+</div>
+<!-- Scanned Canvas Viewport -->
+<div class="flex-1 overflow-auto bg-[#F1F5F9] p-5 flex items-center justify-center">
+<!-- Physical Exam Sheet Representation -->
+<div class="w-[480px] bg-white shadow-sm relative rounded-sm p-6 ruled-paper border border-slate-300 select-text" style="width: 100%; max-width: 480px; box-sizing: border-box;">
+<div class="margin-line"></div>
+<!-- Notebook Header -->
+<div class="flex justify-between items-center text-[10px] text-slate-400 font-mono pl-7 mb-2 pb-1 border-b border-transparent">
+<span>MID-SEM TEST I · EXAM COPY</span>
+<span>Roll: SGSU250489 · Page 03</span>
+</div>
+<!-- Answer Snippet from prior page -->
+<div class="pl-7 text-xs font-handwriting text-slate-400 text-base opacity-75 mb-2">
+            Ans 2: ...therefore octal 755 grants rwxr-xr-x to owner and world.
+          </div>
+<!-- Question 3 Clean Highlight Box -->
+<div class="relative pl-7 pt-2.5 pb-2.5 my-1.5 border border-indigo-300 bg-indigo-50/25 rounded-md">
+<div class="absolute -top-2.5 left-4 bg-brand-600 text-white font-mono text-[9px] px-2 py-0.5 rounded shadow-xs font-semibold tracking-wider">
+              ANS P2-Q3 · 88% MATCH
+            </div>
+<!-- Handwritten Text -->
+<div class="font-handwriting text-xl text-blue-900 leading-[28px] space-y-1.5">
+<h3 class="font-bold underline decoration-blue-800 decoration-1 text-xl">
+                Ans 3. Difference between Internal and External commands in Linux:
+              </h3>
+<p>
+<span class="font-bold">1. Internal Commands:</span> These are built directly into the Linux Shell (Bash). Loaded into RAM memory with shell itself. 
+                <span class="bg-amber-100/80 text-slate-900 px-1 rounded">Examples: cd, pwd, echo, exit</span>.
+              </p>
+<p>
+<span class="font-bold">2. External Commands:</span> Executables stored in disk directories such as <span class="font-mono text-base bg-blue-100/70 px-1 rounded">/bin</span>, <span class="font-mono text-base bg-blue-100/70 px-1 rounded">/usr/bin</span>. Executed via child process via fork/exec system calls.
+                <span class="bg-amber-100/80 text-slate-900 px-1 rounded">Examples: cat, grep, ls</span>.
+              </p>
+<p>
+<span class="font-bold">3. Speed:</span> Internal runs faster (no disk I/O). Everyday analogy: internal commands are like our natural breath inside body, external is drinking water from outside bottle.
+              </p>
+</div>
+</div>
+<!-- Bottom hint line -->
+<div class="pl-7 text-xs font-handwriting text-slate-400 text-base opacity-50 mt-3">
+            Ans 4. Bash script for prime number verification loop...
+          </div>
+</div>
+</div>
+</section>
+<!-- ==================== RIGHT PANE (55%) ==================== -->
+<section class="w-[55%] h-full bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col overflow-hidden" style="height: 100%; max-height: 100%; display: flex; flex-direction: column; overflow: hidden;">
+<!-- Single-row Header Bar (h-12) -->
+<div class="h-12 border-b border-slate-200 px-4 flex items-center justify-between shrink-0 bg-white">
+<!-- Segmented Tab Buttons -->
+<div class="flex items-center space-x-1" role="tablist">
+<button aria-selected="false" class="px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition-colors" id="tabBtnOverview" onclick="switchReportTab('overview')" role="tab" type="button">
+            Overview
+          </button>
+<button aria-selected="false" class="px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition-colors" id="tabBtnQuestionWise" onclick="switchReportTab('questions')" role="tab" type="button">
+            Question-wise Marks
+          </button>
+<button aria-selected="true" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-brand-50 text-brand-700 border border-brand-200 transition-colors flex items-center space-x-1.5" id="tabBtnAnalytics" onclick="switchReportTab('analytics')" role="tab" type="button">
+<svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<span>Analytics &amp; Charts</span>
+</button>
+</div>
+<!-- Right: Dropdown & Quick Switcher -->
+<div class="flex items-center space-x-2">
+<select class="h-8 text-xs bg-slate-50 border border-slate-200 rounded-lg px-2.5 text-slate-700 font-medium focus:ring-1 focus:ring-brand-500 focus:outline-none">
+<option>All Questions (19)</option>
+<option>Part I: Objective</option>
+<option selected="">Part II: Core</option>
+<option>Part III: Advanced</option>
+</select>
+<div class="flex items-center space-x-1 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs font-mono text-slate-600">
+<button class="hover:text-brand-600 px-0.5" title="Previous Question" type="button">‹</button>
+<span class="font-semibold text-slate-900">Q3 / 19</span>
+<button class="hover:text-brand-600 px-0.5" title="Next Question" type="button">›</button>
+</div>
+</div>
+</div>
+<!-- Tab Content Area -->
+<div class="flex-1 overflow-hidden relative" style="flex: 1 1 0%; min-height: 0px; overflow: hidden; position: relative;">
+<!-- ==================== VIEW 1: QUESTION-WISE MARKS ==================== -->
+<div class="h-full flex-col overflow-y-auto p-5 space-y-4 hidden" id="viewQuestionWise">
+<!-- Question Header Card -->
+<div class="p-4 rounded-xl bg-slate-50 border border-slate-200 flex items-start justify-between gap-4">
+<div class="space-y-1.5">
+<div class="flex items-center space-x-2">
+<span class="px-2 py-0.5 rounded-md bg-brand-600 text-white font-mono font-bold text-xs">Q3 · Part II</span>
+<span class="px-2 py-0.5 rounded-md bg-slate-200/80 text-slate-700 font-mono text-[11px] font-medium">Strictness: 4/5</span>
+</div>
+<p class="text-xs text-slate-900 font-medium leading-relaxed">
+                Differentiate between Internal and External commands in Linux with two examples of each. Explain process creation mechanism.
+              </p>
+</div>
+<div class="shrink-0 flex flex-col items-end space-y-1">
+<span class="px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 font-mono font-bold text-amber-800 text-xs tabular-nums">
+                4.0 / 6.0 (67%)
+              </span>
+<span class="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-mono text-[10px] font-semibold border border-emerald-200">
+                OCR 94%
+              </span>
+</div>
+</div>
+<!-- AI Feedback & Weak Concepts Card -->
+<div class="p-4 rounded-xl bg-indigo-50/50 border border-indigo-100 space-y-2">
+<div class="flex items-center space-x-2">
+<svg class="w-4 h-4 text-brand-600 shrink-0" fill="currentColor" viewbox="0 0 20 20">
+<path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14H8a4 4 0 01-.97-7.881 4.01 4.01 0 017.94 0A4 4 0 0112 14z"></path>
+</svg>
+<span class="font-bold text-slate-900 text-xs tracking-wide">AI Diagnostic Feedback</span>
+</div>
+<p class="text-xs text-slate-700 leading-relaxed">
+              Student correctly differentiated memory residence of internal vs external binaries with valid examples (<code class="bg-white px-1 font-mono text-[11px] rounded border border-indigo-100">cd</code>, <code class="bg-white px-1 font-mono text-[11px] rounded border border-indigo-100">pwd</code> vs <code class="bg-white px-1 font-mono text-[11px] rounded border border-indigo-100">cat</code>, <code class="bg-white px-1 font-mono text-[11px] rounded border border-indigo-100">grep</code>). 2.0 marks were deducted because POSIX fork/exec technical mechanics were replaced with an informal breath analogy, and <code class="bg-white px-1 font-mono text-[11px] rounded border border-rose-200 text-rose-700">/bin/ls</code> was inconsistently classified in draft.
+            </p>
+<div class="flex flex-wrap gap-2 pt-1">
+<span class="px-2 py-0.5 rounded-md bg-rose-50 border border-rose-200 text-rose-700 font-mono text-[11px] font-semibold">
+                Weak Concept: POSIX fork/exec
+              </span>
+<span class="px-2 py-0.5 rounded-md bg-amber-50 border border-amber-200 text-amber-800 font-mono text-[11px] font-semibold">
+                Misclassified: /bin/ls
+              </span>
+</div>
+</div>
+<!-- Compact 2-Column Comparison Box -->
+<div class="grid grid-cols-2 gap-3 text-xs">
+<div class="p-3.5 bg-white border border-slate-200 rounded-xl space-y-1.5">
+<div class="flex items-center justify-between font-bold text-slate-700 text-[11px]">
+<span>Student Answer (OCR)</span>
+<span class="font-mono text-slate-400">Match 94.2%</span>
+</div>
+<div class="bg-slate-50 p-2.5 rounded-lg border border-slate-100 font-mono text-[11px] text-slate-700 leading-normal">
+                1. Internal: Built directly into Shell. Loaded in RAM. Eg: <mark class="bg-amber-100 text-slate-900 px-0.5 rounded">cd, pwd, echo, exit</mark>.<br/>
+                2. External: Stored in disk (/bin, /usr/bin). Creates child process via fork/exec. Eg: <mark class="bg-amber-100 text-slate-900 px-0.5 rounded">cat, grep, ls</mark>.<br/>
+                3. Speed: Internal runs faster. Analogy: internal is breath, external is drinking water.
+              </div>
+</div>
+<div class="p-3.5 bg-white border border-slate-200 rounded-xl space-y-1.5">
+<div class="flex items-center justify-between font-bold text-emerald-800 text-[11px]">
+<span>Expected Key Answer</span>
+<span class="font-mono text-emerald-600">LIN-MOD2-L14</span>
+</div>
+<div class="bg-emerald-50/30 p-2.5 rounded-lg border border-emerald-100 text-[11px] text-slate-700 leading-normal">
+<strong>Internal:</strong> Shell built-in executing inside current process memory. No PID creation overhead. Eg: cd, pwd, exit.<br/>
+<strong>External:</strong> Standalone filesystem binary (<code class="font-mono text-[10px]">/bin/ls</code>). Shell invokes <code class="font-mono text-[10px]">fork()</code> for new PID and replaces space via <code class="font-mono text-[10px]">execve()</code> syscall.
+              </div>
+</div>
+</div>
+<!-- 4 Clean Collapsible Accordion Boxes -->
+<div class="space-y-2 pt-1">
+<!-- 1. Correct -->
+<details class="group border border-slate-200 rounded-xl bg-white overflow-hidden" open="">
+<summary class="px-4 py-2.5 flex items-center justify-between cursor-pointer text-xs font-semibold select-none hover:bg-slate-50 transition-colors list-none">
+<div class="flex items-center space-x-2">
+<span class="text-emerald-600 font-bold">✓ Correct</span>
+<span class="px-1.5 py-0.2 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-mono border border-emerald-200 font-bold">1</span>
+</div>
+<div class="flex items-center space-x-2">
+<span class="font-mono text-emerald-600 font-bold tabular-nums">+4.0 M</span>
+<svg class="w-3.5 h-3.5 text-slate-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M19 9l-7 7-7-7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</div>
+</summary>
+<div class="px-4 py-2.5 bg-slate-50/50 border-t border-slate-100 text-xs text-slate-700 leading-relaxed">
+                Accurate identification that internal commands reside directly in shell memory (RAM) and valid distinction of command categories (+4.0 Marks allocated).
+              </div>
+</details>
+<!-- 2. Deductions -->
+<details class="group border border-slate-200 rounded-xl bg-white overflow-hidden">
+<summary class="px-4 py-2.5 flex items-center justify-between cursor-pointer text-xs font-semibold select-none hover:bg-slate-50 transition-colors list-none">
+<div class="flex items-center space-x-2">
+<span class="text-rose-600 font-bold">⊗ Deductions</span>
+<span class="px-1.5 py-0.2 rounded-full bg-rose-50 text-rose-700 text-[10px] font-mono border border-rose-200 font-bold">1</span>
+</div>
+<div class="flex items-center space-x-2">
+<span class="font-mono text-rose-600 font-bold tabular-nums">-2.0 M</span>
+<svg class="w-3.5 h-3.5 text-slate-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M19 9l-7 7-7-7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</div>
+</summary>
+<div class="px-4 py-2.5 bg-slate-50/50 border-t border-slate-100 text-xs text-slate-700 leading-relaxed">
+                Informal biological analogy was used in place of technical explanation of process creation mechanics (-2.0 Marks deduction under academic strictness 4/5).
+              </div>
+</details>
+<!-- 3. Missing Points -->
+<details class="group border border-slate-200 rounded-xl bg-white overflow-hidden">
+<summary class="px-4 py-2.5 flex items-center justify-between cursor-pointer text-xs font-semibold select-none hover:bg-slate-50 transition-colors list-none">
+<div class="flex items-center space-x-2">
+<span class="text-amber-600 font-bold">⚠ Missing Points</span>
+<span class="px-1.5 py-0.2 rounded-full bg-amber-50 text-amber-800 text-[10px] font-mono border border-amber-200 font-bold">1</span>
+</div>
+<div class="flex items-center space-x-2">
+<span class="font-mono text-amber-700 font-semibold text-[11px]">Potential +2.0 M</span>
+<svg class="w-3.5 h-3.5 text-slate-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M19 9l-7 7-7-7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</div>
+</summary>
+<div class="px-4 py-2.5 bg-slate-50/50 border-t border-slate-100 text-xs text-slate-700 leading-relaxed">
+                Omitted explicit step-by-step kernel sequence: invoking <code class="font-mono text-[10px] bg-white px-1 border border-slate-200 rounded">fork()</code> to clone address space and <code class="font-mono text-[10px] bg-white px-1 border border-slate-200 rounded">execve()</code> to load binary from filesystem into memory.
+              </div>
+</details>
+<!-- 4. OCR Review Note -->
+<details class="group border border-slate-200 rounded-xl bg-white overflow-hidden" open="">
+<summary class="px-4 py-2.5 flex items-center justify-between cursor-pointer text-xs font-semibold select-none hover:bg-slate-50 transition-colors list-none">
+<div class="flex items-center space-x-2">
+<span class="text-slate-700 font-bold">🛡 OCR Review Note</span>
+<span class="px-1.5 py-0.2 rounded-full bg-slate-100 text-slate-700 text-[10px] font-mono border border-slate-200 font-bold">1</span>
+</div>
+<div class="flex items-center space-x-2">
+<span class="font-mono text-emerald-600 font-semibold text-[11px]">94.2% Confidence</span>
+<svg class="w-3.5 h-3.5 text-slate-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M19 9l-7 7-7-7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</div>
+</summary>
+<div class="px-4 py-2.5 bg-slate-50/50 border-t border-slate-100 text-xs text-slate-700 leading-relaxed">
+                Handwriting legibility is high (94.2%). Minor cursive stroke variance detected on token <code class="font-mono bg-white px-1 border border-slate-200 rounded">"ls"</code>, resolved automatically with high confidence. No manual teacher adjustment required.
+              </div>
+</details>
+</div>
+</div>
+<!-- ==================== VIEW 2: OVERVIEW ==================== -->
+<div class="h-full flex-col overflow-y-auto p-5 space-y-4 hidden" id="viewOverview">
+<!-- Student Summary Card -->
+<div class="bg-white border border-slate-200 rounded-xl p-4 flex items-center justify-between shadow-xs">
+<div class="flex items-center space-x-3.5">
+<div class="w-10 h-10 rounded-full bg-brand-100 border border-brand-200 flex items-center justify-center font-bold text-brand-700 text-sm">
+                KP
+              </div>
+<div>
+<div class="flex items-center space-x-2">
+<h3 class="font-bold text-slate-900 text-sm">Kanak Patel</h3>
+<span class="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 font-mono text-[10px] font-semibold border border-emerald-200">
+                    Verified
+                  </span>
+<span class="px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-mono text-[10px]">
+                    Strictness: 4/5
+                  </span>
+</div>
+<p class="text-xs text-slate-500 font-mono mt-0.5">
+                  Roll: SGSU250489 · B.C.A 2nd Sem Linux (CS204) · MST-I Oct 2024
+                </p>
+</div>
+</div>
+<div class="text-right font-mono text-xs text-slate-500">
+              Evaluated: 2024-10-24 14:32 UTC
+            </div>
+</div>
+<!-- 3 KPI Cards -->
+<div class="grid grid-cols-3 gap-3">
+<div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs">
+<div class="text-[10px] uppercase font-bold text-slate-500 tracking-wider">TOTAL SCORE</div>
+<div class="mt-1 flex items-baseline justify-between">
+<span class="text-2xl font-mono font-bold text-slate-900 tabular-nums">46.5</span>
+<span class="text-xs font-mono text-slate-400">/ 60.0</span>
+</div>
+<div class="text-[10px] text-emerald-600 font-medium mt-1">+6.5 vs Batch Avg (40.0)</div>
+</div>
+<div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs">
+<div class="text-[10px] uppercase font-bold text-slate-500 tracking-wider">GRADE &amp; PERCENTILE</div>
+<div class="mt-1 flex items-baseline justify-between">
+<span class="text-2xl font-mono font-bold text-brand-600 tabular-nums">77.5%</span>
+<span class="px-1.5 py-0.5 rounded bg-brand-50 text-brand-700 text-[10px] font-bold border border-brand-200">Grade B+</span>
+</div>
+<div class="text-[10px] text-slate-500 mt-1">Class Percentile: 84.6%</div>
+</div>
+<div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs">
+<div class="text-[10px] uppercase font-bold text-slate-500 tracking-wider">AVG OCR CONFIDENCE</div>
+<div class="mt-1 flex items-baseline justify-between">
+<span class="text-2xl font-mono font-bold text-emerald-600 tabular-nums">94.2%</span>
+<span class="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-200">Dual Engine</span>
+</div>
+<div class="text-[10px] text-slate-500 mt-1">0 Manual Edits Required</div>
+</div>
+</div>
+<!-- ==================== RICH CHART 1: MARKS & SCORE DISTRIBUTION ==================== -->
+<div class="bg-white rounded-xl border border-slate-200 p-4 shadow-xs space-y-3">
+<div class="flex items-center justify-between">
+<div>
+<div class="flex items-center space-x-2">
+<h4 class="text-xs font-bold text-slate-900 uppercase tracking-wider">Marks &amp; Score Distribution</h4>
+<span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-mono text-[10px] font-medium">Q1 - Q10</span>
+</div>
+<p class="text-[11px] text-slate-500 mt-0.5">Visual comparison of marks obtained vs maximum marks per question with cohort benchmark line.</p>
+</div>
+<div class="flex items-center space-x-3 text-[10px] font-mono">
+<div class="flex items-center space-x-1"><span class="w-2.5 h-2.5 rounded-sm bg-emerald-500"></span><span class="text-slate-600">Full</span></div>
+<div class="flex items-center space-x-1"><span class="w-2.5 h-2.5 rounded-sm bg-amber-500"></span><span class="text-slate-600">Partial</span></div>
+<div class="flex items-center space-x-1"><span class="w-2.5 h-2.5 rounded-sm bg-rose-500"></span><span class="text-slate-600">Deduction</span></div>
+<div class="flex items-center space-x-1"><span class="w-3 border-t border-dashed border-indigo-400"></span><span class="text-indigo-600">Batch Avg (68%)</span></div>
+</div>
+</div>
+<!-- SVG / Flex Column Chart Viewport -->
+<div class="bg-slate-50/70 border border-slate-200/80 rounded-lg p-3 pt-6 relative select-none">
+<!-- 68% Benchmark Reference Line -->
+<div class="absolute left-10 right-4 top-[32%] border-t border-dashed border-indigo-400/80 pointer-events-none z-10 flex justify-end">
+<span class="text-[9px] font-mono text-indigo-700 bg-white/90 px-1 py-0.2 rounded -mt-2 border border-indigo-200">Cohort Avg 68%</span>
+</div>
+<!-- 100% Top grid line -->
+<div class="absolute left-10 right-4 top-4 border-t border-slate-200/70 pointer-events-none"></div>
+<!-- 50% Mid grid line -->
+<div class="absolute left-10 right-4 top-[50%] border-t border-slate-200/60 pointer-events-none"></div>
+<!-- Bars Container -->
+<div class="flex items-end justify-between gap-1.5 h-36 pl-8 pr-2 relative z-20">
+<!-- Y-Axis labels -->
+<div class="absolute -left-0.5 top-0 bottom-6 flex flex-col justify-between text-[9px] font-mono text-slate-400">
+<span>100%</span>
+<span>50%</span>
+<span>0%</span>
+</div>
+<!-- Q1: 2.0 / 2.0 (100%) -->
+<div class="flex-1 flex flex-col items-center h-full justify-end group cursor-pointer">
+<div class="text-[9px] font-mono font-bold text-emerald-700 mb-1 opacity-0 group-hover:opacity-100 transition-opacity">2/2</div>
+<div class="w-full max-w-[28px] h-full flex flex-col justify-end bg-slate-200/70 rounded-t-sm overflow-hidden" title="Q1: 2.0 / 2.0 (100%)">
+<div class="w-full bg-emerald-500 rounded-t-sm transition-all duration-300" style="height: 100%;"></div>
+</div>
+<span class="text-[10px] font-mono text-slate-700 font-semibold mt-1.5">Q1</span>
+<span class="text-[9px] font-mono text-emerald-600">100%</span>
+</div>
+<!-- Q2: 2.0 / 2.0 (100%) -->
+<div class="flex-1 flex flex-col items-center h-full justify-end group cursor-pointer">
+<div class="text-[9px] font-mono font-bold text-emerald-700 mb-1 opacity-0 group-hover:opacity-100 transition-opacity">2/2</div>
+<div class="w-full max-w-[28px] h-full flex flex-col justify-end bg-slate-200/70 rounded-t-sm overflow-hidden" title="Q2: 2.0 / 2.0 (100%)">
+<div class="w-full bg-emerald-500 rounded-t-sm transition-all duration-300" style="height: 100%;"></div>
+</div>
+<span class="text-[10px] font-mono text-slate-700 font-semibold mt-1.5">Q2</span>
+<span class="text-[9px] font-mono text-emerald-600">100%</span>
+</div>
+<!-- Q3: 4.0 / 6.0 (67%) - Active Question Highlight -->
+<div class="flex-1 flex flex-col items-center h-full justify-end group cursor-pointer bg-brand-50/50 rounded p-0.5 -mx-0.5">
+<div class="text-[9px] font-mono font-bold text-amber-700 mb-1 opacity-100 transition-opacity">4/6</div>
+<div class="w-full max-w-[28px] h-full flex flex-col justify-end bg-slate-200/70 rounded-t-sm overflow-hidden ring-2 ring-brand-500" title="Q3: 4.0 / 6.0 (66.7%) - Current Selected">
+<div class="w-full bg-amber-500 rounded-t-sm transition-all duration-300" style="height: 67%;"></div>
+</div>
+<span class="text-[10px] font-mono text-brand-700 font-bold mt-1.5">Q3*</span>
+<span class="text-[9px] font-mono text-amber-600 font-semibold">67%</span>
+</div>
+<!-- Q4: 5.5 / 6.0 (92%) -->
+<div class="flex-1 flex flex-col items-center h-full justify-end group cursor-pointer">
+<div class="text-[9px] font-mono font-bold text-emerald-700 mb-1 opacity-0 group-hover:opacity-100 transition-opacity">5.5/6</div>
+<div class="w-full max-w-[28px] h-full flex flex-col justify-end bg-slate-200/70 rounded-t-sm overflow-hidden" title="Q4: 5.5 / 6.0 (91.7%)">
+<div class="w-full bg-emerald-500 rounded-t-sm transition-all duration-300" style="height: 92%;"></div>
+</div>
+<span class="text-[10px] font-mono text-slate-700 font-semibold mt-1.5">Q4</span>
+<span class="text-[9px] font-mono text-emerald-600">92%</span>
+</div>
+<!-- Q5: 3.0 / 6.0 (50%) -->
+<div class="flex-1 flex flex-col items-center h-full justify-end group cursor-pointer">
+<div class="text-[9px] font-mono font-bold text-amber-700 mb-1 opacity-0 group-hover:opacity-100 transition-opacity">3/6</div>
+<div class="w-full max-w-[28px] h-full flex flex-col justify-end bg-slate-200/70 rounded-t-sm overflow-hidden" title="Q5: 3.0 / 6.0 (50%)">
+<div class="w-full bg-amber-500 rounded-t-sm transition-all duration-300" style="height: 50%;"></div>
+</div>
+<span class="text-[10px] font-mono text-slate-700 font-semibold mt-1.5">Q5</span>
+<span class="text-[9px] font-mono text-amber-600">50%</span>
+</div>
+<!-- Q6: 1.5 / 6.0 (25%) - Rose -->
+<div class="flex-1 flex flex-col items-center h-full justify-end group cursor-pointer">
+<div class="text-[9px] font-mono font-bold text-rose-700 mb-1 opacity-0 group-hover:opacity-100 transition-opacity">1.5/6</div>
+<div class="w-full max-w-[28px] h-full flex flex-col justify-end bg-slate-200/70 rounded-t-sm overflow-hidden" title="Q6: 1.5 / 6.0 (25.0%)">
+<div class="w-full bg-rose-500 rounded-t-sm transition-all duration-300" style="height: 25%;"></div>
+</div>
+<span class="text-[10px] font-mono text-slate-700 font-semibold mt-1.5">Q6</span>
+<span class="text-[9px] font-mono text-rose-600">25%</span>
+</div>
+<!-- Q7: 10.0 / 10.0 (100%) -->
+<div class="flex-1 flex flex-col items-center h-full justify-end group cursor-pointer">
+<div class="text-[9px] font-mono font-bold text-emerald-700 mb-1 opacity-0 group-hover:opacity-100 transition-opacity">10/10</div>
+<div class="w-full max-w-[28px] h-full flex flex-col justify-end bg-slate-200/70 rounded-t-sm overflow-hidden" title="Q7: 10.0 / 10.0 (100%)">
+<div class="w-full bg-emerald-500 rounded-t-sm transition-all duration-300" style="height: 100%;"></div>
+</div>
+<span class="text-[10px] font-mono text-slate-700 font-semibold mt-1.5">Q7</span>
+<span class="text-[9px] font-mono text-emerald-600">100%</span>
+</div>
+<!-- Q8: 7.5 / 10.0 (75%) -->
+<div class="flex-1 flex flex-col items-center h-full justify-end group cursor-pointer">
+<div class="text-[9px] font-mono font-bold text-emerald-700 mb-1 opacity-0 group-hover:opacity-100 transition-opacity">7.5/10</div>
+<div class="w-full max-w-[28px] h-full flex flex-col justify-end bg-slate-200/70 rounded-t-sm overflow-hidden" title="Q8: 7.5 / 10.0 (75%)">
+<div class="w-full bg-emerald-500 rounded-t-sm transition-all duration-300" style="height: 75%;"></div>
+</div>
+<span class="text-[10px] font-mono text-slate-700 font-semibold mt-1.5">Q8</span>
+<span class="text-[9px] font-mono text-emerald-600">75%</span>
+</div>
+<!-- Q9: 3.5 / 5.0 (70%) -->
+<div class="flex-1 flex flex-col items-center h-full justify-end group cursor-pointer">
+<div class="text-[9px] font-mono font-bold text-emerald-700 mb-1 opacity-0 group-hover:opacity-100 transition-opacity">3.5/5</div>
+<div class="w-full max-w-[28px] h-full flex flex-col justify-end bg-slate-200/70 rounded-t-sm overflow-hidden" title="Q9: 3.5 / 5.0 (70%)">
+<div class="w-full bg-emerald-500 rounded-t-sm transition-all duration-300" style="height: 70%;"></div>
+</div>
+<span class="text-[10px] font-mono text-slate-700 font-semibold mt-1.5">Q9</span>
+<span class="text-[9px] font-mono text-emerald-600">70%</span>
+</div>
+<!-- Q10: 7.0 / 9.0 (78%) -->
+<div class="flex-1 flex flex-col items-center h-full justify-end group cursor-pointer">
+<div class="text-[9px] font-mono font-bold text-emerald-700 mb-1 opacity-0 group-hover:opacity-100 transition-opacity">7/9</div>
+<div class="w-full max-w-[28px] h-full flex flex-col justify-end bg-slate-200/70 rounded-t-sm overflow-hidden" title="Q10: 7.0 / 9.0 (77.8%)">
+<div class="w-full bg-emerald-500 rounded-t-sm transition-all duration-300" style="height: 78%;"></div>
+</div>
+<span class="text-[10px] font-mono text-slate-700 font-semibold mt-1.5">Q10</span>
+<span class="text-[9px] font-mono text-emerald-600">78%</span>
+</div>
+</div>
+</div>
+</div>
+<!-- ==================== RICH CHART 2: TOPIC & CONCEPT MASTERY ==================== -->
+<div class="bg-white rounded-xl border border-slate-200 p-4 shadow-xs space-y-3">
+<div class="flex items-center justify-between">
+<div>
+<h4 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center space-x-1.5">
+<span>Topic &amp; Concept Mastery Matrix</span>
+</h4>
+<p class="text-[11px] text-slate-500 mt-0.5">Syllabus breakdown with direct mastery indicators and prioritized weak areas.</p>
+</div>
+<span class="text-[10px] font-mono bg-indigo-50 text-brand-700 px-2 py-0.5 rounded border border-indigo-200 font-medium">5 Core Topics Analyzed</span>
+</div>
+<div class="space-y-2.5 pt-1 text-xs">
+<!-- Topic 1 -->
+<div class="p-2.5 rounded-lg border border-slate-100 bg-slate-50/60 hover:bg-slate-50 transition-colors">
+<div class="flex items-center justify-between mb-1.5">
+<div class="flex items-center space-x-2">
+<span class="font-bold text-slate-800">Linux Architecture &amp; Kernels</span>
+<span class="text-[10px] text-slate-400 font-mono">(Q1, Q7 · 2 Qs)</span>
+</div>
+<div class="flex items-center space-x-2">
+<span class="font-mono font-bold text-emerald-600 text-xs">12.0/12.0 (100%)</span>
+<span class="px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 font-mono text-[9px] font-bold border border-emerald-200">Mastered</span>
+</div>
+</div>
+<div class="w-full bg-slate-200 h-2 rounded-full overflow-hidden flex">
+<div class="bg-emerald-500 h-full rounded-full" style="width: 100%;"></div>
+</div>
+</div>
+<!-- Topic 2 -->
+<div class="p-2.5 rounded-lg border border-slate-100 bg-slate-50/60 hover:bg-slate-50 transition-colors">
+<div class="flex items-center justify-between mb-1.5">
+<div class="flex items-center space-x-2">
+<span class="font-bold text-slate-800">File Permissions &amp; Masking</span>
+<span class="text-[10px] text-slate-400 font-mono">(Q2, Q4 · 2 Qs)</span>
+</div>
+<div class="flex items-center space-x-2">
+<span class="font-mono font-bold text-emerald-600 text-xs">7.5/8.0 (94%)</span>
+<span class="px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 font-mono text-[9px] font-bold border border-emerald-200">Mastered</span>
+</div>
+</div>
+<div class="w-full bg-slate-200 h-2 rounded-full overflow-hidden flex">
+<div class="bg-emerald-500 h-full rounded-full" style="width: 94%;"></div>
+</div>
+</div>
+<!-- Topic 3 -->
+<div class="p-2.5 rounded-lg border border-amber-200/80 bg-amber-50/20 hover:bg-amber-50/30 transition-colors">
+<div class="flex items-center justify-between mb-1.5">
+<div class="flex items-center space-x-2">
+<span class="font-bold text-slate-800">Process Management &amp; Shell Commands</span>
+<span class="text-[10px] text-slate-400 font-mono">(Q3, Q8 · 2 Qs)</span>
+</div>
+<div class="flex items-center space-x-2">
+<span class="font-mono font-bold text-amber-600 text-xs">11.5/16.0 (72%)</span>
+<span class="px-1.5 py-0.2 rounded bg-amber-50 text-amber-800 font-mono text-[9px] font-bold border border-amber-200">Needs Polish</span>
+</div>
+</div>
+<div class="w-full bg-slate-200 h-2 rounded-full overflow-hidden flex">
+<div class="bg-amber-500 h-full rounded-full" style="width: 72%;"></div>
+</div>
+</div>
+<!-- Topic 4 (Weak Area Alert) -->
+<div class="p-2.5 rounded-lg border border-rose-200 bg-rose-50/20 hover:bg-rose-50/30 transition-colors">
+<div class="flex items-center justify-between mb-1.5">
+<div class="flex items-center space-x-2">
+<span class="font-bold text-rose-950">Inodes, Hard Links &amp; POSIX System Calls</span>
+<span class="text-[10px] text-rose-600 font-mono font-medium">(Q5, Q6 · 2 Qs)</span>
+</div>
+<div class="flex items-center space-x-2">
+<span class="font-mono font-bold text-rose-600 text-xs">4.5/12.0 (37.5%)</span>
+<span class="px-1.5 py-0.2 rounded bg-rose-50 text-rose-700 font-mono text-[9px] font-bold border border-rose-200">Weak / Revision</span>
+</div>
+</div>
+<div class="w-full bg-slate-200 h-2 rounded-full overflow-hidden flex">
+<div class="bg-rose-500 h-full rounded-full" style="width: 37.5%;"></div>
+</div>
+<!-- Concept Callout -->
+<div class="mt-2 pt-1.5 border-t border-rose-100 flex items-center justify-between text-[11px]">
+<span class="text-rose-700 font-medium">Critical deficit: inode pointer indirect blocks &amp; POSIX fork/exec sequence</span>
+<span class="text-brand-600 hover:text-brand-700 font-semibold cursor-pointer">Study Material →</span>
+</div>
+</div>
+</div>
+</div>
+<!-- ==================== RICH CHART 3: HANDWRITING vs OCR TELEMETRY ==================== -->
+<div class="bg-white rounded-xl border border-slate-200 p-4 shadow-xs space-y-3">
+<div class="flex items-center justify-between">
+<div>
+<h4 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center space-x-1.5">
+<span>Handwriting Legibility vs. OCR Match Rate Telemetry</span>
+</h4>
+<p class="text-[11px] text-slate-500 mt-0.5">Dual-engine confidence (Groq Llama 3.2 Vision + Gemini 1.5 Pro) across booklet pages.</p>
+</div>
+<div class="flex items-center space-x-2 text-[10px] font-mono">
+<span class="flex items-center space-x-1"><span class="w-2 h-2 rounded-full bg-emerald-500"></span><span class="text-slate-600">OCR Match</span></span>
+<span class="flex items-center space-x-1"><span class="w-2 h-2 rounded-full bg-brand-500"></span><span class="text-slate-600">Legibility</span></span>
+</div>
+</div>
+<!-- Matrix / Page Telemetry Row Grid -->
+<div class="grid grid-cols-4 gap-2.5">
+<!-- Page 1 -->
+<div class="p-2.5 rounded-lg border border-slate-200 bg-slate-50/50 flex flex-col justify-between">
+<div class="flex items-center justify-between">
+<span class="font-mono font-bold text-xs text-slate-800">Page 1</span>
+<span class="text-[9px] font-mono px-1 py-0.2 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">Optimal</span>
+</div>
+<div class="space-y-1.5 my-2">
+<div>
+<div class="flex justify-between text-[10px] font-mono mb-0.5"><span class="text-slate-500">OCR Match</span><span class="font-bold text-emerald-600">96.0%</span></div>
+<div class="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden"><div class="bg-emerald-500 h-full" style="width: 96%;"></div></div>
+</div>
+<div>
+<div class="flex justify-between text-[10px] font-mono mb-0.5"><span class="text-slate-500">Legibility</span><span class="font-bold text-brand-600">92.0%</span></div>
+<div class="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden"><div class="bg-brand-500 h-full" style="width: 92%;"></div></div>
+</div>
+</div>
+<div class="text-[9px] text-slate-400 font-mono">Q1-Q2 (Clean print)</div>
+</div>
+<!-- Page 2 -->
+<div class="p-2.5 rounded-lg border border-slate-200 bg-slate-50/50 flex flex-col justify-between">
+<div class="flex items-center justify-between">
+<span class="font-mono font-bold text-xs text-slate-800">Page 2</span>
+<span class="text-[9px] font-mono px-1 py-0.2 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">Optimal</span>
+</div>
+<div class="space-y-1.5 my-2">
+<div>
+<div class="flex justify-between text-[10px] font-mono mb-0.5"><span class="text-slate-500">OCR Match</span><span class="font-bold text-emerald-600">95.0%</span></div>
+<div class="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden"><div class="bg-emerald-500 h-full" style="width: 95%;"></div></div>
+</div>
+<div>
+<div class="flex justify-between text-[10px] font-mono mb-0.5"><span class="text-slate-500">Legibility</span><span class="font-bold text-brand-600">90.5%</span></div>
+<div class="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden"><div class="bg-brand-500 h-full" style="width: 90.5%;"></div></div>
+</div>
+</div>
+<div class="text-[9px] text-slate-400 font-mono">Q2 cont.</div>
+</div>
+<!-- Page 3 (Flagged Cursive Zone) -->
+<div class="p-2.5 rounded-lg border border-amber-300 bg-amber-50/30 flex flex-col justify-between ring-1 ring-amber-300/60">
+<div class="flex items-center justify-between">
+<span class="font-mono font-bold text-xs text-amber-900">Page 3 *</span>
+<span class="text-[9px] font-mono px-1 py-0.2 rounded bg-amber-100 text-amber-800 border border-amber-300 font-bold">Cursive Flag</span>
+</div>
+<div class="space-y-1.5 my-2">
+<div>
+<div class="flex justify-between text-[10px] font-mono mb-0.5"><span class="text-amber-800 font-medium">OCR Match</span><span class="font-bold text-amber-700">88.4%</span></div>
+<div class="w-full bg-amber-200/80 h-1.5 rounded-full overflow-hidden"><div class="bg-amber-500 h-full" style="width: 88.4%;"></div></div>
+</div>
+<div>
+<div class="flex justify-between text-[10px] font-mono mb-0.5"><span class="text-amber-800 font-medium">Legibility</span><span class="font-bold text-amber-700">81.0%</span></div>
+<div class="w-full bg-amber-200/80 h-1.5 rounded-full overflow-hidden"><div class="bg-amber-500 h-full" style="width: 81%;"></div></div>
+</div>
+</div>
+<div class="text-[9px] text-amber-800 font-mono">Q3 ligature ambiguity</div>
+</div>
+<!-- Page 4 -->
+<div class="p-2.5 rounded-lg border border-slate-200 bg-slate-50/50 flex flex-col justify-between">
+<div class="flex items-center justify-between">
+<span class="font-mono font-bold text-xs text-slate-800">Page 4</span>
+<span class="text-[9px] font-mono px-1 py-0.2 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">Optimal</span>
+</div>
+<div class="space-y-1.5 my-2">
+<div>
+<div class="flex justify-between text-[10px] font-mono mb-0.5"><span class="text-slate-500">OCR Match</span><span class="font-bold text-emerald-600">98.2%</span></div>
+<div class="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden"><div class="bg-emerald-500 h-full" style="width: 98.2%;"></div></div>
+</div>
+<div>
+<div class="flex justify-between text-[10px] font-mono mb-0.5"><span class="text-slate-500">Legibility</span><span class="font-bold text-brand-600">95.0%</span></div>
+<div class="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden"><div class="bg-brand-500 h-full" style="width: 95%;"></div></div>
+</div>
+</div>
+<div class="text-[9px] text-slate-400 font-mono">Q4-Q5 code snippet</div>
+</div>
+</div>
+</div>
+<!-- Question Summary Table -->
+<div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs text-xs"><div class="px-4 py-2.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between"><div class="flex items-center space-x-2"><span class="font-bold text-slate-800 text-xs">Question Summary</span><span class="px-2 py-0.5 rounded-full bg-brand-50 text-brand-700 font-mono text-[10px] font-semibold border border-brand-200">11 Attempted / 14 Questions</span></div><span class="text-[11px] text-slate-400 font-mono">Sorted by Sequence</span></div><div class="overflow-x-auto"><table class="w-full text-left border-collapse"><thead><tr class="border-b border-slate-200 text-[11px] text-slate-500 bg-[#F8FAFC]"><th class="py-2 px-3 pl-4 font-semibold">Q.No</th><th class="py-2 px-3 font-semibold">Section &amp; Topic</th><th class="py-2 px-3 font-semibold">Marks</th><th class="py-2 px-3 font-semibold">OCR %</th><th class="py-2 px-3 pr-4 font-semibold text-right">Status</th></tr></thead><tbody class="divide-y divide-slate-100 font-mono text-xs"><tr class="hover:bg-slate-50 transition-colors"><td class="py-2 px-3 pl-4 font-bold text-slate-900">Q1</td><td class="py-2 px-3 font-sans text-slate-700"><span class="text-slate-400 font-mono text-[11px]">Part I ·</span> Monolithic vs Microkernel</td><td class="py-2 px-3 font-bold text-emerald-600 tabular-nums">2.0 <span class="text-slate-400 font-normal">/ 2.0</span></td><td class="py-2 px-3 text-slate-600 tabular-nums">98.4%</td><td class="py-2 px-3 pr-4 text-right font-sans"><span class="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-200">Full</span></td></tr><tr class="hover:bg-slate-50 transition-colors"><td class="py-2 px-3 pl-4 font-bold text-slate-900">Q2</td><td class="py-2 px-3 font-sans text-slate-700"><span class="text-slate-400 font-mono text-[11px]">Part I ·</span> Default Umask Calculation</td><td class="py-2 px-3 font-bold text-emerald-600 tabular-nums">2.0 <span class="text-slate-400 font-normal">/ 2.0</span></td><td class="py-2 px-3 text-slate-600 tabular-nums">99.1%</td><td class="py-2 px-3 pr-4 text-right font-sans"><span class="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-200">Full</span></td></tr><tr class="hover:bg-slate-50 transition-colors bg-amber-50/20"><td class="py-2 px-3 pl-4 font-bold text-slate-900">Q3</td><td class="py-2 px-3 font-sans text-slate-700"><span class="text-slate-400 font-mono text-[11px]">Part II ·</span> Internal vs External Commands</td><td class="py-2 px-3 font-bold text-amber-600 tabular-nums">4.0 <span class="text-slate-400 font-normal">/ 6.0</span></td><td class="py-2 px-3 text-slate-600 tabular-nums">94.2%</td><td class="py-2 px-3 pr-4 text-right font-sans"><span class="px-2 py-0.5 rounded bg-amber-50 text-amber-800 text-[10px] font-bold border border-amber-200">Partial</span></td></tr><tr class="hover:bg-slate-50 transition-colors"><td class="py-2 px-3 pl-4 font-bold text-slate-900">Q4</td><td class="py-2 px-3 font-sans text-slate-700"><span class="text-slate-400 font-mono text-[11px]">Part II ·</span> Chmod &amp; Symbolic Permissions</td><td class="py-2 px-3 font-bold text-emerald-600 tabular-nums">5.5 <span class="text-slate-400 font-normal">/ 6.0</span></td><td class="py-2 px-3 text-slate-600 tabular-nums">96.5%</td><td class="py-2 px-3 pr-4 text-right font-sans"><span class="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-200">Full</span></td></tr><tr class="hover:bg-slate-50 transition-colors"><td class="py-2 px-3 pl-4 font-bold text-slate-900">Q5</td><td class="py-2 px-3 font-sans text-slate-700"><span class="text-slate-400 font-mono text-[11px]">Part II ·</span> Hard Links vs Symlinks</td><td class="py-2 px-3 font-bold text-amber-600 tabular-nums">3.0 <span class="text-slate-400 font-normal">/ 6.0</span></td><td class="py-2 px-3 text-slate-600 tabular-nums">91.8%</td><td class="py-2 px-3 pr-4 text-right font-sans"><span class="px-2 py-0.5 rounded bg-amber-50 text-amber-800 text-[10px] font-bold border border-amber-200">Partial</span></td></tr><tr class="hover:bg-slate-50 transition-colors"><td class="py-2 px-3 pl-4 font-bold text-slate-900">Q6</td><td class="py-2 px-3 font-sans text-slate-700"><span class="text-slate-400 font-mono text-[11px]">Part II ·</span> Inode Structure &amp; Attributes</td><td class="py-2 px-3 font-bold text-rose-600 tabular-nums">1.5 <span class="text-slate-400 font-normal">/ 6.0</span></td><td class="py-2 px-3 text-slate-600 tabular-nums">89.0%</td><td class="py-2 px-3 pr-4 text-right font-sans"><span class="px-2 py-0.5 rounded bg-rose-50 text-rose-700 text-[10px] font-bold border border-rose-200">Weak</span></td></tr><tr class="hover:bg-slate-50 transition-colors"><td class="py-2 px-3 pl-4 font-bold text-slate-900">Q7</td><td class="py-2 px-3 font-sans text-slate-700"><span class="text-slate-400 font-mono text-[11px]">Part III ·</span> Process Lifecycle &amp; Fork Mechanism</td><td class="py-2 px-3 font-bold text-emerald-600 tabular-nums">10.0 <span class="text-slate-400 font-normal">/ 10.0</span></td><td class="py-2 px-3 text-slate-600 tabular-nums">97.2%</td><td class="py-2 px-3 pr-4 text-right font-sans"><span class="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-200">Full</span></td></tr></tbody></table></div></div>
+<!-- Sectional Performance Breakdown -->
+<div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs text-xs">
+<div class="px-4 py-2.5 bg-slate-50 border-b border-slate-200 font-bold text-slate-700 text-xs">
+              Sectional Performance Breakdown
+            </div>
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="border-b border-slate-200 text-[11px] text-slate-500 bg-slate-50/50">
+<th class="p-2.5 pl-4">Section</th>
+<th class="p-2.5">Score</th>
+<th class="p-2.5">Accuracy</th>
+<th class="p-2.5">Status</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-slate-100 font-mono text-xs">
+<tr>
+<td class="p-2.5 pl-4 font-sans text-slate-800 font-medium">Part I: Objective &amp; Definitions</td>
+<td class="p-2.5 font-bold text-emerald-600">8.0 / 10.0</td>
+<td class="p-2.5 text-slate-600">97.8%</td>
+<td class="p-2.5"><span class="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-200">Good</span></td>
+</tr>
+<tr>
+<td class="p-2.5 pl-4 font-sans text-slate-800 font-medium">Part II: Core Practical Linux Systems</td>
+<td class="p-2.5 font-bold text-amber-600">18.5 / 24.0</td>
+<td class="p-2.5 text-slate-600">92.4%</td>
+<td class="p-2.5"><span class="px-2 py-0.5 rounded bg-amber-50 text-amber-800 text-[10px] font-bold border border-amber-200">Partial</span></td>
+</tr>
+<tr>
+<td class="p-2.5 pl-4 font-sans text-slate-800 font-medium">Part III: Advanced Shell &amp; Architecture</td>
+<td class="p-2.5 font-bold text-emerald-600">20.0 / 20.0</td>
+<td class="p-2.5 text-slate-600">96.0%</td>
+<td class="p-2.5"><span class="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-200">Mastery</span></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- ==================== VIEW 3: ANALYTICS & CHARTS DEEP-DIVE ==================== -->
+<div class="h-full flex-col overflow-y-auto p-5 space-y-5 flex" id="viewAnalytics"><!-- Analytics Header Banner -->
+<div class="p-4 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-700 text-white flex items-center justify-between shadow-xs">
+<div class="space-y-1">
+<div class="flex items-center space-x-2">
+<span class="font-bold text-sm tracking-wide">Comprehensive Exam Evaluation Analytics</span>
+<span class="px-2 py-0.5 rounded-full bg-white/20 text-white font-mono text-[10px]">Sync: 19 Questions</span>
+</div>
+<p class="text-xs text-indigo-100">Deep diagnostic telemetry across Question Marks, Section Distributions, Teacher Deductions, and Question Formats.</p>
+</div>
+<div class="flex items-center space-x-2 text-xs font-mono">
+<span class="bg-white/10 px-2.5 py-1 rounded-lg border border-white/20 text-white font-medium">Score: 46.5 / 60.0 (77.5%)</span>
+<span class="bg-emerald-500/30 text-emerald-200 px-2.5 py-1 rounded-lg border border-emerald-400/30 font-semibold">Grade B+</span>
+</div>
+</div>
+<!-- Sub-Navigation Category Filter Pill Bar -->
+<div class="flex items-center justify-between border-b border-slate-200 pb-2 text-xs">
+<div class="flex items-center space-x-1.5">
+<button class="px-3 py-1 rounded-full text-xs font-semibold bg-brand-600 text-white shadow-xs transition-colors" id="btnSubAll" onclick="filterAnalyticsSection('all')">All Visualizations</button>
+<button class="px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900 transition-colors" id="btnSubMarks" onclick="filterAnalyticsSection('secMarks')">1. Question &amp; Section Marks</button>
+<button class="px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900 transition-colors" id="btnSubErrors" onclick="filterAnalyticsSection('secErrors')">2. Error &amp; Remark Diagnostics</button>
+<button class="px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900 transition-colors" id="btnSubFormats" onclick="filterAnalyticsSection('secFormats')">3. Formats &amp; Attempt Status</button>
+</div>
+<div class="flex items-center space-x-2 text-[11px] text-slate-500 font-mono">
+<span class="flex items-center space-x-1"><span class="w-2 h-2 rounded-full bg-emerald-500"></span><span>Mastered</span></span>
+<span class="flex items-center space-x-1"><span class="w-2 h-2 rounded-full bg-amber-500"></span><span>Partial</span></span>
+<span class="flex items-center space-x-1"><span class="w-2 h-2 rounded-full bg-rose-500"></span><span>Deductions</span></span>
+</div>
+</div>
+<!-- ========================================================================= -->
+<!-- GROUP 1: BASED ON QUESTION & SECTION MARKS                              -->
+<!-- ========================================================================= -->
+<div class="space-y-4" id="groupQuestionMarks">
+<div class="flex items-center justify-between pt-1">
+<div class="flex items-center space-x-2">
+<span class="w-2 h-4 bg-brand-600 rounded-sm"></span>
+<h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider">1. Question &amp; Section Marks Telemetry</h3>
+<span class="px-2 py-0.5 rounded bg-brand-50 text-brand-700 font-mono text-[10px] font-semibold border border-brand-200">Q1 to Q19 (60.0 Total Marks)</span>
+</div>
+<span class="text-[11px] text-slate-500 font-mono">Benchmarked vs Class Median 40.0</span>
+</div>
+<!-- 1.1 Vertical Column Chart: Q1 to Q19 -->
+<div class="bg-white rounded-xl border border-slate-200 p-4 shadow-xs space-y-3">
+<div class="flex items-center justify-between">
+<div>
+<h4 class="text-xs font-bold text-slate-900 flex items-center space-x-2">
+<span>Question-by-Question Marks Scored vs Max</span>
+<span class="text-[10px] font-normal text-slate-500 font-mono">(19 Questions)</span>
+</h4>
+<p class="text-[11px] text-slate-500 mt-0.5">Visual bar heights indicate obtained marks with color-coded evaluation status (Emerald = Full, Amber = Partial, Rose = Heavy Deduction).</p>
+</div>
+<div class="flex items-center space-x-3 text-[10px] font-mono">
+<div class="flex items-center space-x-1"><span class="w-2.5 h-2.5 rounded-sm bg-emerald-500"></span><span class="text-slate-600">Full (12)</span></div>
+<div class="flex items-center space-x-1"><span class="w-2.5 h-2.5 rounded-sm bg-amber-500"></span><span class="text-slate-600">Partial (5)</span></div>
+<div class="flex items-center space-x-1"><span class="w-2.5 h-2.5 rounded-sm bg-rose-500"></span><span class="text-slate-600">Deduction (2)</span></div>
+<div class="flex items-center space-x-1"><span class="w-3 border-t border-dashed border-indigo-400"></span><span class="text-indigo-600">Class Avg 68%</span></div>
+</div>
+</div>
+<!-- Chart Canvas -->
+<div class="bg-slate-50/70 border border-slate-200/80 rounded-lg p-3 pt-6 relative select-none">
+<!-- 68% Cohort Benchmark Line -->
+<div class="absolute left-9 right-3 top-[32%] border-t border-dashed border-indigo-400/80 pointer-events-none z-10 flex justify-end">
+<span class="text-[9px] font-mono text-indigo-700 bg-white/95 px-1.5 py-0.2 rounded -mt-2 border border-indigo-200 shadow-xs">Cohort Avg 68%</span>
+</div>
+<div class="absolute left-9 right-3 top-4 border-t border-slate-200/60 pointer-events-none"></div>
+<div class="absolute left-9 right-3 top-[50%] border-t border-slate-200/50 pointer-events-none"></div>
+<!-- Bars 1 to 19 -->
+<div class="flex items-end justify-between gap-1 h-36 pl-7 pr-1 relative z-20">
+<!-- Y-Axis labels -->
+<div class="absolute -left-0.5 top-0 bottom-6 flex flex-col justify-between text-[9px] font-mono text-slate-400">
+<span>100%</span>
+<span>50%</span>
+<span>0%</span>
+</div>
+<!-- Q1 (2/2) -->
+<div class="flex-1 flex flex-col items-center h-full justify-end group cursor-pointer">
+<div class="text-[9px] font-mono font-bold text-emerald-700 mb-0.5 opacity-0 group-hover:opacity-100 transition-opacity">2/2</div>
+<div class="w-full max-w-[20px] h-full flex flex-col justify-end bg-slate-200/70 rounded-t-sm overflow-hidden" title="Q1: 2.0 / 2.0 (100%)">
+<div class="w-full bg-emerald-500 rounded-t-sm" style="height: 100%;"></div>
+</div>
+<span class="text-[9px] font-mono text-slate-700 font-semibold mt-1">Q1</span>
+</div>
+<!-- Q2 (2/2) -->
+<div class="flex-1 flex flex-col items-center h-full justify-end group cursor-pointer">
+<div class="text-[9px] font-mono font-bold text-emerald-700 mb-0.5 opacity-0 group-hover:opacity-100 transition-opacity">2/2</div>
+<div class="w-full max-w-[20px] h-full flex flex-col justify-end bg-slate-200/70 rounded-t-sm overflow-hidden" title="Q2: 2.0 / 2.0 (100%)">
+<div class="w-full bg-emerald-500 rounded-t-sm" style="height: 100%;"></div>
+</div>
+<span class="text-[9px] font-mono text-slate-700 font-semibold mt-1">Q2</span>
+</div>
+<!-- Q3 (4/6) - Highlighted Current -->
+<div class="flex-1 flex flex-col items-center h-full justify-end group cursor-pointer bg-brand-50/50 rounded px-0.5">
+<div class="text-[9px] font-mono font-bold text-amber-700 mb-0.5 opacity-100 transition-opacity">4/6</div>
+<div class="w-full max-w-[20px] h-full flex flex-col justify-end bg-slate-200/70 rounded-t-sm overflow-hidden ring-2 ring-brand-500" title="Q3: 4.0 / 6.0 (67%)">
+<div class="w-full bg-amber-500 rounded-t-sm" style="height: 67%;"></div>
+</div>
+<span class="text-[9px] font-mono text-brand-700 font-bold mt-1">Q3*</span>
+</div>
+<!-- Q4 (5.5/6) -->
+<div class="flex-1 flex flex-col items-center h-full justify-end group cursor-pointer">
+<div class="text-[9px] font-mono font-bold text-emerald-700 mb-0.5 opacity-0 group-hover:opacity-100 transition-opacity">5.5/6</div>
+<div class="w-full max-w-[20px] h-full flex flex-col justify-end bg-slate-200/70 rounded-t-sm overflow-hidden" title="Q4: 5.5 / 6.0 (92%)">
+<div class="w-full bg-emerald-500 rounded-t-sm" style="height: 92%;"></div>
+</div>
+<span class="text-[9px] font-mono text-slate-700 font-semibold mt-1">Q4</span>
+</div>
+<!-- Q5 (3/6) -->
+<div class="flex-1 flex flex-col items-center h-full justify-end group cursor-pointer">
+<div class="text-[9px] font-mono font-bold text-amber-700 mb-0.5 opacity-0 group-hover:opacity-100 transition-opacity">3/6</div>
+<div class="w-full max-w-[20px] h-full flex flex-col justify-end bg-slate-200/70 rounded-t-sm overflow-hidden" title="Q5: 3.0 / 6.0 (50%)">
+<div class="w-full bg-amber-500 rounded-t-sm" style="height: 50%;"></div>
+</div>
+<span class="text-[9px] font-mono text-slate-700 font-semibold mt-1">Q5</span>
+</div>
+<!-- Q6 (1.5/6) -->
+<div class="flex-1 flex flex-col items-center h-full justify-end group cursor-pointer">
+<div class="text-[9px] font-mono font-bold text-rose-700 mb-0.5 opacity-0 group-hover:opacity-100 transition-opacity">1.5/6</div>
+<div class="w-full max-w-[20px] h-full flex flex-col justify-end bg-slate-200/70 rounded-t-sm overflow-hidden" title="Q6: 1.5 / 6.0 (25%)">
+<div class="w-full bg-rose-500 rounded-t-sm" style="height: 25%;"></div>
+</div>
+<span class="text-[9px] font-mono text-slate-700 font-semibold mt-1">Q6</span>
+</div>
+<!-- Q7 (10/10) -->
+<div class="flex-1 flex flex-col items-center h-full justify-end group cursor-pointer">
+<div class="text-[9px] font-mono font-bold text-emerald-700 mb-0.5 opacity-0 group-hover:opacity-100 transition-opacity">10/10</div>
+<div class="w-full max-w-[20px] h-full flex flex-col justify-end bg-slate-200/70 rounded-t-sm overflow-hidden" title="Q7: 10.0 / 10.0 (100%)">
+<div class="w-full bg-emerald-500 rounded-t-sm" style="height: 100%;"></div>
+</div>
+<span class="text-[9px] font-mono text-slate-700 font-semibold mt-1">Q7</span>
+</div>
+<!-- Q8 (7.5/10) -->
+<div class="flex-1 flex flex-col items-center h-full justify-end group cursor-pointer">
+<div class="text-[9px] font-mono font-bold text-emerald-700 mb-0.5 opacity-0 group-hover:opacity-100 transition-opacity">7.5/10</div>
+<div class="w-full max-w-[20px] h-full flex flex-col justify-end bg-slate-200/70 rounded-t-sm overflow-hidden" title="Q8: 7.5 / 10.0 (75%)">
+<div class="w-full bg-emerald-500 rounded-t-sm" style="height: 75%;"></div>
+</div>
+<span class="text-[9px] font-mono text-slate-700 font-semibold mt-1">Q8</span>
+</div>
+<!-- Q9 (3.5/5) -->
+<div class="flex-1 flex flex-col items-center h-full justify-end group cursor-pointer">
+<div class="text-[9px] font-mono font-bold text-emerald-700 mb-0.5 opacity-0 group-hover:opacity-100 transition-opacity">3.5/5</div>
+<div class="w-full max-w-[20px] h-full flex flex-col justify-end bg-slate-200/70 rounded-t-sm overflow-hidden" title="Q9: 3.5 / 5.0 (70%)">
+<div class="w-full bg-emerald-500 rounded-t-sm" style="height: 70%;"></div>
+</div>
+<span class="text-[9px] font-mono text-slate-700 font-semibold mt-1">Q9</span>
+</div>
+<!-- Q10 (7/9) -->
+<div class="flex-1 flex flex-col items-center h-full justify-end group cursor-pointer">
+<div class="text-[9px] font-mono font-bold text-emerald-700 mb-0.5 opacity-0 group-hover:opacity-100 transition-opacity">7/9</div>
+<div class="w-full max-w-[20px] h-full flex flex-col justify-end bg-slate-200/70 rounded-t-sm overflow-hidden" title="Q10: 7.0 / 9.0 (78%)">
+<div class="w-full bg-emerald-500 rounded-t-sm" style="height: 78%;"></div>
+</div>
+<span class="text-[9px] font-mono text-slate-700 font-semibold mt-1">Q10</span>
+</div>
+<!-- Q11 (1/1) -->
+<div class="flex-1 flex flex-col items-center h-full justify-end group cursor-pointer">
+<div class="text-[9px] font-mono font-bold text-emerald-700 mb-0.5 opacity-0 group-hover:opacity-100 transition-opacity">1/1</div>
+<div class="w-full max-w-[20px] h-full flex flex-col justify-end bg-slate-200/70 rounded-t-sm overflow-hidden" title="Q11: 1.0 / 1.0 (100%)">
+<div class="w-full bg-emerald-500 rounded-t-sm" style="height: 100%;"></div>
+</div>
+<span class="text-[9px] font-mono text-slate-700 font-semibold mt-1">Q11</span>
+</div>
+<!-- Q12 (1/1) -->
+<div class="flex-1 flex flex-col items-center h-full justify-end group cursor-pointer">
+<div class="text-[9px] font-mono font-bold text-emerald-700 mb-0.5 opacity-0 group-hover:opacity-100 transition-opacity">1/1</div>
+<div class="w-full max-w-[20px] h-full flex flex-col justify-end bg-slate-200/70 rounded-t-sm overflow-hidden" title="Q12: 1.0 / 1.0 (100%)">
+<div class="w-full bg-emerald-500 rounded-t-sm" style="height: 100%;"></div>
+</div>
+<span class="text-[9px] font-mono text-slate-700 font-semibold mt-1">Q12</span>
+</div>
+<!-- Q13 (1/1) -->
+<div class="flex-1 flex flex-col items-center h-full justify-end group cursor-pointer">
+<div class="text-[9px] font-mono font-bold text-emerald-700 mb-0.5 opacity-0 group-hover:opacity-100 transition-opacity">1/1</div>
+<div class="w-full max-w-[20px] h-full flex flex-col justify-end bg-slate-200/70 rounded-t-sm overflow-hidden" title="Q13: 1.0 / 1.0 (100%)">
+<div class="w-full bg-emerald-500 rounded-t-sm" style="height: 100%;"></div>
+</div>
+<span class="text-[9px] font-mono text-slate-700 font-semibold mt-1">Q13</span>
+</div>
+<!-- Q14 (1/1) -->
+<div class="flex-1 flex flex-col items-center h-full justify-end group cursor-pointer">
+<div class="text-[9px] font-mono font-bold text-emerald-700 mb-0.5 opacity-0 group-hover:opacity-100 transition-opacity">1/1</div>
+<div class="w-full max-w-[20px] h-full flex flex-col justify-end bg-slate-200/70 rounded-t-sm overflow-hidden" title="Q14: 1.0 / 1.0 (100%)">
+<div class="w-full bg-emerald-500 rounded-t-sm" style="height: 100%;"></div>
+</div>
+<span class="text-[9px] font-mono text-slate-700 font-semibold mt-1">Q14</span>
+</div>
+<!-- Q15 (2.5/3) -->
+<div class="flex-1 flex flex-col items-center h-full justify-end group cursor-pointer">
+<div class="text-[9px] font-mono font-bold text-emerald-700 mb-0.5 opacity-0 group-hover:opacity-100 transition-opacity">2.5/3</div>
+<div class="w-full max-w-[20px] h-full flex flex-col justify-end bg-slate-200/70 rounded-t-sm overflow-hidden" title="Q15: 2.5 / 3.0 (83%)">
+<div class="w-full bg-emerald-500 rounded-t-sm" style="height: 83%;"></div>
+</div>
+<span class="text-[9px] font-mono text-slate-700 font-semibold mt-1">Q15</span>
+</div>
+<!-- Q16 (2/3) -->
+<div class="flex-1 flex flex-col items-center h-full justify-end group cursor-pointer">
+<div class="text-[9px] font-mono font-bold text-amber-700 mb-0.5 opacity-0 group-hover:opacity-100 transition-opacity">2/3</div>
+<div class="w-full max-w-[20px] h-full flex flex-col justify-end bg-slate-200/70 rounded-t-sm overflow-hidden" title="Q16: 2.0 / 3.0 (67%)">
+<div class="w-full bg-amber-500 rounded-t-sm" style="height: 67%;"></div>
+</div>
+<span class="text-[9px] font-mono text-slate-700 font-semibold mt-1">Q16</span>
+</div>
+<!-- Q17 (1/3) -->
+<div class="flex-1 flex flex-col items-center h-full justify-end group cursor-pointer">
+<div class="text-[9px] font-mono font-bold text-rose-700 mb-0.5 opacity-0 group-hover:opacity-100 transition-opacity">1/3</div>
+<div class="w-full max-w-[20px] h-full flex flex-col justify-end bg-slate-200/70 rounded-t-sm overflow-hidden" title="Q17: 1.0 / 3.0 (33%)">
+<div class="w-full bg-rose-500 rounded-t-sm" style="height: 33%;"></div>
+</div>
+<span class="text-[9px] font-mono text-slate-700 font-semibold mt-1">Q17</span>
+</div>
+<!-- Q18 (2/3) -->
+<div class="flex-1 flex flex-col items-center h-full justify-end group cursor-pointer">
+<div class="text-[9px] font-mono font-bold text-amber-700 mb-0.5 opacity-0 group-hover:opacity-100 transition-opacity">2/3</div>
+<div class="w-full max-w-[20px] h-full flex flex-col justify-end bg-slate-200/70 rounded-t-sm overflow-hidden" title="Q18: 2.0 / 3.0 (67%)">
+<div class="w-full bg-amber-500 rounded-t-sm" style="height: 67%;"></div>
+</div>
+<span class="text-[9px] font-mono text-slate-700 font-semibold mt-1">Q18</span>
+</div>
+<!-- Q19 (3/3) -->
+<div class="flex-1 flex flex-col items-center h-full justify-end group cursor-pointer">
+<div class="text-[9px] font-mono font-bold text-emerald-700 mb-0.5 opacity-0 group-hover:opacity-100 transition-opacity">3/3</div>
+<div class="w-full max-w-[20px] h-full flex flex-col justify-end bg-slate-200/70 rounded-t-sm overflow-hidden" title="Q19: 3.0 / 3.0 (100%)">
+<div class="w-full bg-emerald-500 rounded-t-sm" style="height: 100%;"></div>
+</div>
+<span class="text-[9px] font-mono text-slate-700 font-semibold mt-1">Q19</span>
+</div>
+</div>
+</div>
+</div>
+<!-- 1.2 & 1.3 Two-Column Row: Donut Split (60 Marks) & Horizontal Section Performance -->
+<div class="grid grid-cols-2 gap-4">
+<!-- 1.2 Donut Chart: Total Marks Split (Scored 46.5 vs Lost 13.5) -->
+<div class="p-4 rounded-xl bg-white border border-slate-200 shadow-xs space-y-3">
+<div class="flex items-center justify-between">
+<h4 class="text-xs font-bold text-slate-900 uppercase tracking-wider">Total Marks Distribution Split</h4>
+<span class="text-[10px] font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded">Max 60.0 M</span>
+</div>
+<p class="text-xs text-slate-500">Evaluation ratio between earned points and deductions across entire paper.</p>
+<div class="flex items-center justify-center gap-6 pt-2">
+<!-- SVG Donut Chart (Circumference ~ 314.16, r=50) -->
+<div class="relative w-32 h-32 shrink-0 flex items-center justify-center">
+<svg class="w-32 h-32 -rotate-90" viewbox="0 0 120 120">
+<!-- Background Track -->
+<circle cx="60" cy="60" fill="transparent" r="48" stroke="#F1F5F9" stroke-width="14"></circle>
+<!-- Marks Scored: 77.5% of 301.59 = 233.73 -->
+<circle cx="60" cy="60" fill="transparent" r="48" stroke="#4F46E5" stroke-dasharray="233.73 301.59" stroke-dashoffset="0" stroke-linecap="round" stroke-width="14"></circle>
+<!-- Marks Lost: 22.5% of 301.59 = 67.86 -->
+<circle cx="60" cy="60" fill="transparent" r="48" stroke="#F43F5E" stroke-dasharray="67.86 301.59" stroke-dashoffset="-233.73" stroke-linecap="round" stroke-width="14"></circle>
+</svg>
+<!-- Donut Hole Text -->
+<div class="absolute flex flex-col items-center justify-center text-center">
+<span class="text-xl font-mono font-bold text-slate-900 leading-none">46.5</span>
+<span class="text-[10px] font-mono text-slate-400 mt-0.5">/ 60.0 M</span>
+<span class="text-[9px] font-bold text-brand-600">77.5%</span>
+</div>
+</div>
+<!-- Legend Details -->
+<div class="space-y-2 text-xs font-mono flex-1">
+<div class="p-2 rounded-lg bg-indigo-50/50 border border-indigo-100 flex items-center justify-between">
+<div class="flex items-center space-x-2">
+<span class="w-2.5 h-2.5 rounded-full bg-brand-600"></span>
+<span class="font-sans text-slate-700 font-medium">Marks Scored</span>
+</div>
+<div class="text-right">
+<div class="font-bold text-brand-700">46.5 M</div>
+<div class="text-[10px] text-slate-500">77.5%</div>
+</div>
+</div>
+<div class="p-2 rounded-lg bg-rose-50/50 border border-rose-100 flex items-center justify-between">
+<div class="flex items-center space-x-2">
+<span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+<span class="font-sans text-slate-700 font-medium">Marks Lost</span>
+</div>
+<div class="text-right">
+<div class="font-bold text-rose-600">13.5 M</div>
+<div class="text-[10px] text-slate-500">22.5%</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- 1.3 Horizontal Bar Chart: Grouped by Section A, B, C -->
+<div class="p-4 rounded-xl bg-white border border-slate-200 shadow-xs space-y-3">
+<div class="flex items-center justify-between">
+<h4 class="text-xs font-bold text-slate-900 uppercase tracking-wider">Sectional Marks Breakdown</h4>
+<span class="text-[10px] font-mono text-slate-500">3 Exam Sections</span>
+</div>
+<p class="text-xs text-slate-500">Performance comparison across Section A (Fundamentals), Section B (Core Practical), and Section C (Advanced).</p>
+<div class="space-y-3 pt-1 text-xs">
+<!-- Section A -->
+<div class="space-y-1.5">
+<div class="flex justify-between items-center">
+<span class="font-medium text-slate-800 font-sans">Sec A: Fundamentals &amp; Architecture</span>
+<div class="space-x-1 font-mono text-xs">
+<span class="font-bold text-emerald-600">8.0 / 10.0 M</span>
+<span class="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-1 py-0.2 rounded border border-emerald-200">80.0%</span>
+</div>
+</div>
+<div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden flex">
+<div class="bg-emerald-500 h-full rounded-full" style="width: 80.0%;"></div>
+</div>
+<div class="flex justify-between text-[10px] text-slate-400 font-mono">
+<span>Q1, Q2, Q11-Q14 · 6 Questions</span>
+<span class="text-rose-500">-2.0 M lost</span>
+</div>
+</div>
+<!-- Section B -->
+<div class="space-y-1.5">
+<div class="flex justify-between items-center">
+<span class="font-medium text-slate-800 font-sans">Sec B: Core Shell &amp; Permissions</span>
+<div class="space-x-1 font-mono text-xs">
+<span class="font-bold text-amber-600">18.5 / 24.0 M</span>
+<span class="text-[10px] text-amber-800 font-bold bg-amber-50 px-1 py-0.2 rounded border border-amber-200">77.1%</span>
+</div>
+</div>
+<div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden flex">
+<div class="bg-amber-500 h-full rounded-full" style="width: 77.1%;"></div>
+</div>
+<div class="flex justify-between text-[10px] text-slate-400 font-mono">
+<span>Q3, Q4, Q5, Q15-Q18 · 7 Questions</span>
+<span class="text-rose-500">-5.5 M lost</span>
+</div>
+</div>
+<!-- Section C -->
+<div class="space-y-1.5">
+<div class="flex justify-between items-center">
+<span class="font-medium text-slate-800 font-sans">Sec C: Advanced Inodes &amp; POSIX Calls</span>
+<div class="space-x-1 font-mono text-xs">
+<span class="font-bold text-brand-600">20.0 / 26.0 M</span>
+<span class="text-[10px] text-brand-700 font-bold bg-brand-50 px-1 py-0.2 rounded border border-brand-200">76.9%</span>
+</div>
+</div>
+<div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden flex">
+<div class="bg-brand-600 h-full rounded-full" style="width: 76.9%;"></div>
+</div>
+<div class="flex justify-between text-[10px] text-slate-400 font-mono">
+<span>Q6, Q7, Q8, Q9, Q10, Q19 · 6 Questions</span>
+<span class="text-rose-500">-6.0 M lost</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- ========================================================================= -->
+<!-- GROUP 2: BASED ON TEACHER REMARKS & ERROR TYPES                         -->
+<!-- ========================================================================= -->
+<div class="space-y-4 pt-2" id="groupTeacherRemarks">
+<div class="flex items-center justify-between pt-1">
+<div class="flex items-center space-x-2">
+<span class="w-2 h-4 bg-rose-500 rounded-sm"></span>
+<h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider">2. Teacher Deductions &amp; Error Taxonomy</h3>
+<span class="px-2 py-0.5 rounded bg-rose-50 text-rose-700 font-mono text-[10px] font-semibold border border-rose-200">13.5 Total Marks Lost</span>
+</div>
+<span class="text-[11px] text-slate-500 font-mono">Extracted from Teacher Annotations &amp; Rubrics</span>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<!-- 2.1 Donut Chart: Categorize Lost Marks -->
+<div class="p-4 rounded-xl bg-white border border-slate-200 shadow-xs space-y-3">
+<div class="flex items-center justify-between">
+<h4 class="text-xs font-bold text-slate-900 uppercase tracking-wider">Deductions by Error Category</h4>
+<span class="text-[10px] font-mono text-rose-600 font-bold bg-rose-50 px-2 py-0.5 rounded border border-rose-200">-13.5 M</span>
+</div>
+<p class="text-xs text-slate-500">Proportion of marks lost classified from handwritten red annotations and AI grading rubrics.</p>
+<div class="flex items-center justify-center gap-6 pt-2">
+<!-- Multi-segment SVG Donut Chart (Circumference 301.59, r=48) -->
+<div class="relative w-32 h-32 shrink-0 flex items-center justify-center">
+<svg class="w-32 h-32 -rotate-90" viewbox="0 0 120 120">
+<circle cx="60" cy="60" fill="transparent" r="48" stroke="#F1F5F9" stroke-width="14"></circle>
+<!-- Conceptual: 44.4% = 133.9 M stroke -->
+<circle cx="60" cy="60" fill="transparent" r="48" stroke="#E11D48" stroke-dasharray="133.9 301.59" stroke-dashoffset="0" stroke-linecap="round" stroke-width="14"></circle>
+<!-- Incomplete: 29.6% = 89.3 M stroke -->
+<circle cx="60" cy="60" fill="transparent" r="48" stroke="#F59E0B" stroke-dasharray="89.3 301.59" stroke-dashoffset="-133.9" stroke-linecap="round" stroke-width="14"></circle>
+<!-- Calculation/Syntax: 14.8% = 44.6 M stroke -->
+<circle cx="60" cy="60" fill="transparent" r="48" stroke="#6366F1" stroke-dasharray="44.6 301.59" stroke-dashoffset="-223.2" stroke-linecap="round" stroke-width="14"></circle>
+<!-- Diagram/POSIX: 11.2% = 33.8 M stroke -->
+<circle cx="60" cy="60" fill="transparent" r="48" stroke="#94A3B8" stroke-dasharray="33.8 301.59" stroke-dashoffset="-267.8" stroke-linecap="round" stroke-width="14"></circle>
+</svg>
+<div class="absolute flex flex-col items-center justify-center text-center">
+<span class="text-lg font-mono font-bold text-rose-600 leading-none">-13.5</span>
+<span class="text-[9px] font-mono text-slate-400 mt-0.5">Marks Lost</span>
+<span class="text-[8px] font-bold text-slate-500">100% Errors</span>
+</div>
+</div>
+<!-- Category List -->
+<div class="space-y-1.5 text-[11px] font-mono flex-1">
+<div class="flex items-center justify-between p-1.5 rounded bg-rose-50/50 border border-rose-100">
+<div class="flex items-center space-x-1.5">
+<span class="w-2 h-2 rounded-full bg-rose-600"></span>
+<span class="font-sans text-slate-800 font-medium">Conceptual Mistakes</span>
+</div>
+<span class="font-bold text-rose-700">6.0M (44.4%)</span>
+</div>
+<div class="flex items-center justify-between p-1.5 rounded bg-amber-50/50 border border-amber-100">
+<div class="flex items-center space-x-1.5">
+<span class="w-2 h-2 rounded-full bg-amber-500"></span>
+<span class="font-sans text-slate-800 font-medium">Incomplete Steps</span>
+</div>
+<span class="font-bold text-amber-700">4.0M (29.6%)</span>
+</div>
+<div class="flex items-center justify-between p-1.5 rounded bg-indigo-50/50 border border-indigo-100">
+<div class="flex items-center space-x-1.5">
+<span class="w-2 h-2 rounded-full bg-indigo-500"></span>
+<span class="font-sans text-slate-800 font-medium">Syntax / Calculation</span>
+</div>
+<span class="font-bold text-indigo-700">2.0M (14.8%)</span>
+</div>
+<div class="flex items-center justify-between p-1.5 rounded bg-slate-50 border border-slate-200">
+<div class="flex items-center space-x-1.5">
+<span class="w-2 h-2 rounded-full bg-slate-400"></span>
+<span class="font-sans text-slate-800 font-medium">POSIX Terminology</span>
+</div>
+<span class="font-bold text-slate-600">1.5M (11.1%)</span>
+</div>
+</div>
+</div>
+</div>
+<!-- 2.2 Pareto Chart: Ranked Errors with Cumulative % Line -->
+<div class="p-4 rounded-xl bg-white border border-slate-200 shadow-xs space-y-3">
+<div class="flex items-center justify-between">
+<div class="flex items-center space-x-2">
+<h4 class="text-xs font-bold text-slate-900 uppercase tracking-wider">Pareto Error Analysis (80/20 Rule)</h4>
+<span class="px-1.5 py-0.2 rounded bg-amber-50 text-amber-800 font-mono text-[9px] font-bold border border-amber-200">Top Issue: Shell Binaries</span>
+</div>
+<span class="text-[10px] font-mono text-indigo-600 font-semibold">Line: Cumulative %</span>
+</div>
+<p class="text-xs text-slate-500">Prioritizes where mark loss was concentrated. Top 2 issues caused 74% of all deductions.</p>
+<!-- Pareto SVG Chart -->
+<div class="bg-slate-50/80 border border-slate-200 rounded-lg p-3 pt-4 relative">
+<svg class="w-full h-36" viewbox="0 0 380 140">
+<!-- Horizontal Grid Lines -->
+<line stroke="#E2E8F0" stroke-dasharray="3 3" x1="30" x2="350" y1="20" y2="20"></line>
+<line stroke="#E2E8F0" stroke-dasharray="3 3" x1="30" x2="350" y1="60" y2="60"></line>
+<line stroke="#E2E8F0" stroke-dasharray="3 3" x1="30" x2="350" y1="100" y2="100"></line>
+<line stroke="#CBD5E1" stroke-width="1.5" x1="30" x2="350" y1="120" y2="120"></line>
+<!-- Left Y-Axis labels (Marks 0 to 7) -->
+<text fill="#94A3B8" font-family="JetBrains Mono" font-size="8" text-anchor="end" x="24" y="24">6.0M</text>
+<text fill="#94A3B8" font-family="JetBrains Mono" font-size="8" text-anchor="end" x="24" y="64">4.0M</text>
+<text fill="#94A3B8" font-family="JetBrains Mono" font-size="8" text-anchor="end" x="24" y="104">2.0M</text>
+<text fill="#94A3B8" font-family="JetBrains Mono" font-size="8" text-anchor="end" x="24" y="122">0</text>
+<!-- Right Y-Axis labels (Cumulative %) -->
+<text fill="#6366F1" font-family="JetBrains Mono" font-size="8" text-anchor="start" x="356" y="24">100%</text>
+<text fill="#6366F1" font-family="JetBrains Mono" font-size="8" text-anchor="start" x="356" y="64">74%</text>
+<text fill="#6366F1" font-family="JetBrains Mono" font-size="8" text-anchor="start" x="356" y="104">44%</text>
+<!-- 80% Threshold Reference Line -->
+<line stroke="#A5B4FC" stroke-dasharray="2 2" stroke-width="1" x1="30" x2="350" y1="40" y2="40"></line>
+<text fill="#6366F1" font-family="JetBrains Mono" font-size="8" text-anchor="end" x="330" y="36">80% Cutoff</text>
+<!-- Bar 1: Conceptual Mistakes (6.0 M) -->
+<rect class="opacity-90 hover:opacity-100 transition-opacity" fill="#F43F5E" height="96" rx="2" width="46" x="55" y="24"></rect>
+<text fill="#E11D48" font-family="JetBrains Mono" font-size="8" font-weight="bold" text-anchor="middle" x="78" y="20">6.0 M</text>
+<text fill="#475569" font-family="Noto Sans" font-size="8" font-weight="600" text-anchor="middle" x="78" y="132">Conceptual</text>
+<!-- Bar 2: Incomplete Steps (4.0 M) -->
+<rect class="opacity-90 hover:opacity-100 transition-opacity" fill="#F59E0B" height="64" rx="2" width="46" x="135" y="56"></rect>
+<text fill="#D97706" font-family="JetBrains Mono" font-size="8" font-weight="bold" text-anchor="middle" x="158" y="52">4.0 M</text>
+<text fill="#475569" font-family="Noto Sans" font-size="8" font-weight="600" text-anchor="middle" x="158" y="132">Incomplete</text>
+<!-- Bar 3: Syntax & Flags (2.0 M) -->
+<rect class="opacity-90 hover:opacity-100 transition-opacity" fill="#6366F1" height="32" rx="2" width="46" x="215" y="88"></rect>
+<text fill="#4F46E5" font-family="JetBrains Mono" font-size="8" font-weight="bold" text-anchor="middle" x="238" y="84">2.0 M</text>
+<text fill="#475569" font-family="Noto Sans" font-size="8" font-weight="600" text-anchor="middle" x="238" y="132">Syntax</text>
+<!-- Bar 4: Diagrams & POSIX (1.5 M) -->
+<rect class="opacity-90 hover:opacity-100 transition-opacity" fill="#94A3B8" height="24" rx="2" width="46" x="295" y="96"></rect>
+<text fill="#64748B" font-family="JetBrains Mono" font-size="8" font-weight="bold" text-anchor="middle" x="318" y="92">1.5 M</text>
+<text fill="#475569" font-family="Noto Sans" font-size="8" font-weight="600" text-anchor="middle" x="318" y="132">Terminology</text>
+<!-- Cumulative % Line: 44.4% (y=76), 74.0% (y=46), 88.8% (y=31), 100% (y=20) -->
+<polyline fill="none" points="78,76 158,46 238,31 318,20" stroke="#4F46E5" stroke-width="2"></polyline>
+<!-- Cumulative Points -->
+<circle cx="78" cy="76" fill="#4F46E5" r="3.5" stroke="#FFFFFF" stroke-width="1.5"></circle>
+<text fill="#4338CA" font-family="JetBrains Mono" font-size="8" font-weight="bold" x="84" y="72">44.4%</text>
+<circle cx="158" cy="46" fill="#4F46E5" r="3.5" stroke="#FFFFFF" stroke-width="1.5"></circle>
+<text fill="#4338CA" font-family="JetBrains Mono" font-size="8" font-weight="bold" x="164" y="42">74.0%</text>
+<circle cx="238" cy="31" fill="#4F46E5" r="3.5" stroke="#FFFFFF" stroke-width="1.5"></circle>
+<text fill="#4338CA" font-family="JetBrains Mono" font-size="8" font-weight="bold" x="244" y="27">88.8%</text>
+<circle cx="318" cy="20" fill="#4F46E5" r="3.5" stroke="#FFFFFF" stroke-width="1.5"></circle>
+<text fill="#4338CA" font-family="JetBrains Mono" font-size="8" font-weight="bold" x="306" y="14">100%</text>
+</svg>
+</div>
+<!-- Root Cause Callout -->
+<div class="p-2.5 rounded-lg bg-amber-50/70 border border-amber-200 flex items-start justify-between text-xs">
+<div class="space-y-0.5">
+<span class="font-bold text-amber-900">#1 Identified Critical Weakness:</span>
+<p class="text-amber-800 text-[11px]">Conceptual Misclassification in Shell Built-ins vs Binaries (Q3, Q6 - lost 4.5 marks alone due to informal analogies instead of POSIX fork/exec mechanics).</p>
+</div>
+<span class="px-2 py-0.5 rounded bg-amber-200/80 text-amber-900 font-mono text-[10px] font-bold shrink-0">Priority 1</span>
+</div>
+</div>
+</div>
+</div>
+<!-- ========================================================================= -->
+<!-- GROUP 3: BASED ON QUESTION FORMAT & ATTEMPT STATUS                      -->
+<!-- ========================================================================= -->
+<div class="space-y-4 pt-2" id="groupQuestionFormats">
+<div class="flex items-center justify-between pt-1">
+<div class="flex items-center space-x-2">
+<span class="w-2 h-4 bg-emerald-500 rounded-sm"></span>
+<h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider">3. Question Format &amp; Attempt Performance</h3>
+<span class="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 font-mono text-[10px] font-semibold border border-emerald-200">100% Paper Attempted</span>
+</div>
+<span class="text-[11px] text-slate-500 font-mono">Format Accuracy &amp; Question Completion</span>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<!-- 3.1 100% Stacked Bar Chart across Question Formats -->
+<div class="p-4 rounded-xl bg-white border border-slate-200 shadow-xs space-y-3">
+<div class="flex items-center justify-between">
+<h4 class="text-xs font-bold text-slate-900 uppercase tracking-wider">Marks Earned vs Lost by Question Format</h4>
+<div class="flex items-center space-x-2 text-[10px] font-mono">
+<span class="flex items-center space-x-1"><span class="w-2 h-2 rounded bg-emerald-500"></span><span class="text-slate-600">Earned %</span></span>
+<span class="flex items-center space-x-1"><span class="w-2 h-2 rounded bg-rose-500"></span><span class="text-slate-600">Lost %</span></span>
+</div>
+</div>
+<p class="text-xs text-slate-500">100% stacked representation demonstrating how question types impacted score yield.</p>
+<div class="space-y-3 pt-1 text-xs">
+<!-- Objective / MCQs: 100% earned, 0% lost -->
+<div class="space-y-1.5">
+<div class="flex justify-between font-medium text-slate-800">
+<span>Objective &amp; Definition MCQs</span>
+<span class="font-mono font-bold text-emerald-600">100% Earned <span class="text-slate-400 font-normal">(6.0/6.0 M)</span></span>
+</div>
+<div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden flex">
+<div class="bg-emerald-500 h-full" style="width: 100%;" title="100% Earned"></div>
+</div>
+</div>
+<!-- Short Answer: 82% earned, 18% lost -->
+<div class="space-y-1.5">
+<div class="flex justify-between font-medium text-slate-800">
+<span>Short Answer Questions</span>
+<span class="font-mono font-bold text-emerald-600">82.0% Earned <span class="text-slate-400 font-normal">(16.4/20.0 M)</span></span>
+</div>
+<div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden flex">
+<div class="bg-emerald-500 h-full" style="width: 82.0%;" title="82% Earned"></div>
+<div class="bg-rose-500 h-full" style="width: 18.0%;" title="18% Lost (-3.6 M)"></div>
+</div>
+</div>
+<!-- Long Descriptive Answers: 65% earned, 35% lost -->
+<div class="space-y-1.5">
+<div class="flex justify-between font-medium text-slate-800">
+<span>Long Descriptive Answers</span>
+<span class="font-mono font-bold text-amber-600">65.0% Earned <span class="text-slate-400 font-normal">(15.6/24.0 M)</span></span>
+</div>
+<div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden flex">
+<div class="bg-amber-500 h-full" style="width: 65.0%;" title="65% Earned"></div>
+<div class="bg-rose-500 h-full" style="width: 35.0%;" title="35% Lost (-8.4 M)"></div>
+</div>
+</div>
+<!-- Diagram / Scripting Questions: 60% earned, 40% lost -->
+<div class="space-y-1.5">
+<div class="flex justify-between font-medium text-slate-800">
+<span>Diagram &amp; Scripting Questions</span>
+<span class="font-mono font-bold text-amber-600">60.0% Earned <span class="text-slate-400 font-normal">(6.0/10.0 M)</span></span>
+</div>
+<div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden flex">
+<div class="bg-amber-500 h-full" style="width: 60.0%;" title="60% Earned"></div>
+<div class="bg-rose-500 h-full" style="width: 40.0%;" title="40% Lost (-4.0 M)"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- 3.2 Question Attempt Status Donut & Breakdown -->
+<div class="p-4 rounded-xl bg-white border border-slate-200 shadow-xs space-y-3">
+<div class="flex items-center justify-between">
+<h4 class="text-xs font-bold text-slate-900 uppercase tracking-wider">Attempt &amp; Accuracy Breakdown</h4>
+<span class="text-[10px] font-mono text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">19/19 Attempted</span>
+</div>
+<p class="text-xs text-slate-500">Distribution of 19 attempted questions by teacher award accuracy category.</p>
+<div class="flex items-center justify-center gap-6 pt-2">
+<!-- Donut for 19 Questions: 12 Full (63.2%), 5 Partial (26.3%), 2 Deduction (10.5%) -->
+<div class="relative w-32 h-32 shrink-0 flex items-center justify-center">
+<svg class="w-32 h-32 -rotate-90" viewbox="0 0 120 120">
+<circle cx="60" cy="60" fill="transparent" r="48" stroke="#F1F5F9" stroke-width="14"></circle>
+<!-- 12 Fully Correct: 63.2% of 301.59 = 190.6 -->
+<circle cx="60" cy="60" fill="transparent" r="48" stroke="#10B981" stroke-dasharray="190.6 301.59" stroke-dashoffset="0" stroke-linecap="round" stroke-width="14"></circle>
+<!-- 5 Partial: 26.3% of 301.59 = 79.3 -->
+<circle cx="60" cy="60" fill="transparent" r="48" stroke="#F59E0B" stroke-dasharray="79.3 301.59" stroke-dashoffset="-190.6" stroke-linecap="round" stroke-width="14"></circle>
+<!-- 2 Wrong/Major Deductions: 10.5% of 301.59 = 31.7 -->
+<circle cx="60" cy="60" fill="transparent" r="48" stroke="#F43F5E" stroke-dasharray="31.7 301.59" stroke-dashoffset="-269.9" stroke-linecap="round" stroke-width="14"></circle>
+</svg>
+<div class="absolute flex flex-col items-center justify-center text-center">
+<span class="text-xl font-mono font-bold text-slate-900 leading-none">19</span>
+<span class="text-[9px] font-mono text-slate-400 mt-0.5">Questions</span>
+<span class="text-[8px] font-bold text-emerald-600">100% Done</span>
+</div>
+</div>
+<!-- Status Breakdown List -->
+<div class="space-y-1.5 text-xs font-mono flex-1">
+<div class="flex items-center justify-between p-1.5 rounded bg-emerald-50/50 border border-emerald-100">
+<div class="flex items-center space-x-1.5">
+<span class="w-2.5 h-2.5 rounded-sm bg-emerald-500"></span>
+<span class="font-sans text-slate-800 font-medium text-[11px]">Fully Correct</span>
+</div>
+<span class="font-bold text-emerald-700">12 Qs (63.2%)</span>
+</div>
+<div class="flex items-center justify-between p-1.5 rounded bg-amber-50/50 border border-amber-100">
+<div class="flex items-center space-x-1.5">
+<span class="w-2.5 h-2.5 rounded-sm bg-amber-500"></span>
+<span class="font-sans text-slate-800 font-medium text-[11px]">Partially Correct</span>
+</div>
+<span class="font-bold text-amber-700">5 Qs (26.3%)</span>
+</div>
+<div class="flex items-center justify-between p-1.5 rounded bg-rose-50/50 border border-rose-100">
+<div class="flex items-center space-x-1.5">
+<span class="w-2.5 h-2.5 rounded-sm bg-rose-500"></span>
+<span class="font-sans text-slate-800 font-medium text-[11px]">Major Deductions</span>
+</div>
+<span class="font-bold text-rose-600">2 Qs (10.5%)</span>
+</div>
+<div class="flex items-center justify-between p-1.5 rounded bg-slate-50 border border-slate-200">
+<div class="flex items-center space-x-1.5">
+<span class="w-2.5 h-2.5 rounded-sm bg-slate-300"></span>
+<span class="font-sans text-slate-600 font-medium text-[11px]">Unattempted</span>
+</div>
+<span class="font-bold text-slate-500">0 Qs (0.0%)</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Interactive Sub-Tab Filtering Script -->
+<script>
+  function filterAnalyticsSection(target) {
+    const secMarks = document.getElementById('groupQuestionMarks');
+    const secErrors = document.getElementById('groupTeacherRemarks');
+    const secFormats = document.getElementById('groupQuestionFormats');
+    const btnAll = document.getElementById('btnSubAll');
+    const btnMarks = document.getElementById('btnSubMarks');
+    const btnErrors = document.getElementById('btnSubErrors');
+    const btnFormats = document.getElementById('btnSubFormats');
+
+    const activePill = 'px-3 py-1 rounded-full text-xs font-semibold bg-brand-600 text-white shadow-xs transition-colors';
+    const inactivePill = 'px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900 transition-colors';
+
+    btnAll.className = inactivePill;
+    btnMarks.className = inactivePill;
+    btnErrors.className = inactivePill;
+    btnFormats.className = inactivePill;
+
+    if (target === 'all') {
+      secMarks.style.display = 'block';
+      secErrors.style.display = 'block';
+      secFormats.style.display = 'block';
+      btnAll.className = activePill;
+    } else if (target === 'secMarks') {
+      secMarks.style.display = 'block';
+      secErrors.style.display = 'none';
+      secFormats.style.display = 'none';
+      btnMarks.className = activePill;
+    } else if (target === 'secErrors') {
+      secMarks.style.display = 'none';
+      secErrors.style.display = 'block';
+      secFormats.style.display = 'none';
+      btnErrors.className = activePill;
+    } else if (target === 'secFormats') {
+      secMarks.style.display = 'none';
+      secErrors.style.display = 'none';
+      secFormats.style.display = 'block';
+      btnFormats.className = activePill;
+    }
+  }
+</script></div>
+</div>
+</section>
+</main>
+<!-- ============================================== -->
+<!-- 3. BOTTOM ACTION BAR (56px height, locked)     -->
+<!-- ============================================== -->
+<footer class="h-14 bg-white border-t border-[#E2E8F0] px-6 flex items-center justify-between shrink-0 z-30" style="height: 56px; min-height: 56px; max-height: 56px; flex-shrink: 0;">
+<!-- Left: Back Button & Subtle Sheet Counter -->
+<div class="flex items-center space-x-3 text-xs">
+<button class="px-3 py-1.5 rounded-lg text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-200 font-medium flex items-center space-x-1.5 transition-colors" type="button">
+<svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M15 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<span>Back to Evaluate</span>
+</button>
+<span class="text-slate-400 font-mono">Sheet 4 of 42</span>
+</div>
+<!-- Right: Action Buttons -->
+<div class="flex items-center space-x-2 text-xs">
+<button class="px-3 py-1.5 rounded-lg text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-200 font-medium flex items-center space-x-1.5 transition-colors" type="button">
+<svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<span>Download Excel (.xlsx)</span>
+</button>
+<button class="px-3 py-1.5 rounded-lg text-brand-600 hover:text-brand-700 bg-brand-50 hover:bg-brand-100 border border-brand-200 font-medium flex items-center space-x-1.5 transition-colors" type="button">
+<svg class="w-3.5 h-3.5 text-brand-600" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<span>Download PDF Report</span>
+</button>
+<button class="px-4 py-1.5 rounded-lg text-white bg-brand-600 hover:bg-brand-700 font-semibold shadow-xs flex items-center space-x-1.5 transition-colors" type="button">
+<span>Next Sheet</span>
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</button>
+</div>
+</footer>
+<!-- Interactive Tab Script -->
+<script>
+    function switchReportTab(tab) {
+      const viewQuestionWise = document.getElementById('viewQuestionWise');
+      const viewOverview = document.getElementById('viewOverview');
+      const viewAnalytics = document.getElementById('viewAnalytics');
+      const btnQuestionWise = document.getElementById('tabBtnQuestionWise');
+      const btnOverview = document.getElementById('tabBtnOverview');
+      const btnAnalytics = document.getElementById('tabBtnAnalytics');
+
+      // Reset all views
+      viewOverview.classList.add('hidden');
+      viewOverview.classList.remove('flex');
+      viewQuestionWise.classList.add('hidden');
+      viewQuestionWise.classList.remove('flex');
+      viewAnalytics.classList.add('hidden');
+      viewAnalytics.classList.remove('flex');
+
+      // Default inactive tab styles
+      const inactiveClass = 'px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition-colors';
+      const activeClass = 'px-3 py-1.5 text-xs font-semibold rounded-lg bg-brand-50 text-brand-700 border border-brand-200 transition-colors';
+
+      btnOverview.className = inactiveClass;
+      btnOverview.setAttribute('aria-selected', 'false');
+      btnQuestionWise.className = inactiveClass;
+      btnQuestionWise.setAttribute('aria-selected', 'false');
+      btnAnalytics.className = inactiveClass + ' flex items-center space-x-1.5';
+      btnAnalytics.setAttribute('aria-selected', 'false');
+
+      if (tab === 'overview') {
+        viewOverview.classList.remove('hidden');
+        viewOverview.classList.add('flex');
+        btnOverview.className = activeClass;
+        btnOverview.setAttribute('aria-selected', 'true');
+      } else if (tab === 'questions') {
+        viewQuestionWise.classList.remove('hidden');
+        viewQuestionWise.classList.add('flex');
+        btnQuestionWise.className = activeClass;
+        btnQuestionWise.setAttribute('aria-selected', 'true');
+      } else if (tab === 'analytics') {
+        viewAnalytics.classList.remove('hidden');
+        viewAnalytics.classList.add('flex');
+        btnAnalytics.className = activeClass + ' flex items-center space-x-1.5';
+        btnAnalytics.setAttribute('aria-selected', 'true');
+      }
+    }
+  </script>
+</body></html>
