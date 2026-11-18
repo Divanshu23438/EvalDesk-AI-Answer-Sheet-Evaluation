@@ -3469,7 +3469,15 @@ def get_sheet_review(sheet_id: str):
             d["strictness_effective"] = eff_lvl
             d["strictness_source"] = eff_source
 
-            d["confidence"] = float(d.get("confidence") if d.get("confidence") is not None else 1.0)
+            conf_raw = d.get("confidence")
+            if conf_raw is not None:
+                try:
+                    d["confidence"] = float(conf_raw)
+                except (ValueError, TypeError):
+                    conf_map = {"high": 0.95, "medium": 0.7, "low": 0.4}
+                    d["confidence"] = conf_map.get(str(conf_raw).strip().lower(), 1.0)
+            else:
+                d["confidence"] = 1.0
             raw_st = str(d.get("status") or "ok").lower()
             d["status"] = raw_st if raw_st in ["ok", "failed", "not_attempted"] else ("approved" if d.get("resolved") else "flagged")
 

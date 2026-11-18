@@ -686,6 +686,13 @@ export const EvaluateScreen: React.FC = () => {
                     qNo={activeQuestion.q_no}
                     pageNumbers={activeQuestion.page_numbers || [1]}
                     allPagesCount={reviewData?.pages?.length || 1}
+                    pages={(reviewData?.pages || []).map((p: any) => ({
+                      n: p.page_number || p.n || 1,
+                      status: (p.ocr_status || p.status || 'done') as any,
+                      legibility: p.ocr_legibility ?? p.legibility ?? 0.92,
+                      error: p.ocr_error ?? p.error,
+                      imageUrl: `/api/sheets/${state.sheetId}/pages/${p.page_number || p.n || 1}/image`,
+                    }))}
                     bbox={activeQuestion.bbox}
                     notAttempted={isNotAttempted}
                   />

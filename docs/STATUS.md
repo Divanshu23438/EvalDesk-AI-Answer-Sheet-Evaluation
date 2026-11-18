@@ -1,7 +1,26 @@
 # STATUS (update at the end of every session)
 Date / author (agent or model name): 2026-11-18 / Antigravity (Gemini 3.8 Flash)
-Current phase and task: Task P1 Complete - Page progress fields, image endpoint, per-page retry. Ready for Task P2.
+Current phase and task: Task P2 Complete - PageBook in browse mode. Ready for Task P3 (Flip animation with queueing and reduced motion).
 Done (task id, commit, proof file):
+- Task P2: PageBook in browse mode (`src/components/PageBook.tsx`, `src/components/SheetImageViewer.tsx`, `src/screens/EvaluateScreen.tsx`, `backend/main.py`, `scripts/verify_p2_pagebook.py`, `docs/proof/P2/`):
+  1. Interactive PageBook Shared Component (`src/components/PageBook.tsx`):
+     - Renders multi-page answer sheets in natural book presentation with realistic page stack borders (spine thickness on left that grows as pages are turned, right border for remaining pages).
+     - Full navigation controls in browse mode: prev/next chevron buttons, left/right keyboard arrows, left/right edge click zones (15% margins), touch swipe gesture handling, and bottom page indicator dots bar.
+     - Bottom dots indicator renders distinct page states: `done` (green), `reading` (pulsing indigo), `failed` (rose), and active indicator.
+     - Legibility status badge chip: `>= 0.80` displays green `95% legible`, `< 0.80` displays warning yellow `74% · Hard to read`.
+     - Memory optimization: loads high-resolution scans only for current page and immediate neighbours (`Math.abs(idx - activeIndex) <= 1`).
+     - Lined paper base background and subtle scan line styling.
+  2. EvaluateScreen & Viewer Integration (`src/components/SheetImageViewer.tsx`, `src/screens/EvaluateScreen.tsx`):
+     - Added view switcher (`Crop` / `Full Box` / `Book View`) in `SheetImageViewer`.
+     - Full-page popup modal support via maximize button (`Maximize2` / `Minimize2` toggle) with backdrop blur and Esc key shortcut.
+     - Defensively handled confidence parsing in `backend/main.py` (`get_sheet_review`) supporting string descriptors (`'high'`, `'medium'`, `'low'`) and raw floats.
+  3. Responsive Fit-to-Screen Verification (`scripts/verify_p2_pagebook.py`, `docs/proof/P2/`):
+     - Verified zero outer page scrollbars (`hasVerticalScroll: False`, `windowScrollY: 0`) across 3 required viewports:
+       - 1920x1080 (Desktop): verified full-page popup modal and captured `docs/proof/P2/pagebook_browse_1920x1080.png`.
+       - 1366x768 (Standard Laptop): verified embedded PageBook navigation and captured `docs/proof/P2/pagebook_browse_1366x768.png`.
+       - 768x1024 (Tablet Portrait): verified embedded PageBook navigation and captured `docs/proof/P2/pagebook_browse_768x1024.png`.
+     - Captured telemetry in `docs/proof/P2/p2_proof.json`.
+     - `python scripts/check_all.py --no-live` reports `RESULT: ALL PASS`. | docs/proof/P2/
 - Task P1: Page progress fields, image endpoint, per-page retry (`backend/db.py`, `backend/main.py`, `backend/tests/test_p1_backend.py`, `scripts/verify_p1_backend.py`, `docs/proof/P1/`):
   1. Per-page Progress Fields (`backend/db.py`, `backend/main.py`):
      - Added `finished_at TEXT` column to `sheet_pages` and backfilled migration.

@@ -1,0 +1,38 @@
+{
+  "task": "P2",
+  "description": "PageBook in browse mode: pages, arrows, dots, legibility chip, fit-to-screen",
+  "timestamp": "2026-11-18T06:35:16Z",
+  "paper_id": "6e4a0c3c-9c88-4563-8819-10d5e4bf4f14",
+  "sheet_id": "21f01e01-20b8-4045-b998-37c2b9dd677e",
+  "test_results": [
+    {
+      "viewport": "1920x1080",
+      "zero_scroll": true,
+      "p1_legibility": "95% legible",
+      "p2_legibility": "74% \u00b7 Hard to read",
+      "navigation_verified": true,
+      "screenshot": "docs\\proof\\P2\\pagebook_browse_1920x1080.png"
+    },
+    {
+      "viewport": "1366x768",
+      "zero_scroll": true,
+      "p1_legibility": "95% legible",
+      "p2_legibility": "74% \u00b7 Hard to read",
+      "navigation_verified": true,
+      "screenshot": "docs\\proof\\P2\\pagebook_browse_1366x768.png"
+    },
+    {
+      "viewport": "768x1024",
+      "zero_scroll": true,
+      "p1_legibility": "95% legible",
+      "p2_legibility": "74% \u00b7 Hard to read",
+      "navigation_verified": true,
+      "screenshot": "docs\\proof\\P2\\pagebook_browse_768x1024.png"
+    }
+  ],
+  "proof_screenshots": {
+    "1920x1080": "docs\\proof\\P2\\pagebook_browse_1920x1080.png",
+    "1366x768": "docs\\proof\\P2\\pagebook_browse_1366x768.png",
+    "768x1024": "docs\\proof\\P2\\pagebook_browse_768x1024.png"
+  }
+}
