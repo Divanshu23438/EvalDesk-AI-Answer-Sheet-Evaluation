@@ -9,10 +9,12 @@ import {
   BookOpen,
   AlertCircle,
   X,
+  PenTool,
 } from 'lucide-react';
 import { PageBook, type PageItem } from './PageBook';
 import { useAnnotations } from '../utils/useAnnotations';
 import { AnnotationLayer } from './AnnotationLayer';
+import { AnnotationToolbar, type AnnotationTool } from './AnnotationToolbar';
 
 interface SheetImageViewerProps {
   sheetId: string;
@@ -46,8 +48,27 @@ export const SheetImageViewer: React.FC<SheetImageViewerProps> = ({
   const [cropFailed, setCropFailed] = useState<boolean>(false);
   const [isPopupOpen, setIsPopupOpen] = useState<boolean>(false);
 
-  // Load vector annotations for this sheet
-  const { annotations } = useAnnotations({ sheetId });
+  // Annotation interactive state
+  const [isAnnotating, setIsAnnotating] = useState<boolean>(false);
+  const [activeTool, setActiveTool] = useState<AnnotationTool>('pen');
+  const [activeColor, setActiveColor] = useState<string>('#ef4444');
+  const [activeWidth, setActiveWidth] = useState<number>(2.0);
+  const [visibility, setVisibility] = useState<'student' | 'private'>('student');
+  const [isInkVisible, setIsInkVisible] = useState<boolean>(true);
+  const [selectedAnnoId, setSelectedAnnoId] = useState<string | null>(null);
+
+  // Load vector annotations & undo/redo hook for this sheet
+  const {
+    annotations,
+    saveStatus,
+    upsertAnnotation,
+    deleteAnnotation,
+    clearPage,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+  } = useAnnotations({ sheetId });
 
   const canvasRef = useRef<HTMLDivElement>(null);
 
@@ -131,45 +152,75 @@ export const SheetImageViewer: React.FC<SheetImageViewerProps> = ({
       {/* Viewer Toolbar */}
       <div className="px-3 py-2 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs shrink-0">
         {/* View Mode Toggle: Crop vs Full Page vs Book View */}
-        <div className="inline-flex rounded-lg border border-slate-200 p-0.5 bg-white">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <div className="inline-flex rounded-lg border border-slate-200 p-0.5 bg-white">
+            <button
+              type="button"
+              data-testid="btn-mode-crop"
+              onClick={() => {
+                setViewMode('crop');
+                setIsAnnotating(false);
+              }}
+              className={`px-2 py-1 rounded-md text-xs font-semibold transition flex items-center gap-1.5 ${
+                viewMode === 'crop'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+              }`}
+            >
+              <Crop className="w-3.5 h-3.5" />
+              <span>Crop</span>
+            </button>
+            <button
+              type="button"
+              data-testid="btn-mode-full"
+              onClick={() => {
+                setViewMode('full');
+                setIsAnnotating(false);
+              }}
+              className={`px-2 py-1 rounded-md text-xs font-semibold transition flex items-center gap-1.5 ${
+                viewMode === 'full'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+              }`}
+            >
+              <Layers className="w-3.5 h-3.5" />
+              <span>Full Sheet</span>
+            </button>
+            <button
+              type="button"
+              data-testid="btn-mode-book"
+              onClick={() => setViewMode('book')}
+              className={`px-2 py-1 rounded-md text-xs font-semibold transition flex items-center gap-1.5 ${
+                viewMode === 'book'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+              }`}
+            >
+              <BookOpen className="w-3.5 h-3.5" />
+              <span>Book</span>
+            </button>
+          </div>
+
+          {/* Annotate Button Toggle (Per Plan: slim vertical strip shown when Annotate is on; clean when off) */}
           <button
             type="button"
-            data-testid="btn-mode-crop"
-            onClick={() => setViewMode('crop')}
-            className={`px-2 py-1 rounded-md text-xs font-semibold transition flex items-center gap-1.5 ${
-              viewMode === 'crop'
-                ? 'bg-indigo-600 text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+            data-testid="btn-toggle-annotate"
+            onClick={() => {
+              const next = !isAnnotating;
+              setIsAnnotating(next);
+              if (next && viewMode !== 'book') {
+                setViewMode('book');
+              }
+            }}
+            className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 border ${
+              isAnnotating
+                ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 hover:text-slate-900'
             }`}
+            title={isAnnotating ? 'Close Annotation Tools' : 'Open Annotation Tools'}
           >
-            <Crop className="w-3.5 h-3.5" />
-            <span>Crop</span>
-          </button>
-          <button
-            type="button"
-            data-testid="btn-mode-full"
-            onClick={() => setViewMode('full')}
-            className={`px-2 py-1 rounded-md text-xs font-semibold transition flex items-center gap-1.5 ${
-              viewMode === 'full'
-                ? 'bg-indigo-600 text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-            }`}
-          >
-            <Layers className="w-3.5 h-3.5" />
-            <span>Full Sheet</span>
-          </button>
-          <button
-            type="button"
-            data-testid="btn-mode-book"
-            onClick={() => setViewMode('book')}
-            className={`px-2 py-1 rounded-md text-xs font-semibold transition flex items-center gap-1.5 ${
-              viewMode === 'book'
-                ? 'bg-indigo-600 text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-            }`}
-          >
-            <BookOpen className="w-3.5 h-3.5" />
-            <span>Book</span>
+            <PenTool className="w-3.5 h-3.5" />
+            <span>Annotate</span>
           </button>
         </div>
 
@@ -267,20 +318,62 @@ export const SheetImageViewer: React.FC<SheetImageViewerProps> = ({
       {/* Viewer Canvas */}
       <div
         ref={canvasRef}
-        className="flex-1 min-h-0 h-full overflow-hidden bg-slate-100 flex items-start justify-center"
+        className="flex-1 min-h-0 h-full overflow-hidden bg-slate-100 relative flex items-start justify-center"
       >
         {viewMode === 'book' ? (
-          /* PageBook Component in Browse Mode */
-          <PageBook
-            pages={pagesList}
-            currentIndex={activePage - 1}
-            mode="browse"
-            onPageChange={(idx) => setActivePage(idx + 1)}
-            renderAnnotationLayer={(page) => (
-              <AnnotationLayer pageNo={page.n} annotations={annotations} />
+          /* PageBook Component with Embedded Annotation Toolbar */
+          <div className="relative w-full h-full flex overflow-hidden">
+            {/* Slim Vertical Annotation Toolbar on left edge of the page box */}
+            {isAnnotating && (
+              <div className="absolute left-3 top-3 bottom-3 z-30 pointer-events-auto flex items-start">
+                <AnnotationToolbar
+                  activeTool={activeTool}
+                  onSelectTool={setActiveTool}
+                  activeColor={activeColor}
+                  onChangeColor={setActiveColor}
+                  activeWidth={activeWidth}
+                  onChangeWidth={setActiveWidth}
+                  visibility={visibility}
+                  onChangeVisibility={setVisibility}
+                  canUndo={canUndo}
+                  canRedo={canRedo}
+                  onUndo={undo}
+                  onRedo={redo}
+                  isVisible={isInkVisible}
+                  onToggleVisible={() => setIsInkVisible((v) => !v)}
+                  onClearPage={() => clearPage(activePage)}
+                  saveStatus={saveStatus}
+                  currentPage={activePage}
+                />
+              </div>
             )}
-            className="h-full w-full"
-          />
+
+            <PageBook
+              pages={pagesList}
+              currentIndex={activePage - 1}
+              mode="browse"
+              annotatable={isAnnotating}
+              onPageChange={(idx) => setActivePage(idx + 1)}
+              renderAnnotationLayer={(page) =>
+                isInkVisible ? (
+                  <AnnotationLayer
+                    pageNo={page.n}
+                    annotations={annotations}
+                    isInteractive={isAnnotating && page.n === activePage}
+                    activeTool={activeTool}
+                    activeColor={activeColor}
+                    activeWidth={activeWidth}
+                    visibility={visibility}
+                    selectedId={selectedAnnoId}
+                    onSelectAnnotation={setSelectedAnnoId}
+                    onUpsertAnnotation={upsertAnnotation}
+                    onDeleteAnnotation={deleteAnnotation}
+                  />
+                ) : null
+              }
+              className="h-full w-full"
+            />
+          </div>
         ) : notAttempted ? (
           <div className="m-auto text-center p-6 bg-white rounded-xl border border-slate-200 max-w-sm space-y-2">
             <AlertCircle className="w-8 h-8 text-amber-500 mx-auto" />
@@ -347,11 +440,26 @@ export const SheetImageViewer: React.FC<SheetImageViewerProps> = ({
         >
           {/* Popup Close Bar */}
           <div className="w-full max-w-5xl flex items-center justify-between pb-2 text-white shrink-0">
-            <div className="flex items-center gap-2">
-              <BookOpen className="w-4 h-4 text-indigo-400" />
-              <span className="text-sm font-semibold tracking-wide">
-                Answer Sheet Book Viewer
-              </span>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <BookOpen className="w-4 h-4 text-indigo-400" />
+                <span className="text-sm font-semibold tracking-wide">
+                  Answer Sheet Book Viewer
+                </span>
+              </div>
+              <button
+                type="button"
+                data-testid="btn-popup-toggle-annotate"
+                onClick={() => setIsAnnotating((v) => !v)}
+                className={`px-2 py-0.5 rounded text-xs font-semibold transition flex items-center gap-1 border ${
+                  isAnnotating
+                    ? 'bg-indigo-600 text-white border-indigo-500'
+                    : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white'
+                }`}
+              >
+                <PenTool className="w-3 h-3" />
+                <span>Annotate</span>
+              </button>
             </div>
             <button
               type="button"
@@ -365,15 +473,53 @@ export const SheetImageViewer: React.FC<SheetImageViewerProps> = ({
           </div>
 
           {/* Book Viewer Frame in Popup */}
-          <div className="w-full max-w-5xl flex-1 min-h-0 bg-slate-900 rounded-xl border border-slate-700 overflow-hidden shadow-2xl flex flex-col">
+          <div className="w-full max-w-5xl flex-1 min-h-0 bg-slate-900 rounded-xl border border-slate-700 overflow-hidden shadow-2xl relative flex flex-col">
+            {isAnnotating && (
+              <div className="absolute left-3 top-3 bottom-3 z-30 pointer-events-auto flex items-start">
+                <AnnotationToolbar
+                  activeTool={activeTool}
+                  onSelectTool={setActiveTool}
+                  activeColor={activeColor}
+                  onChangeColor={setActiveColor}
+                  activeWidth={activeWidth}
+                  onChangeWidth={setActiveWidth}
+                  visibility={visibility}
+                  onChangeVisibility={setVisibility}
+                  canUndo={canUndo}
+                  canRedo={canRedo}
+                  onUndo={undo}
+                  onRedo={redo}
+                  isVisible={isInkVisible}
+                  onToggleVisible={() => setIsInkVisible((v) => !v)}
+                  onClearPage={() => clearPage(activePage)}
+                  saveStatus={saveStatus}
+                  currentPage={activePage}
+                />
+              </div>
+            )}
             <PageBook
               pages={pagesList}
               currentIndex={activePage - 1}
               mode="browse"
+              annotatable={isAnnotating}
               onPageChange={(idx) => setActivePage(idx + 1)}
-              renderAnnotationLayer={(page) => (
-                <AnnotationLayer pageNo={page.n} annotations={annotations} />
-              )}
+              renderAnnotationLayer={(page) =>
+                isInkVisible ? (
+                  <AnnotationLayer
+                    pageNo={page.n}
+                    annotations={annotations}
+                    isInteractive={isAnnotating && page.n === activePage}
+                    activeTool={activeTool}
+                    activeColor={activeColor}
+                    activeWidth={activeWidth}
+                    visibility={visibility}
+                    selectedId={selectedAnnoId}
+                    onSelectAnnotation={setSelectedAnnoId}
+                    onUpsertAnnotation={upsertAnnotation}
+                    onDeleteAnnotation={deleteAnnotation}
+                  />
+                ) : null
+              }
               className="h-full w-full"
             />
           </div>

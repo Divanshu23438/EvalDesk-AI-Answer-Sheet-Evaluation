@@ -1,0 +1,113 @@
+{
+  "task": "P7",
+  "sheet_id": "afa6d7d2-d2b2-463c-8710-ce33e1a7e25f",
+  "assertions": [
+    {
+      "name": "Annotation toolbar visible when Annotate is on",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Select tool button visible",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Pen tool button visible",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Highlighter tool button visible",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Tick tool button visible",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Cross tool button visible",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Text tool button visible",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Eraser tool button visible",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Undo button visible",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Redo button visible",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Visibility toggle visible",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Pen stroke created and visible in SVG layer",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Tick mark created and visible in SVG layer",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Text note created and visible in SVG layer",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Text note has Private Note indicator",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Undo removed the text note",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Redo restored the text note",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Reload persistence: pen stroke retained",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Reload persistence: tick mark retained",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Reload persistence: private text note retained",
+      "passed": true,
+      "detail": ""
+    }
+  ],
+  "screenshots": [
+    "F:\\EvalDesk-AI-Answer-Sheet-Evaluation-main\\docs\\proof\\P7\\p7_tools_active.png",
+    "F:\\EvalDesk-AI-Answer-Sheet-Evaluation-main\\docs\\proof\\P7\\p7_after_reload.png"
+  ],
+  "recording": "F:\\EvalDesk-AI-Answer-Sheet-Evaluation-main\\docs\\proof\\P7\\p7_tools_recording.webm",
+  "result": "PASS",
+  "timestamp": "2026-11-18T16:05:54"
+}

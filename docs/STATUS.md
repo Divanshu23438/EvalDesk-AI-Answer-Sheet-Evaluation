@@ -1,7 +1,37 @@
 # STATUS (update at the end of every session)
 Date / author (agent or model name): 2026-11-18 / Antigravity (Gemini 3.8 Flash)
-Current phase and task: Task P6 Complete - Read-only annotation layer inside page. Ready for Task P7 (MVP tools, undo and redo, visibility switch).
+Current phase and task: Task P7 Complete - MVP tools, undo and redo, visibility switch. Ready for Task P8 (Flip-and-draw rules).
 Done (task id, commit, proof file):
+- Task P7: MVP tools, undo and redo, visibility switch (`src/components/AnnotationToolbar.tsx`, `src/components/AnnotationLayer.tsx`, `src/components/SheetImageViewer.tsx`, `src/utils/useAnnotations.ts`, `src/utils/annotationHistory.test.ts`, `scripts/verify_p7_tools.py`, `docs/proof/P7/`):
+  1. MVP Annotation Toolbar Component (`src/components/AnnotationToolbar.tsx`):
+     - Slim vertical strip on the left edge of the page box shown when `Annotate` is ON; clean page when OFF.
+     - Tools palette: Select (V), Pen (P), Highlighter (H), Tick (T), Cross (X), Text note (N), Eraser (E).
+     - Color picker: 4 preset colors (Red #ef4444 default, Blue #3b82f6, Green #10b981, Black #1e293b).
+     - Stroke width selector: Fine (1.5), Medium (3.0), Thick (6.0).
+     - Visibility switch toggle: "For student" vs "Private" (with lock indicator).
+     - Client Undo (Ctrl+Z) and Redo (Ctrl+Y / Ctrl+Shift+Z) controls.
+     - Show/Hide ink layer toggle button (eye icon).
+     - Clear page button with confirmation state.
+     - Autosave status indicator pill (`Saving...`, `Saved`, or `Error`).
+     - Responsive mobile collapse to compact tool popover.
+  2. Interactive Vector Drawing Engine (`src/components/AnnotationLayer.tsx`):
+     - Full Pointer Events drawing with transparent canvas hitbox `<rect width="1000" height="1000" fill="transparent" />`.
+     - Pen & Highlighter: live stroke preview, point capture, and Ramer-Douglas-Peucker (RDP) path simplification guaranteeing strokes stay within 200 points.
+     - Tick & Cross marks: instant single-click placement in normalized page coordinates.
+     - Text note popover: inline comment card editor with 'For student' / 'Private' visibility toggle, auto-saving text on submit.
+     - Eraser & Select: click-to-delete or select and press Delete/Backspace.
+  3. Client Undo/Redo Engine (`src/utils/useAnnotations.ts`):
+     - Ref-based immediate history stacks (`undoStackRef`, `redoStackRef`) with `historyVersion` re-render triggers.
+     - Reversible operations for `add`, `delete`, `update`, and `clear` with automatic autosave syncing.
+     - 5 unit tests passing cleanly in `tsx --test src/utils/annotationHistory.test.ts` verifying RDP simplification and SVG path calculation.
+  4. Verification, Screen Recording & Proof ("Reload keeps everything") (`scripts/verify_p7_tools.py`, `docs/proof/P7/`):
+     - Tested live drawing: freehand pen stroke, tick mark, and private text note.
+     - Verified Undo removed the private note from the DOM, and Redo restored it.
+     - Tested reload persistence: waited for autosave, reloaded page with `page.reload()`, reopened book view, and asserted all annotations persisted from server.
+     - Saved Playwright video screen recording to `docs/proof/P7/p7_tools_recording.webm`.
+     - Saved screenshots to `docs/proof/P7/p7_tools_active.png` and `docs/proof/P7/p7_after_reload.png`.
+     - Saved telemetry proof to `docs/proof/P7/p7_proof.json`.
+     - `python scripts/check_all.py --no-live` reports `RESULT: ALL PASS`. | docs/proof/P7/
 - Task P6: Read-only annotation layer inside page (`src/components/AnnotationLayer.tsx`, `src/components/SheetImageViewer.tsx`, `src/components/PageBook.tsx`, `scripts/verify_p6_annotation_layer.py`, `docs/proof/P6/`):
   1. Vector AnnotationLayer Component (`src/components/AnnotationLayer.tsx`):
      - Created SVG overlay with normalized `viewBox="0 0 1000 1000"` and `preserveAspectRatio="none"` mapping normalized (0..1) coordinates directly to SVG coordinates.

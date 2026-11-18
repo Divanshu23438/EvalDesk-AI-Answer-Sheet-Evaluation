@@ -30,6 +30,12 @@ export interface UseAnnotationsOptions {
 
 export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
+export type HistoryAction =
+  | { type: 'add'; item: AnnotationItem }
+  | { type: 'delete'; item: AnnotationItem }
+  | { type: 'update'; prev: AnnotationItem; next: AnnotationItem }
+  | { type: 'clear'; items: AnnotationItem[] };
+
 export function useAnnotations({
   sheetId,
   autosaveDelay = 600,
@@ -43,6 +49,11 @@ export function useAnnotations({
     stage: string;
     retryable: boolean;
   } | null>(null);
+
+  // Client-side Undo/Redo history stacks with instant refs
+  const undoStackRef = useRef<HistoryAction[]>([]);
+  const redoStackRef = useRef<HistoryAction[]>([]);
+  const [historyVersion, setHistoryVersion] = useState<number>(0);
 
   // Pending unsaved queue (id -> item)
   const pendingChangesRef = useRef<Map<string, AnnotationItem>>(new Map());
@@ -128,7 +139,15 @@ export function useAnnotations({
 
   // 4. Add or update annotation
   const upsertAnnotation = useCallback(
-    (item: Partial<AnnotationItem> & { id: string; page_no: number; kind: AnnotationKind; data: any }) => {
+    (
+      item: Partial<AnnotationItem> & {
+        id: string;
+        page_no: number;
+        kind: AnnotationKind;
+        data: any;
+      },
+      addToHistory = true
+    ) => {
       const existing = annotations.find((a) => a.id === item.id);
       const fullItem: AnnotationItem = {
         id: item.id,
@@ -155,6 +174,17 @@ export function useAnnotations({
         return [...prev, fullItem];
       });
 
+      // Push to client history stack
+      if (addToHistory) {
+        if (existing) {
+          undoStackRef.current.push({ type: 'update', prev: existing, next: fullItem });
+        } else {
+          undoStackRef.current.push({ type: 'add', item: fullItem });
+        }
+        redoStackRef.current = []; // Clear redo stack on new action
+        setHistoryVersion((v) => v + 1);
+      }
+
       // Buffer in pending changes
       pendingChangesRef.current.set(fullItem.id, fullItem);
       scheduleAutosave();
@@ -164,7 +194,7 @@ export function useAnnotations({
 
   // 5. Delete annotation (soft delete)
   const deleteAnnotation = useCallback(
-    (id: string) => {
+    (id: string, addToHistory = true) => {
       const existing = annotations.find((a) => a.id === id);
       if (!existing) return;
 
@@ -175,21 +205,101 @@ export function useAnnotations({
 
       // Optimistic local update
       setAnnotations((prev) => prev.filter((a) => a.id !== id));
+
+      if (addToHistory) {
+        undoStackRef.current.push({ type: 'delete', item: existing });
+        redoStackRef.current = [];
+        setHistoryVersion((v) => v + 1);
+      }
+
       pendingChangesRef.current.set(id, deletedItem);
       scheduleAutosave();
     },
     [annotations, scheduleAutosave]
   );
 
-  // 6. Clear page annotations
+  // 6. Undo & Redo Actions
+  const undo = useCallback(() => {
+    if (undoStackRef.current.length === 0) return;
+    const lastAction = undoStackRef.current.pop()!;
+    redoStackRef.current.push(lastAction);
+    setHistoryVersion((v) => v + 1);
+
+    if (lastAction.type === 'add') {
+      // Revert add -> soft delete locally & buffer
+      const itemToDelete = lastAction.item;
+      setAnnotations((prev) => prev.filter((a) => a.id !== itemToDelete.id));
+      pendingChangesRef.current.set(itemToDelete.id, { ...itemToDelete, deleted: true });
+      scheduleAutosave();
+    } else if (lastAction.type === 'delete') {
+      // Revert delete -> restore item
+      const itemToRestore = { ...lastAction.item, deleted: false };
+      setAnnotations((prev) => [...prev.filter((a) => a.id !== itemToRestore.id), itemToRestore]);
+      pendingChangesRef.current.set(itemToRestore.id, itemToRestore);
+      scheduleAutosave();
+    } else if (lastAction.type === 'update') {
+      // Revert update -> restore prev
+      const prevItem = lastAction.prev;
+      setAnnotations((prev) => prev.map((a) => (a.id === prevItem.id ? prevItem : a)));
+      pendingChangesRef.current.set(prevItem.id, prevItem);
+      scheduleAutosave();
+    } else if (lastAction.type === 'clear') {
+      // Restore cleared items
+      const itemsToRestore = lastAction.items;
+      setAnnotations((prev) => [...prev, ...itemsToRestore]);
+      for (const item of itemsToRestore) {
+        pendingChangesRef.current.set(item.id, { ...item, deleted: false });
+      }
+      scheduleAutosave();
+    }
+  }, [scheduleAutosave]);
+
+  const redo = useCallback(() => {
+    if (redoStackRef.current.length === 0) return;
+    const lastAction = redoStackRef.current.pop()!;
+    undoStackRef.current.push(lastAction);
+    setHistoryVersion((v) => v + 1);
+
+    if (lastAction.type === 'add') {
+      const itemToAdd = { ...lastAction.item, deleted: false };
+      setAnnotations((prev) => [...prev.filter((a) => a.id !== itemToAdd.id), itemToAdd]);
+      pendingChangesRef.current.set(itemToAdd.id, itemToAdd);
+      scheduleAutosave();
+    } else if (lastAction.type === 'delete') {
+      const itemToDelete = lastAction.item;
+      setAnnotations((prev) => prev.filter((a) => a.id !== itemToDelete.id));
+      pendingChangesRef.current.set(itemToDelete.id, { ...itemToDelete, deleted: true });
+      scheduleAutosave();
+    } else if (lastAction.type === 'update') {
+      const nextItem = lastAction.next;
+      setAnnotations((prev) => prev.map((a) => (a.id === nextItem.id ? nextItem : a)));
+      pendingChangesRef.current.set(nextItem.id, nextItem);
+      scheduleAutosave();
+    } else if (lastAction.type === 'clear') {
+      const itemsToRemove = lastAction.items;
+      const idsToRemove = new Set(itemsToRemove.map((a) => a.id));
+      setAnnotations((prev) => prev.filter((a) => !idsToRemove.has(a.id)));
+      for (const item of itemsToRemove) {
+        pendingChangesRef.current.set(item.id, { ...item, deleted: true });
+      }
+      scheduleAutosave();
+    }
+  }, [scheduleAutosave]);
+
+  // 7. Clear page annotations (with undo support)
   const clearPage = useCallback(
     async (pageNo: number) => {
       if (!sheetId) return;
+      const pageItems = annotations.filter((a) => a.page_no === pageNo && !a.deleted);
+      if (pageItems.length > 0) {
+        undoStackRef.current.push({ type: 'clear', items: pageItems });
+        redoStackRef.current = [];
+        setHistoryVersion((v) => v + 1);
+      }
       try {
         await apiClient.post(`/api/sheets/${sheetId}/annotations/clear?page=${pageNo}`);
         // Remove cleared page items locally
         setAnnotations((prev) => prev.filter((a) => a.page_no !== pageNo));
-        // Also remove any pending items for this page
         for (const [key, item] of pendingChangesRef.current.entries()) {
           if (item.page_no === pageNo) {
             pendingChangesRef.current.delete(key);
@@ -200,7 +310,7 @@ export function useAnnotations({
         onError?.(err);
       }
     },
-    [sheetId, onError]
+    [sheetId, annotations, onError]
   );
 
   // 7. Warn before leaving if unsaved changes exist
@@ -221,6 +331,10 @@ export function useAnnotations({
     saveStatus,
     saveError,
     hasUnsavedChanges: pendingChangesRef.current.size > 0,
+    canUndo: undoStackRef.current.length > 0,
+    canRedo: redoStackRef.current.length > 0,
+    undo,
+    redo,
     upsertAnnotation,
     deleteAnnotation,
     clearPage,
