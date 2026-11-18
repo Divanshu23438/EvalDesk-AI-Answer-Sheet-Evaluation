@@ -28,6 +28,8 @@ export interface PageBookProps {
   mode?: 'progress' | 'browse';
   stageName?: string;
   annotatable?: boolean;
+  isZoomed?: boolean;
+  onBeforeFlip?: () => void;
   onPageChange?: (index: number) => void;
   onRetryPage?: (pageNumber: number) => void;
   className?: string;
@@ -44,6 +46,8 @@ export const PageBook: React.FC<PageBookProps> = ({
   mode = 'browse',
   stageName,
   annotatable = false,
+  isZoomed = false,
+  onBeforeFlip,
   onPageChange,
   onRetryPage,
   className = '',
@@ -106,6 +110,7 @@ export const PageBook: React.FC<PageBookProps> = ({
       reducedMotionDuration: 150,
       isReducedMotion: prefersReducedMotion,
       onFlipStart: (step) => {
+        onBeforeFlip?.();
         setActiveStep(step);
         setFlipProgress(0);
       },
@@ -257,6 +262,16 @@ export const PageBook: React.FC<PageBookProps> = ({
     }
   }, [activeIndex, totalPages, mode, sortedPages, serverTargetIdx]);
 
+  const handleEdgePrev = useCallback(() => {
+    if (annotatable || isZoomed) return;
+    handlePrev();
+  }, [annotatable, isZoomed, handlePrev]);
+
+  const handleEdgeNext = useCallback(() => {
+    if (annotatable || isZoomed) return;
+    handleNext();
+  }, [annotatable, isZoomed, handleNext]);
+
   // Keyboard navigation
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -280,14 +295,14 @@ export const PageBook: React.FC<PageBookProps> = ({
   const touchStartYRef = useRef<number | null>(null);
 
   const handleTouchStart = (e: React.TouchEvent) => {
-    if (annotatable) return;
+    if (annotatable || isZoomed) return;
     const t = e.touches[0];
     touchStartXRef.current = t.clientX;
     touchStartYRef.current = t.clientY;
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
-    if (annotatable || touchStartXRef.current === null || touchStartYRef.current === null) return;
+    if (annotatable || isZoomed || touchStartXRef.current === null || touchStartYRef.current === null) return;
     const t = e.changedTouches[0];
     const dx = t.clientX - touchStartXRef.current;
     const dy = t.clientY - touchStartYRef.current;
@@ -349,6 +364,9 @@ export const PageBook: React.FC<PageBookProps> = ({
       data-flipping={isFlipping ? 'true' : 'false'}
       data-flip-direction={activeStep?.direction || 'none'}
       data-current-page={activePage.n}
+      data-active-index={activeIndex}
+      data-max-index={maxClickableIndex}
+      data-total-pages={totalPages}
       data-is-reduced-motion={prefersReducedMotion ? 'true' : 'false'}
       data-is-looking-back={isLookingBack ? 'true' : 'false'}
       className={`page-book relative flex flex-col items-center justify-between h-full w-full select-none overflow-hidden bg-slate-900/60 p-2 text-slate-100 ${className}`}
@@ -609,9 +627,9 @@ export const PageBook: React.FC<PageBookProps> = ({
           {/* Left Edge Click Area */}
           <div
             data-testid="left-edge-click"
-            onClick={handlePrev}
+            onClick={handleEdgePrev}
             className={`absolute top-0 bottom-0 left-0 w-[15%] z-20 flex items-center justify-start pl-2 transition-opacity ${
-              activeIndex > 0 && !annotatable && !isFlipping
+              activeIndex > 0 && !annotatable && !isZoomed && !isFlipping
                 ? 'cursor-pointer hover:bg-black/5 opacity-0 hover:opacity-100'
                 : 'pointer-events-none opacity-0'
             }`}
@@ -625,9 +643,9 @@ export const PageBook: React.FC<PageBookProps> = ({
           {/* Right Edge Click Area */}
           <div
             data-testid="right-edge-click"
-            onClick={handleNext}
+            onClick={handleEdgeNext}
             className={`absolute top-0 bottom-0 right-0 w-[15%] z-20 flex items-center justify-end pr-2 transition-opacity ${
-              activeIndex < maxClickableIndex && !annotatable && !isFlipping
+              activeIndex < maxClickableIndex && !annotatable && !isZoomed && !isFlipping
                 ? 'cursor-pointer hover:bg-black/5 opacity-0 hover:opacity-100'
                 : 'pointer-events-none opacity-0'
             }`}

@@ -1,7 +1,29 @@
 # STATUS (update at the end of every session)
 Date / author (agent or model name): 2026-11-18 / Antigravity (Gemini 3.8 Flash)
-Current phase and task: Task P7 Complete - MVP tools, undo and redo, visibility switch. Ready for Task P8 (Flip-and-draw rules).
+Current phase and task: Task P8 Complete - PAGE_VIEWER_PLAN Complete (All Tasks P0 through P8 Finished & Verified).
 Done (task id, commit, proof file):
+- Task P8: Flip-and-draw rules (`src/components/PageBook.tsx`, `src/components/SheetImageViewer.tsx`, `src/utils/useAnnotations.ts`, `scripts/verify_p8_rules.py`, `docs/proof/P8/`):
+  1. No Swipe / Edge-Click While Drawing Rule (`src/components/PageBook.tsx`):
+     - When `annotatable` is true, touch swipe and edge click zones (`left-edge-click`, `right-edge-click`) are disabled with `pointer-events-none opacity-0`.
+     - Internal callbacks (`handleEdgePrev`, `handleEdgeNext`, `handleTouchStart`, `handleTouchEnd`) immediately return early if `annotatable || isZoomed`, preventing unwanted page flips during drawing even under programmatic/forced clicks.
+     - Arrow buttons (`btn-prev-page`, `btn-next-page`) and keyboard/dots navigation remain enabled and functional so the evaluator can still flip intentionally.
+  2. Flush on Flip Rule (`src/components/PageBook.tsx`, `src/components/SheetImageViewer.tsx`, `src/utils/useAnnotations.ts`):
+     - Added `onBeforeFlip` callback prop to `PageBook` invoked synchronously upon flip start before any animation or page transition begins.
+     - Wired `flush()` in `SheetImageViewer` to immediately clear debounce timer and execute save (`PUT /api/sheets/{id}/annotations`) to the backend.
+     - Verified via live API query that newly drawn marks are persisted to the database before the 600ms autosave timer would elapse.
+  3. Zoom Navigation Rule (`src/components/PageBook.tsx`, `src/components/SheetImageViewer.tsx`):
+     - Enabled zoom controls (Zoom in, Zoom out, Reset zoom) in Book view.
+     - When zoomed in (`zoom > 1.05`), edge click flip zones are disabled (`pointer-events-none`) so panning and detail inspection do not trigger accidental page turns.
+     - Chevron navigation buttons and dots continue to flip pages as expected.
+  4. Ink Turns With Page in 3D (`src/components/PageBook.tsx`):
+     - `PageBook`'s 3D flipping leaf structure (`[data-testid='flipping-leaf']`) renders the active page's `AnnotationLayer` on the turning front face during the 450ms CSS 3D `rotateY` animation.
+  5. Verification & Proof ("Test of each rule") (`scripts/verify_p8_rules.py`, `docs/proof/P8/`):
+     - Tested Rule 1: Right edge click and touch swipe ignored while drawing mode active; page stays on Page 1; arrow buttons still flip. Captured `docs/proof/P8/rule1_drawing_no_edge_flip.png`.
+     - Tested Rule 2: Tick mark placed and immediate next-page flip started; verified tick persisted on server via direct GET query before 600ms autosave delay.
+     - Tested Rule 3: Zoomed in to 130%; verified edge click zones disabled; arrow buttons still flip. Captured `docs/proof/P8/rule3_zoomed_no_edge_flip.png`.
+     - Tested Rule 4: Verified 3D flipping leaf mounts and renders ink during page turn.
+     - Full telemetry proof saved in `docs/proof/P8/p8_proof.json`.
+     - `python scripts/check_all.py --no-live` reports `RESULT: ALL PASS`. | docs/proof/P8/
 - Task P7: MVP tools, undo and redo, visibility switch (`src/components/AnnotationToolbar.tsx`, `src/components/AnnotationLayer.tsx`, `src/components/SheetImageViewer.tsx`, `src/utils/useAnnotations.ts`, `src/utils/annotationHistory.test.ts`, `scripts/verify_p7_tools.py`, `docs/proof/P7/`):
   1. MVP Annotation Toolbar Component (`src/components/AnnotationToolbar.tsx`):
      - Slim vertical strip on the left edge of the page box shown when `Annotate` is ON; clean page when OFF.
@@ -380,9 +402,9 @@ Last check:ui result and viewport sizes tested: ALL PASS (1366x768 and 1920x1080
 Proof files in docs/proof/ui/: remediation_proof.txt, u0_proof.txt, u0_2_proof.txt, u1_upload_proof.txt, u1_u2_proof.txt, u3_proof.txt, u4_proof.txt, u4_u5_acceptance.txt
 Open UI issues (exact error text): None
 Next three actions:
-1. User demo walkthrough of the streamlined 3-screen SaaS workflow.
-2. End-to-end user feedback intake.
-3. Production staging deployment.
+1. User demo walkthrough of the completed EvalDesk PageBook 3D multi-page viewer & live annotation tools.
+2. Production staging deployment.
+3. User feedback intake.
 Known issues and decisions (link to docs/DECISIONS.md):
 - Strictly 3 screens: `#/upload` -> `#/evaluate/:id` -> `#/report/:id`. Stepper has strictly 3 steps. Legacy URLs (`#/setup`, `#/processing`) cleanly redirect to `#/upload`.
 - Question Paper (Card A) and Student Answer Sheet (Card B) are isolated in the Left Column of `#/upload` with separate file dropzones and inputs.

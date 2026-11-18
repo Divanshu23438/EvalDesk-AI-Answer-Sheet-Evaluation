@@ -1,0 +1,73 @@
+{
+  "task": "P8",
+  "sheet_id": "a5171b29-3b52-46cb-b50d-b8dd319c14f5",
+  "rules_verified": {
+    "rule1_no_swipe_or_edge_click": true,
+    "rule2_flush_on_flip": true,
+    "rule3_zoom_rule": true,
+    "rule4_ink_turns_with_page": true
+  },
+  "assertions": [
+    {
+      "name": "Rule 1a: Right edge click area disabled (pointer-events-none) while drawing tool active",
+      "passed": true,
+      "detail": "classes: absolute top-0 bottom-0 right-0 w-[15%] z-20 flex items-center justify-end pr-2 transition-opacity pointer-events-none opacity-0"
+    },
+    {
+      "name": "Rule 1b: Edge click did not advance page (still on page 1)",
+      "passed": true,
+      "detail": "curr_page: 1"
+    },
+    {
+      "name": "Rule 1c: Touch swipe did not advance page while drawing (still on page 1)",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Rule 1d: Navigation arrows still flip while drawing tool active (advanced to page 2)",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Rule 1e: Flipped back to page 1 via previous button",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Rule 2: Pending changes flushed to server immediately upon flip start (before 600ms timer)",
+      "passed": true,
+      "detail": "Server annotations count: 1"
+    },
+    {
+      "name": "Zoom level is above 100%",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Rule 3a: Right edge click disabled (pointer-events-none) when zoomed in",
+      "passed": true,
+      "detail": "classes: absolute top-0 bottom-0 right-0 w-[15%] z-20 flex items-center justify-end pr-2 transition-opacity pointer-events-none opacity-0"
+    },
+    {
+      "name": "Rule 3b: Edge click did not advance page while zoomed in (still on page 1)",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Rule 3c: Arrow navigation still flips while zoomed in (advanced to page 2)",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Rule 4: 3D flipping leaf structure mounts during page turn",
+      "passed": true,
+      "detail": ""
+    }
+  ],
+  "screenshots": [
+    "F:\\EvalDesk-AI-Answer-Sheet-Evaluation-main\\docs\\proof\\P8\\rule1_drawing_no_edge_flip.png",
+    "F:\\EvalDesk-AI-Answer-Sheet-Evaluation-main\\docs\\proof\\P8\\rule3_zoomed_no_edge_flip.png"
+  ],
+  "result": "PASS",
+  "timestamp": "2026-11-18T16:30:55"
+}

@@ -326,6 +326,15 @@ export function useAnnotations({
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, []);
 
+  // Flush pending changes immediately
+  const flush = useCallback(async () => {
+    if (autosaveTimerRef.current) {
+      clearTimeout(autosaveTimerRef.current);
+      autosaveTimerRef.current = null;
+    }
+    return executeSave();
+  }, [executeSave]);
+
   return {
     annotations,
     saveStatus,
@@ -338,6 +347,7 @@ export function useAnnotations({
     upsertAnnotation,
     deleteAnnotation,
     clearPage,
+    flush,
     retrySave: executeSave,
     reload: loadAnnotations,
   };

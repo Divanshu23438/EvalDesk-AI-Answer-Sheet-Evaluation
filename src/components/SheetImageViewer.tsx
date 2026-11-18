@@ -64,6 +64,7 @@ export const SheetImageViewer: React.FC<SheetImageViewerProps> = ({
     upsertAnnotation,
     deleteAnnotation,
     clearPage,
+    flush,
     undo,
     redo,
     canUndo,
@@ -261,34 +262,33 @@ export const SheetImageViewer: React.FC<SheetImageViewerProps> = ({
 
         {/* Zoom, Rotate, and Full-Screen Popup Controls */}
         <div className="flex items-center gap-1">
-          {viewMode !== 'book' && (
-            <>
-              <button
-                type="button"
-                onClick={() => handleZoom(-0.15)}
-                className="p-1 rounded text-slate-500 hover:text-slate-800 hover:bg-slate-200/60"
-                title="Zoom out"
-              >
-                <ZoomOut className="w-3.5 h-3.5" />
-              </button>
-              <button
-                type="button"
-                onClick={resetZoom}
-                className="px-1.5 py-0.5 text-[10px] font-mono font-bold text-slate-600 hover:bg-slate-200/60 rounded"
-                title="Reset Zoom"
-              >
-                {Math.round(zoom * 100)}%
-              </button>
-              <button
-                type="button"
-                onClick={() => handleZoom(0.15)}
-                className="p-1 rounded text-slate-500 hover:text-slate-800 hover:bg-slate-200/60"
-                title="Zoom in"
-              >
-                <ZoomIn className="w-3.5 h-3.5" />
-              </button>
-            </>
-          )}
+          <button
+            type="button"
+            data-testid="btn-zoom-out"
+            onClick={() => handleZoom(-0.15)}
+            className="p-1 rounded text-slate-500 hover:text-slate-800 hover:bg-slate-200/60"
+            title="Zoom out"
+          >
+            <ZoomOut className="w-3.5 h-3.5" />
+          </button>
+          <button
+            type="button"
+            data-testid="btn-reset-zoom"
+            onClick={resetZoom}
+            className="px-1.5 py-0.5 text-[10px] font-mono font-bold text-slate-600 hover:bg-slate-200/60 rounded"
+            title="Reset Zoom"
+          >
+            {Math.round(zoom * 100)}%
+          </button>
+          <button
+            type="button"
+            data-testid="btn-zoom-in"
+            onClick={() => handleZoom(0.15)}
+            className="p-1 rounded text-slate-500 hover:text-slate-800 hover:bg-slate-200/60"
+            title="Zoom in"
+          >
+            <ZoomIn className="w-3.5 h-3.5" />
+          </button>
 
           {viewMode === 'full' && (
             <button
@@ -353,6 +353,8 @@ export const SheetImageViewer: React.FC<SheetImageViewerProps> = ({
               currentIndex={activePage - 1}
               mode="browse"
               annotatable={isAnnotating}
+              isZoomed={zoom > 1.05}
+              onBeforeFlip={flush}
               onPageChange={(idx) => setActivePage(idx + 1)}
               renderAnnotationLayer={(page) =>
                 isInkVisible ? (
@@ -502,6 +504,8 @@ export const SheetImageViewer: React.FC<SheetImageViewerProps> = ({
               currentIndex={activePage - 1}
               mode="browse"
               annotatable={isAnnotating}
+              isZoomed={zoom > 1.05}
+              onBeforeFlip={flush}
               onPageChange={(idx) => setActivePage(idx + 1)}
               renderAnnotationLayer={(page) =>
                 isInkVisible ? (
