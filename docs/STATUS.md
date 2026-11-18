@@ -1,7 +1,25 @@
 # STATUS (update at the end of every session)
 Date / author (agent or model name): 2026-11-18 / Antigravity (Gemini 3.8 Flash)
-Current phase and task: Task P5 Complete - Annotation table, API, autosave, error banner. Ready for Task P6 (Read-only annotation layer inside page).
+Current phase and task: Task P6 Complete - Read-only annotation layer inside page. Ready for Task P7 (MVP tools, undo and redo, visibility switch).
 Done (task id, commit, proof file):
+- Task P6: Read-only annotation layer inside page (`src/components/AnnotationLayer.tsx`, `src/components/SheetImageViewer.tsx`, `src/components/PageBook.tsx`, `scripts/verify_p6_annotation_layer.py`, `docs/proof/P6/`):
+  1. Vector AnnotationLayer Component (`src/components/AnnotationLayer.tsx`):
+     - Created SVG overlay with normalized `viewBox="0 0 1000 1000"` and `preserveAspectRatio="none"` mapping normalized (0..1) coordinates directly to SVG coordinates.
+     - Supports all required vector annotation kinds: `pen` (polyline path), `highlight` (wide translucent path with `mix-blend-mode: multiply`), `tick` (clean green vector checkmark with drop-shadow), `cross` (clean red vector cross), and `text` (HTML foreignObject card with text clamp and backdrop blur).
+     - Privacy boundary enforcement: text notes with `visibility='private'` render with dashed amber border and explicit "PRIVATE NOTE" badge in teacher view. When `userRole === 'student'`, private annotations are completely excluded from rendering.
+  2. PageBook & SheetImageViewer Integration (`src/components/PageBook.tsx`, `src/components/SheetImageViewer.tsx`):
+     - Embedded `AnnotationLayer` onto base page inside `PageBook` at `z-index: 20` using `renderAnnotationLayer` slot.
+     - Ink turns with the page during flip: `PageBook`'s flipping leaf front face renders `renderAnnotationLayer(fromPage, ...)` so annotations move seamlessly during 3D rotations.
+     - Wired `useAnnotations` hook in `SheetImageViewer` to provide live vector annotations in both embedded and full-screen popup PageBook instances.
+  3. Verification & Proof ("Same ink in the same place at two window sizes"):
+     - Executed Playwright automation in `scripts/verify_p6_annotation_layer.py` across two distinct window sizes:
+       - 1920x1080 (Desktop): tick position normalized x=0.6503, y=0.3000; captured `docs/proof/P6/anno_layer_1920x1080.png`.
+       - 768x1024 (Tablet Portrait): tick position normalized x=0.6502, y=0.3000; captured `docs/proof/P6/anno_layer_768x1024.png`.
+     - Verified exact relative position consistency across sizes: dx=0.0001, dy=0.0000 (well within 2% tolerance).
+     - Verified fit-to-screen rule (zero vertical window scrollbar) across both resolutions.
+     - Verified flip retention: flipping forward to Page 2 and returning to Page 1 preserves all 5 annotations intact without distortion or data loss.
+     - Saved full telemetry proof in `docs/proof/P6/p6_proof.json`.
+     - `python scripts/check_all.py --no-live` reports `RESULT: ALL PASS`. | docs/proof/P6/
 - Task P5: Annotation table, API, autosave, error banner (`backend/db.py`, `backend/main.py`, `backend/tests/test_p5_annotations.py`, `src/utils/useAnnotations.ts`, `scripts/verify_p5_annotations.py`, `docs/proof/P5/`):
   1. Vector Annotations Database Schema (`backend/db.py`):
      - Created `annotations(id, sheet_id, page_no, question_key NULL, kind, data_json, color, width, visibility, created_by, created_at, updated_at, deleted_at, version)` with index on `(sheet_id, page_no)`.

@@ -534,6 +534,12 @@ export const PageBook: React.FC<PageBookProps> = ({
                     className="w-full h-full object-contain pointer-events-none"
                   />
                 )}
+                {/* Annotation layer turns with the page */}
+                {renderAnnotationLayer && (
+                  <div className="absolute inset-0 z-20 pointer-events-none">
+                    {renderAnnotationLayer(fromPage, activeStep!.fromIndex, false)}
+                  </div>
+                )}
                 {/* Dynamic curl shadow on front face */}
                 <div
                   className="absolute inset-0 pointer-events-none"

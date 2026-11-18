@@ -11,6 +11,8 @@ import {
   X,
 } from 'lucide-react';
 import { PageBook, type PageItem } from './PageBook';
+import { useAnnotations } from '../utils/useAnnotations';
+import { AnnotationLayer } from './AnnotationLayer';
 
 interface SheetImageViewerProps {
   sheetId: string;
@@ -43,6 +45,9 @@ export const SheetImageViewer: React.FC<SheetImageViewerProps> = ({
   const [isRotating, setIsRotating] = useState<boolean>(false);
   const [cropFailed, setCropFailed] = useState<boolean>(false);
   const [isPopupOpen, setIsPopupOpen] = useState<boolean>(false);
+
+  // Load vector annotations for this sheet
+  const { annotations } = useAnnotations({ sheetId });
 
   const canvasRef = useRef<HTMLDivElement>(null);
 
@@ -271,6 +276,9 @@ export const SheetImageViewer: React.FC<SheetImageViewerProps> = ({
             currentIndex={activePage - 1}
             mode="browse"
             onPageChange={(idx) => setActivePage(idx + 1)}
+            renderAnnotationLayer={(page) => (
+              <AnnotationLayer pageNo={page.n} annotations={annotations} />
+            )}
             className="h-full w-full"
           />
         ) : notAttempted ? (
@@ -363,6 +371,9 @@ export const SheetImageViewer: React.FC<SheetImageViewerProps> = ({
               currentIndex={activePage - 1}
               mode="browse"
               onPageChange={(idx) => setActivePage(idx + 1)}
+              renderAnnotationLayer={(page) => (
+                <AnnotationLayer pageNo={page.n} annotations={annotations} />
+              )}
               className="h-full w-full"
             />
           </div>

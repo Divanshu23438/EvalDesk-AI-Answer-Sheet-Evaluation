@@ -1,0 +1,209 @@
+{
+  "task": "P6",
+  "sheet_id": "b228e79f-8226-474f-971c-a652ed049068",
+  "annotation_ids": {
+    "pen": "4060a584-c843-4236-8d4f-078b34901645",
+    "tick": "72feb9c6-b340-41f6-a66f-fff9aab0dc17",
+    "cross": "2c6896c0-2f06-4fcb-87c4-c893bf0134c2",
+    "highlight": "9e7d19b5-6662-4eda-a3a5-c736009312e1",
+    "text": "9f836f12-91cb-43c6-bd07-b0c8854070fc"
+  },
+  "measurements": {
+    "1920x1080": {
+      "svg_bbox": {
+        "x": 179.984375,
+        "y": 288.4375,
+        "width": 460.03125,
+        "height": 657.5625
+      },
+      "tick_bbox": {
+        "x": 467.04388427734375,
+        "y": 468.609619140625,
+        "width": 24.151641845703125,
+        "height": 34.1932373046875
+      },
+      "rel_tick_x": 0.6503,
+      "rel_tick_y": 0.3
+    },
+    "768x1024": {
+      "svg_bbox": {
+        "x": 25,
+        "y": 412.171875,
+        "width": 194,
+        "height": 477.828125
+      },
+      "tick_bbox": {
+        "x": 146.05599975585938,
+        "y": 543.0968017578125,
+        "width": 10.18499755859375,
+        "height": 24.8470458984375
+      },
+      "rel_tick_x": 0.6502,
+      "rel_tick_y": 0.3
+    }
+  },
+  "screenshots": [
+    "F:\\EvalDesk-AI-Answer-Sheet-Evaluation-main\\docs\\proof\\P6\\anno_layer_1920x1080.png",
+    "F:\\EvalDesk-AI-Answer-Sheet-Evaluation-main\\docs\\proof\\P6\\anno_layer_768x1024.png"
+  ],
+  "assertions": [
+    {
+      "name": "Book view button visible at 1920x1080",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "PageBook mounted at 1920x1080",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "AnnotationLayer SVG mounted for Page 1 at 1920x1080",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "SVG viewBox is 0 0 1000 1000 at 1920x1080",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Pen stroke rendered at 1920x1080",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Tick mark rendered at 1920x1080",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Cross mark rendered at 1920x1080",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Highlight stroke rendered at 1920x1080",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Private text note rendered in teacher view at 1920x1080",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Private note shows 'PRIVATE NOTE' indicator at 1920x1080",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Fit-to-screen rule (no window vertical scrollbar) at 1920x1080",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Book view button visible at 768x1024",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "PageBook mounted at 768x1024",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "AnnotationLayer SVG mounted for Page 1 at 768x1024",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "SVG viewBox is 0 0 1000 1000 at 768x1024",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Pen stroke rendered at 768x1024",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Tick mark rendered at 768x1024",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Cross mark rendered at 768x1024",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Highlight stroke rendered at 768x1024",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Private text note rendered in teacher view at 768x1024",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Private note shows 'PRIVATE NOTE' indicator at 768x1024",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Fit-to-screen rule (no window vertical scrollbar) at 768x1024",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Same ink in the same place across window sizes (x-coord consistent within 2%)",
+      "passed": true,
+      "detail": "diff_x=0.0001"
+    },
+    {
+      "name": "Same ink in the same place across window sizes (y-coord consistent within 2%)",
+      "passed": true,
+      "detail": "diff_y=0.0000"
+    },
+    {
+      "name": "Page 1 tick present before flip",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Page 2 active after flip forward",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Page 1 pen stroke still present after flip roundtrip",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Page 1 tick mark still present after flip roundtrip",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Page 1 cross mark still present after flip roundtrip",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Page 1 highlight still present after flip roundtrip",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Page 1 private text still present after flip roundtrip",
+      "passed": true,
+      "detail": ""
+    }
+  ],
+  "flip_test_passed": true,
+  "result": "PASS",
+  "timestamp": "2026-11-18T15:42:29"
+}
