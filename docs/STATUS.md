@@ -1,7 +1,22 @@
 # STATUS (update at the end of every session)
 Date / author (agent or model name): 2026-11-18 / Antigravity (Gemini 3.8 Flash)
-Current phase and task: Task P0 Complete - Fix B2 (sheet upload crash: 'sqlite3.Row' object has no attribute 'get'). Ready for Task P1.
+Current phase and task: Task P1 Complete - Page progress fields, image endpoint, per-page retry. Ready for Task P2.
 Done (task id, commit, proof file):
+- Task P1: Page progress fields, image endpoint, per-page retry (`backend/db.py`, `backend/main.py`, `backend/tests/test_p1_backend.py`, `scripts/verify_p1_backend.py`, `docs/proof/P1/`):
+  1. Per-page Progress Fields (`backend/db.py`, `backend/main.py`):
+     - Added `finished_at TEXT` column to `sheet_pages` and backfilled migration.
+     - Updated sequential OCR pipeline to record `finished_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')` when each individual page's OCR result is committed to the database.
+     - `GET /api/sheets/{id}` and `GET /api/papers/{id}/sheets` return `pages [{n, status, legibility, error, finished_at, image_url}]` and `pages_done`.
+  2. Auto-Rotated & Resized Page Image Endpoint (`backend/main.py`):
+     - Enhanced `GET /api/sheets/{id}/pages/{n}/image?w=1200` with PIL `ImageOps.exif_transpose` (automatic orientation correction) and proportional Lanczos downsampling when query parameter `w` is supplied (verified width 1200, mime `image/jpeg`).
+  3. Single-Page Retry & Typed Errors Contract (`backend/main.py`):
+     - Implemented `POST /api/sheets/{id}/pages/{n}/retry` allowing teachers to retry a single page's OCR without re-running the entire sheet.
+     - Standardized typed error response contract across all API endpoints: `{code, message, detail, stage, retryable}`.
+  4. Verification & Proof (`scripts/verify_p1_backend.py`, `docs/proof/P1/`):
+     - Ran 4-page student exam sheet through sequential pipeline: verified `pages_done` strictly advanced `0/4 -> 1/4 -> 2/4 -> 3/4 -> 4/4`, with strictly chronological ISO `finished_at` timestamps `['2026-11-18T04:53:09Z', '2026-11-18T04:53:21Z', '2026-11-18T04:53:33Z', '2026-11-18T04:53:36Z']`.
+     - Verified `w=1200` JPEG resizing, per-page retry execution, and HTTP 404 typed error contract.
+     - Saved full API trace to `docs/proof/P1/p1_api_trace.json`.
+     - Verified `python scripts/check_all.py --no-live` (ALL PASS across banned strings, git secrets, 75 pytest tests, and tsc --noEmit). | docs/proof/P1/
 - Task P0: Fix B2 - Sheet upload crash resolution & 9-page PDF evaluation proof (`backend/db.py`, `backend/marking_engine.py`, `backend/tests/test_b2_row_dict.py`, `scripts/verify_p0_b2.py`, `docs/proof/P0/`):
   1. Universal SQLite Connection & DictRow Guarantee (`backend/db.py`, `backend/main.py`, `scripts/`):
      - Confirmed all backend database connection paths use `get_db_connection()` and `get_db()`, with `conn.row_factory = DictRow`.

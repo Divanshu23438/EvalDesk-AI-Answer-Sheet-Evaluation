@@ -235,7 +235,8 @@ def init_db():
                 file_path TEXT NOT NULL,
                 ocr_status TEXT NOT NULL DEFAULT 'pending', -- pending|reading|done|failed
                 ocr_error TEXT,
-                ocr_legibility REAL
+                ocr_legibility REAL,
+                finished_at TEXT
             )
         """)
 
@@ -387,6 +388,7 @@ def init_db():
         add_column_if_missing("answers", "page_numbers TEXT DEFAULT '[]'", "page_numbers")
         add_column_if_missing("answers", "bbox_json TEXT DEFAULT '{}'", "bbox_json")
         add_column_if_missing("answers", "reader_texts_json TEXT DEFAULT '{}'", "reader_texts_json")
+        add_column_if_missing("sheet_pages", "finished_at TEXT", "finished_at")
 
         # One-time backfill: papers.strictness_level from old strictness text
         cursor.execute("""

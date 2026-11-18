@@ -1,0 +1,685 @@
+{
+  "task": "P1",
+  "description": "Page progress fields, image endpoint, per-page retry",
+  "timestamp": "2026-11-18T04:53:42Z",
+  "paper_id": "6d45a9b3-2b9a-4887-8fc0-7d311dc82f26",
+  "sheet_id": "33e13658-0090-45ac-883d-69baeaa0205a",
+  "pages_total": 4,
+  "pages_done": 4,
+  "pages_finished_in_order": [
+    {
+      "page": 1,
+      "finished_at": "2026-11-18T04:53:09Z",
+      "legibility": 0.95
+    },
+    {
+      "page": 2,
+      "finished_at": "2026-11-18T04:53:21Z",
+      "legibility": 0.95
+    },
+    {
+      "page": 3,
+      "finished_at": "2026-11-18T04:53:33Z",
+      "legibility": 1.0
+    },
+    {
+      "page": 4,
+      "finished_at": "2026-11-18T04:53:36Z",
+      "legibility": 0.98
+    }
+  ],
+  "image_endpoint_verified": {
+    "w": 1200,
+    "actual_width": 1200,
+    "actual_height": 1553,
+    "mime": "image/jpeg"
+  },
+  "page_retry_verified": {
+    "code": "OK",
+    "sheet_id": "33e13658-0090-45ac-883d-69baeaa0205a",
+    "page_number": 2,
+    "status": "reading",
+    "stage": "reading",
+    "retryable": true,
+    "message": "Page 2 retry initiated."
+  },
+  "typed_error_verified": {
+    "code": "HTTP_404",
+    "message": "Sheet not found",
+    "stage": "request",
+    "retryable": false,
+    "path": "/api/sheets/nonexistent-uuid-999"
+  },
+  "api_trace": [
+    {
+      "poll_second": 1,
+      "status": "evaluating",
+      "stage_key": "reading",
+      "pages_done": 0,
+      "pages_read": 0,
+      "pages_total": 4,
+      "pages": [
+        {
+          "n": 1,
+          "status": "reading",
+          "legibility": null,
+          "error": null,
+          "finished_at": null,
+          "image_url": "/api/sheets/33e13658-0090-45ac-883d-69baeaa0205a/pages/1/image"
+        },
+        {
+          "n": 2,
+          "status": "pending",
+          "legibility": null,
+          "error": null,
+          "finished_at": null,
+          "image_url": "/api/sheets/33e13658-0090-45ac-883d-69baeaa0205a/pages/2/image"
+        },
+        {
+          "n": 3,
+          "status": "pending",
+          "legibility": null,
+          "error": null,
+          "finished_at": null,
+          "image_url": "/api/sheets/33e13658-0090-45ac-883d-69baeaa0205a/pages/3/image"
+        },
+        {
+          "n": 4,
+          "status": "pending",
+          "legibility": null,
+          "error": null,
+          "finished_at": null,
+          "image_url": "/api/sheets/33e13658-0090-45ac-883d-69baeaa0205a/pages/4/image"
+        }
+      ]
+    },
+    {
+      "poll_second": 2,
+      "status": "evaluating",
+      "stage_key": "reading",
+      "pages_done": 0,
+      "pages_read": 0,
+      "pages_total": 4,
+      "pages": [
+        {
+          "n": 1,
+          "status": "reading",
+          "legibility": null,
+          "error": null,
+          "finished_at": null,
+          "image_url": "/api/sheets/33e13658-0090-45ac-883d-69baeaa0205a/pages/1/image"
+        },
+        {
+          "n": 2,
+          "status": "pending",
+          "legibility": null,
+          "error": null,
+          "finished_at": null,
+          "image_url": "/api/sheets/33e13658-0090-45ac-883d-69baeaa0205a/pages/2/image"
+        },
+        {
+          "n": 3,
+          "status": "pending",
+          "legibility": null,
+          "error": null,
+          "finished_at": null,
+          "image_url": "/api/sheets/33e13658-0090-45ac-883d-69baeaa0205a/pages/3/image"
+        },
+        {
+          "n": 4,
+          "status": "pending",
+          "legibility": null,
+          "error": null,
+          "finished_at": null,
+          "image_url": "/api/sheets/33e13658-0090-45ac-883d-69baeaa0205a/pages/4/image"
+        }
+      ]
+    },
+    {
+      "poll_second": 3,
+      "status": "evaluating",
+      "stage_key": "reading",
+      "pages_done": 0,
+      "pages_read": 0,
+      "pages_total": 4,
+      "pages": [
+        {
+          "n": 1,
+          "status": "reading",
+          "legibility": null,
+          "error": null,
+          "finished_at": null,
+          "image_url": "/api/sheets/33e13658-0090-45ac-883d-69baeaa0205a/pages/1/image"
+        },
+        {
+          "n": 2,
+          "status": "pending",
+          "legibility": null,
+          "error": null,
+          "finished_at": null,
+          "image_url": "/api/sheets/33e13658-0090-45ac-883d-69baeaa0205a/pages/2/image"
+        },
+        {
+          "n": 3,
+          "status": "pending",
+          "legibility": null,
+          "error": null,
+          "finished_at": null,
+          "image_url": "/api/sheets/33e13658-0090-45ac-883d-69baeaa0205a/pages/3/image"
+        },
+        {
+          "n": 4,
+          "status": "pending",
+          "legibility": null,
+          "error": null,
+          "finished_at": null,
+          "image_url": "/api/sheets/33e13658-0090-45ac-883d-69baeaa0205a/pages/4/image"
+        }
+      ]
+    },
+    {
+      "poll_second": 4,
+      "status": "evaluating",
+      "stage_key": "reading",
+      "pages_done": 0,
+      "pages_read": 0,
+      "pages_total": 4,
+      "pages": [
+        {
+          "n": 1,
+          "status": "reading",
+          "legibility": null,
+          "error": null,
+          "finished_at": null,
+          "image_url": "/api/sheets/33e13658-0090-45ac-883d-69baeaa0205a/pages/1/image"
+        },
+        {
+          "n": 2,
+          "status": "pending",
+          "legibility": null,
+          "error": null,
+          "finished_at": null,
+          "image_url": "/api/sheets/33e13658-0090-45ac-883d-69baeaa0205a/pages/2/image"
+        },
+        {
+          "n": 3,
+          "status": "pending",
+          "legibility": null,
+          "error": null,
+          "finished_at": null,
+          "image_url": "/api/sheets/33e13658-0090-45ac-883d-69baeaa0205a/pages/3/image"
+        },
+        {
+          "n": 4,
+          "status": "pending",
+          "legibility": null,
+          "error": null,
+          "finished_at": null,
+          "image_url": "/api/sheets/33e13658-0090-45ac-883d-69baeaa0205a/pages/4/image"
+        }
+      ]
+    },
+    {
+      "poll_second": 5,
+      "status": "evaluating",
+      "stage_key": "reading",
+      "pages_done": 0,
+      "pages_read": 0,
+      "pages_total": 4,
+      "pages": [
+        {
+          "n": 1,
+          "status": "reading",
+          "legibility": null,
+          "error": null,
+          "finished_at": null,
+          "image_url": "/api/sheets/33e13658-0090-45ac-883d-69baeaa0205a/pages/1/image"
+        },
+        {
+          "n": 2,
+          "status": "pending",
+          "legibility": null,
+          "error": null,
+          "finished_at": null,
+          "image_url": "/api/sheets/33e13658-0090-45ac-883d-69baeaa0205a/pages/2/image"
+        },
+        {
+          "n": 3,
+          "status": "pending",
+          "legibility": null,
+          "error": null,
+          "finished_at": null,
+          "image_url": "/api/sheets/33e13658-0090-45ac-883d-69baeaa0205a/pages/3/image"
+        },
+        {
+          "n": 4,
+          "status": "pending",
+          "legibility": null,
+          "error": null,
+          "finished_at": null,
+          "image_url": "/api/sheets/33e13658-0090-45ac-883d-69baeaa0205a/pages/4/image"
+        }
+      ]
+    },
+    {
+      "poll_second": 6,
+      "status": "evaluating",
+      "stage_key": "reading",
+      "pages_done": 0,
+      "pages_read": 0,
+      "pages_total": 4,
+      "pages": [
+        {
+          "n": 1,
+          "status": "reading",
+          "legibility": null,
+          "error": null,
+          "finished_at": null,
+          "image_url": "/api/sheets/33e13658-0090-45ac-883d-69baeaa0205a/pages/1/image"
+        },
+        {
+          "n": 2,
+          "status": "pending",
+          "legibility": null,
+          "error": null,
+          "finished_at": null,
+          "image_url": "/api/sheets/33e13658-0090-45ac-883d-69baeaa0205a/pages/2/image"
+        },
+        {
+          "n": 3,
+          "status": "pending",
+          "legibility": null,
+          "error": null,
+          "finished_at": null,
+          "image_url": "/api/sheets/33e13658-0090-45ac-883d-69baeaa0205a/pages/3/image"
+        },
+        {
+          "n": 4,
+          "status": "pending",
+          "legibility": null,
+          "error": null,
+          "finished_at": null,
+          "image_url": "/api/sheets/33e13658-0090-45ac-883d-69baeaa0205a/pages/4/image"
+        }
+      ]
+    },
+    {
+      "poll_second": 7,
+      "status": "evaluating",
+      "stage_key": "reading",
+      "pages_done": 0,
+      "pages_read": 0,
+      "pages_total": 4,
+      "pages": [
+        {
+          "n": 1,
+          "status": "reading",
+          "legibility": null,
+          "error": null,
+          "finished_at": null,
+          "image_url": "/api/sheets/33e13658-0090-45ac-883d-69baeaa0205a/pages/1/image"
+        },
+        {
+          "n": 2,
+          "status": "pending",
+          "legibility": null,
+          "error": null,
+          "finished_at": null,
+          "image_url": "/api/sheets/33e13658-0090-45ac-883d-69baeaa0205a/pages/2/image"
+        },
+        {
+          "n": 3,
+          "status": "pending",
+          "legibility": null,
+          "error": null,
+          "finished_at": null,
+          "image_url": "/api/sheets/33e13658-0090-45ac-883d-69baeaa0205a/pages/3/image"
+        },
+        {
+          "n": 4,
+          "status": "pending",
+          "legibility": null,
+          "error": null,
+          "finished_at": null,
+          "image_url": "/api/sheets/33e13658-0090-45ac-883d-69baeaa0205a/pages/4/image"
+        }
+      ]
+    },
+    {
+      "poll_second": 8,
+      "status": "evaluating",
+      "stage_key": "reading",
+      "pages_done": 0,
+      "pages_read": 0,
+      "pages_total": 4,
+      "pages": [
+        {
+          "n": 1,
+          "status": "reading",
+          "legibility": null,
+          "error": null,
+          "finished_at": null,
+          "image_url": "/api/sheets/33e13658-0090-45ac-883d-69baeaa0205a/pages/1/image"
+        },
+        {
+          "n": 2,
+          "status": "pending",
+          "legibility": null,
+          "error": null,
+          "finished_at": null,
+          "image_url": "/api/sheets/33e13658-0090-45ac-883d-69baeaa0205a/pages/2/image"
+        },
+        {
+          "n": 3,
+          "status": "pending",
+          "legibility": null,
+          "error": null,
+          "finished_at": null,
+          "image_url": "/api/sheets/33e13658-0090-45ac-883d-69baeaa0205a/pages/3/image"
+        },
+        {
+          "n": 4,
+          "status": "pending",
+          "legibility": null,
+          "error": null,
+          "finished_at": null,
+          "image_url": "/api/sheets/33e13658-0090-45ac-883d-69baeaa0205a/pages/4/image"
+        }
+      ]
+    },
+    {
+      "poll_second": 9,
+      "status": "evaluating",
+      "stage_key": "reading",
+      "pages_done": 0,
+      "pages_read": 0,
+      "pages_total": 4,
+      "pages": [
+        {
+          "n": 1,
+          "status": "reading",
+          "legibility": null,
+          "error": null,
+          "finished_at": null,
+          "image_url": "/api/sheets/33e13658-0090-45ac-883d-69baeaa0205a/pages/1/image"
+        },
+        {
+          "n": 2,
+          "status": "pending",
+          "legibility": null,
+          "error": null,
+          "finished_at": null,
+          "image_url": "/api/sheets/33e13658-0090-45ac-883d-69baeaa0205a/pages/2/image"
+        },
+        {
+          "n": 3,
+          "status": "pending",
+          "legibility": null,
+          "error": null,
+          "finished_at": null,
+          "image_url": "/api/sheets/33e13658-0090-45ac-883d-69baeaa0205a/pages/3/image"
+        },
+        {
+          "n": 4,
+          "status": "pending",
+          "legibility": null,
+          "error": null,
+          "finished_at": null,
+          "image_url": "/api/sheets/33e13658-0090-45ac-883d-69baeaa0205a/pages/4/image"
+        }
+      ]
+    },
+    {
+      "poll_second": 10,
+      "status": "evaluating",
+      "stage_key": "reading",
+      "pages_done": 0,
+      "pages_read": 0,
+      "pages_total": 4,
+      "pages": [
+        {
+          "n": 1,
+          "status": "reading",
+          "legibility": null,
+          "error": null,
+          "finished_at": null,
+          "image_url": "/api/sheets/33e13658-0090-45ac-883d-69baeaa0205a/pages/1/image"
+        },
+        {
+          "n": 2,
+          "status": "pending",
+          "legibility": null,
+          "error": null,
+          "finished_at": null,
+          "image_url": "/api/sheets/33e13658-0090-45ac-883d-69baeaa0205a/pages/2/image"
+        },
+        {
+          "n": 3,
+          "status": "pending",
+          "legibility": null,
+          "error": null,
+          "finished_at": null,
+          "image_url": "/api/sheets/33e13658-0090-45ac-883d-69baeaa0205a/pages/3/image"
+        },
+        {
+          "n": 4,
+          "status": "pending",
+          "legibility": null,
+          "error": null,
+          "finished_at": null,
+          "image_url": "/api/sheets/33e13658-0090-45ac-883d-69baeaa0205a/pages/4/image"
+        }
+      ]
+    },
+    {
+      "poll_second": 11,
+      "status": "evaluating",
+      "stage_key": "reading",
+      "pages_done": 0,
+      "pages_read": 0,
+      "pages_total": 4,
+      "pages": [
+        {
+          "n": 1,
+          "status": "reading",
+          "legibility": null,
+          "error": null,
+          "finished_at": null,
+          "image_url": "/api/sheets/33e13658-0090-45ac-883d-69baeaa0205a/pages/1/image"
+        },
+        {
+          "n": 2,
+          "status": "pending",
+          "legibility": null,
+          "error": null,
+          "finished_at": null,
+          "image_url": "/api/sheets/33e13658-0090-45ac-883d-69baeaa0205a/pages/2/image"
+        },
+        {
+          "n": 3,
+          "status": "pending",
+          "legibility": null,
+          "error": null,
+          "finished_at": null,
+          "image_url": "/api/sheets/33e13658-0090-45ac-883d-69baeaa0205a/pages/3/image"
+        },
+        {
+          "n": 4,
+          "status": "pending",
+          "legibility": null,
+          "error": null,
+          "finished_at": null,
+          "image_url": "/api/sheets/33e13658-0090-45ac-883d-69baeaa0205a/pages/4/image"
+        }
+      ]
+    },
+    {
+      "poll_second": 12,
+      "status": "evaluating",
+      "stage_key": "reading",
+      "pages_done": 0,
+      "pages_read": 0,
+      "pages_total": 4,
+      "pages": [
+        {
+          "n": 1,
+          "status": "reading",
+          "legibility": null,
+          "error": null,
+          "finished_at": null,
+          "image_url": "/api/sheets/33e13658-0090-45ac-883d-69baeaa0205a/pages/1/image"
+        },
+        {
+          "n": 2,
+          "status": "pending",
+          "legibility": null,
+          "error": null,
+          "finished_at": null,
+          "image_url": "/api/sheets/33e13658-0090-45ac-883d-69baeaa0205a/pages/2/image"
+        },
+        {
+          "n": 3,
+          "status": "pending",
+          "legibility": null,
+          "error": null,
+          "finished_at": null,
+          "image_url": "/api/sheets/33e13658-0090-45ac-883d-69baeaa0205a/pages/3/image"
+        },
+        {
+          "n": 4,
+          "status": "pending",
+          "legibility": null,
+          "error": null,
+          "finished_at": null,
+          "image_url": "/api/sheets/33e13658-0090-45ac-883d-69baeaa0205a/pages/4/image"
+        }
+      ]
+    },
+    {
+      "poll_second": 13,
+      "status": "evaluating",
+      "stage_key": "reading",
+      "pages_done": 0,
+      "pages_read": 0,
+      "pages_total": 4,
+      "pages": [
+        {
+          "n": 1,
+          "status": "reading",
+          "legibility": null,
+          "error": null,
+          "finished_at": null,
+          "image_url": "/api/sheets/33e13658-0090-45ac-883d-69baeaa0205a/pages/1/image"
+        },
+        {
+          "n": 2,
+          "status": "pending",
+          "legibility": null,
+          "error": null,
+          "finished_at": null,
+          "image_url": "/api/sheets/33e13658-0090-45ac-883d-69baeaa0205a/pages/2/image"
+        },
+        {
+          "n": 3,
+          "status": "pending",
+          "legibility": null,
+          "error": null,
+          "finished_at": null,
+          "image_url": "/api/sheets/33e13658-0090-45ac-883d-69baeaa0205a/pages/3/image"
+        },
+        {
+          "n": 4,
+          "status": "pending",
+          "legibility": null,
+          "error": null,
+          "finished_at": null,
+          "image_url": "/api/sheets/33e13658-0090-45ac-883d-69baeaa0205a/pages/4/image"
+        }
+      ]
+    },
+    {
+      "poll_second": 14,
+      "status": "evaluating",
+      "stage_key": "reading",
+      "pages_done": 1,
+      "pages_read": 1,
+      "pages_total": 4,
+      "pages": [
+        {
+          "n": 1,
+          "status": "done",
+          "legibility": 0.95,
+          "error": null,
+          "finished_at": "2026-11-18T04:53:09Z",
+          "image_url": "/api/sheets/33e13658-0090-45ac-883d-69baeaa0205a/pages/1/image"
+        },
+        {
+          "n": 2,
+          "status": "reading",
+          "legibility": null,
+          "error": null,
+          "finished_at": null,
+          "image_url": "/api/sheets/33e13658-0090-45ac-883d-69baeaa0205a/pages/2/image"
+        },
+        {
+          "n": 3,
+          "status": "pending",
+          "legibility": null,
+          "error": null,
+          "finished_at": null,
+          "image_url": "/api/sheets/33e13658-0090-45ac-883d-69baeaa0205a/pages/3/image"
+        },
+        {
+          "n": 4,
+          "status": "pending",
+          "legibility": null,
+          "error": null,
+          "finished_at": null,
+          "image_url": "/api/sheets/33e13658-0090-45ac-883d-69baeaa0205a/pages/4/image"
+        }
+      ]
+    },
+    {
+      "poll_second": 15,
+      "status": "evaluating",
+      "stage_key": "reading",
+      "pages_done": 1,
+      "pages_read": 1,
+      "pages_total": 4,
+      "pages": [
+        {
+          "n": 1,
+          "status": "done",
+          "legibility": 0.95,
+          "error": null,
+          "finished_at": "2026-11-18T04:53:09Z",
+          "image_url": "/api/sheets/33e13658-0090-45ac-883d-69baeaa0205a/pages/1/image"
+        },
+        {
+          "n": 2,
+          "status": "reading",
+          "legibility": null,
+          "error": null,
+          "finished_at": null,
+          "image_url": "/api/sheets/33e13658-0090-45ac-883d-69baeaa0205a/pages/2/image"
+        },
+        {
+          "n": 3,
+          "status": "pending",
+          "legibility": null,
+          "error": null,
+          "finished_at": null,
+          "image_url": "/api/sheets/33e13658-0090-45ac-883d-69baeaa0205a/pages/3/image"
+        },
+        {
+          "n": 4,
+          "status": "pending",
+          "legibility": null,
+          "error": null,
+          "finished_at": null,
+          "image_url": "/api/sheets/33e13658-0090-45ac-883d-69baeaa0205a/pages/4/image"
+        }
+      ]
+    }
+  ]
+}
