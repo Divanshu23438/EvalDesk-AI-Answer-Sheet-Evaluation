@@ -1,7 +1,30 @@
 # STATUS (update at the end of every session)
 Date / author (agent or model name): 2026-11-19 / Antigravity (Gemini 3.8 Flash)
-Current phase and task: Report Card Section Renaming, Live Student Search, and Theme Toggle System Complete & Verified 100%.
+Current phase and task: Search-First Report Card Flow and Full-Width Digital Student Marksheet Complete & Verified 100%.
 Done (task id, commit, proof file):
+- Search-First Report Card Directory & Full-Width Digital Marksheet (`src/screens/ReportsCenterScreen.tsx`, `src/components/StudentReportView.tsx`, `src/components/report/types.ts`):
+  1. Search-First Flow on `#/reports` (`src/screens/ReportsCenterScreen.tsx`):
+     - **Initial State (`selectedSheetId === null`):** Does not auto-load any report card when clicking Report Card in the sidebar. Displays a focused **Find Student Report Card** directory view:
+       - Prominent live search input (`placeholder="Search by Student Name, Roll Number (e.g. SGSU250489), or Exam..."`) with clear button.
+       - Dynamic `Exam / Subject` filter dropdown populated from `GET /api/papers`.
+       - Filtered student candidate cards from `GET /api/sheets/history` displaying Student Name, Roll Number (`font-mono`), Exam & Subject, Score & Grade badge (e.g. `44.5 / 54.0 M · 82.4% · Grade A`), and an `Open Report Card →` button.
+       - Clean empty-state card when 0 evaluated sheets exist with `+ Evaluate Answer Sheets` linking to `#/upload`.
+     - **Selected State (`selectedSheetId !== null`):**
+       - Top action bar featuring `← Search Another Student` (resets `selectedSheetId = null` to return to search), `Download PDF Report Card` (`GET /api/sheets/{selectedSheetId}/export/pdf`), `Download Excel (.xlsx)`, and `Print` (`window.print()`).
+       - Renders `<StudentReportView sheetId={selectedSheetId} />` directly below.
+  2. Full-Width Digital Report Card (`src/components/StudentReportView.tsx`):
+     - **Removed Booklet Scan Viewer:** Completely removed raw scanned answer booklet viewer (`Page 1 of 9` image pane); booklet image inspection remains strictly in `EvaluateScreen.tsx`.
+     - **Full-Width Canvas (`max-w-[1280px] mx-auto`):**
+       - **Candidate & Result Header Card:** Horizontal banner showing `student_name`, `roll_number`, `class_name`, `exam_title`, `subject`, `strictness`, and right-aligned Total Score, Percentage, Letter Grade, and `PASS` / `RE-APPEAR` badge.
+       - **Tab Switcher:**
+         - **Tab 1: Question-Wise Marks & Rubric Feedback:** Full-width table (`Q. No.`, `Question / Topic`, `Max Marks`, `Awarded`, `%`, `Rubric Evaluation Remarks`, `Status` badge) with expandable accordion row displaying student's OCR transcription extract and evaluator evidence quote + Grand Total summary bar.
+         - **Tab 2: Analytics & Charts:** Full-width Question-Wise Marks Bar Chart with horizontal scroll when >12 questions (zero label clipping), Score Ratio Donut, and dynamic Sectional Performance Breakdown.
+     - **Normalized Question Numbering:** Implemented `formatQuestionNumber()` to strip duplicate leading `Q.` prefixes, preventing `QQ.1` bugs.
+     - **Accurate Sectional Math:** Filtered uncounted choice questions (`is_counted !== 0`), correctly calculating the paper total of 54.0 max marks and 44.5 earned marks.
+  3. Verification:
+     - `npx tsc --noEmit`: 0 errors.
+     - `python scripts/check_all.py`: `RESULT: ALL PASS`.
+     - Automated Playwright browser tests passed: verified search-first initial state, live search filtering, candidate card selection, full-width digital layout without booklet scan pane, question number normalization, analytics charts, "← Search Another Student" reset, and Step 3 workflow integration.
 - Report Card Renaming, Live Student Search & Global Dark/Light Mode Toggle Integration (`src/components/AppSidebar.tsx`, `src/App.tsx`, `src/state/useSheetStore.ts`, `src/screens/ReportsCenterScreen.tsx`, `src/components/StudentReportView.tsx`, `src/screens/HomeScreen.tsx`, `src/index.css`):
   1. Navigation Renamed to "Report Card":
      - In `src/components/AppSidebar.tsx`, renamed navigation item to `"Report Card"` (linking to `#/reports`).

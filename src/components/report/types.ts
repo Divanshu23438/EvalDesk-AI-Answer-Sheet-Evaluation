@@ -50,6 +50,8 @@ export interface StudentReportData {
   roll_number: string;
   paper_title: string;
   paper_strictness?: number;
+  class_name?: string;
+  subject?: string;
   total_score: number;
   max_marks: number;
   percentage: number;
