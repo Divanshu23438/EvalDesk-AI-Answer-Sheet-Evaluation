@@ -266,22 +266,22 @@ export const ReportsCenterScreen: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 min-h-0 bg-[#F6F7F5] overflow-y-auto p-4 md:p-6 space-y-5">
+    <div className="flex-1 min-h-0 bg-[#F6F7F5] dark:bg-[#111312] overflow-y-auto p-4 md:p-6 space-y-5 print:!bg-white">
       {/* Loading state */}
       {isLoading ? (
         <div className="flex flex-col items-center justify-center py-24 space-y-3">
-          <div className="w-8 h-8 border-3 border-[#0F5132] border-t-transparent rounded-full animate-spin" />
-          <span className="text-xs font-mono font-medium text-slate-500">Loading student reports &amp; marks...</span>
+          <div className="w-8 h-8 border-3 border-[#0F5132] dark:border-[#1F6E4A] border-t-transparent rounded-full animate-spin" />
+          <span className="text-xs font-mono font-medium text-slate-500 dark:text-[#969E9A]">Loading student reports &amp; marks...</span>
         </div>
       ) : evaluatedSheets.length === 0 ? (
         /* Empty state: 0 evaluated sheets */
-        <div className="bg-white border border-[#E2E8E4] rounded-[20px] p-10 max-w-xl mx-auto my-12 text-center shadow-[0_4px_16px_rgba(17,24,39,0.04)] space-y-4">
-          <div className="w-14 h-14 rounded-2xl bg-[#E8F3EE] text-[#0F5132] flex items-center justify-center mx-auto border border-[#C8E3D5]">
+        <div className="bg-white dark:bg-[#181B19] border border-[#E2E8E4] dark:border-[#2A2F2C] rounded-[20px] p-10 max-w-xl mx-auto my-12 text-center shadow-none dark:shadow-none space-y-4">
+          <div className="w-14 h-14 rounded-2xl bg-[#E8F3EE] dark:bg-[#1A2B23] text-[#0F5132] dark:text-[#7CC9A3] flex items-center justify-center mx-auto border border-[#C8E3D5] dark:border-[#294236]">
             <FileSpreadsheet className="w-7 h-7" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-slate-900 tracking-tight">No evaluated student sheets yet</h2>
-            <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto leading-relaxed">
+            <h2 className="text-lg font-bold text-slate-900 dark:text-[#ECEEED] tracking-tight">No evaluated student sheets yet</h2>
+            <p className="text-xs text-slate-500 dark:text-[#969E9A] mt-1 max-w-md mx-auto leading-relaxed">
               Upload candidate answer booklets and complete AI evaluation to generate official Bento Marksheets, institutional grading records, and class gradebooks.
             </p>
           </div>
@@ -291,7 +291,7 @@ export const ReportsCenterScreen: React.FC = () => {
               onClick={() => {
                 window.location.hash = '#/upload';
               }}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#0F5132] hover:bg-[#0B3D26] text-white text-xs font-bold shadow-xs transition cursor-pointer"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#0F5132] hover:bg-[#0B3D26] dark:bg-[#1F6E4A] dark:hover:bg-[#27855A] text-white text-xs font-bold shadow-none transition cursor-pointer"
             >
               <span>+ Evaluate Answer Sheets</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -301,19 +301,19 @@ export const ReportsCenterScreen: React.FC = () => {
       ) : (
         <>
           {/* Top Student & Class Control Bar */}
-          <div className="bg-white border border-[#E2E8E4] rounded-[20px] p-4 md:p-5 shadow-[0_4px_16px_rgba(17,24,39,0.04)] space-y-4">
+          <div className="bg-white dark:bg-[#181B19] border border-[#E2E8E4] dark:border-[#2A2F2C] rounded-[20px] p-4 md:p-5 shadow-none dark:shadow-none space-y-4">
             {/* Top row: Paper Filter, Search, and Action Buttons */}
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3.5">
               {/* Left: Filter Controls */}
               <div className="flex flex-wrap items-center gap-2.5 flex-1 min-w-0">
                 {/* Paper / Exam Filter */}
                 <div className="flex items-center gap-1.5 shrink-0">
-                  <Filter className="w-3.5 h-3.5 text-[#0F5132]" />
-                  <span className="text-xs font-bold text-slate-700">Exam:</span>
+                  <Filter className="w-3.5 h-3.5 text-[#0F5132] dark:text-[#7CC9A3]" />
+                  <span className="text-xs font-bold text-slate-700 dark:text-[#ECEEED]">Exam:</span>
                   <select
                     value={selectedPaperId}
                     onChange={(e) => handlePaperChange(e.target.value)}
-                    className="h-8 text-xs bg-[#F1F4F2] border border-[#E2E8E4] rounded-xl px-2.5 font-semibold text-slate-800 focus:ring-2 focus:ring-[#0F5132] focus:outline-none cursor-pointer max-w-[220px] truncate"
+                    className="h-8 text-xs bg-[#F1F4F2] dark:bg-[#202422] border border-[#E2E8E4] dark:border-[#2F3532] rounded-xl px-2.5 font-semibold text-slate-800 dark:text-[#ECEEED] focus:ring-2 focus:ring-[#0F5132] focus:outline-none cursor-pointer max-w-[220px] truncate"
                   >
                     <option value="all">All Exams ({evaluatedSheets.length} Sheets)</option>
                     {papers.map((p) => (
@@ -331,18 +331,18 @@ export const ReportsCenterScreen: React.FC = () => {
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search candidate / roll..."
-                    className="w-full h-8 text-xs bg-[#F1F4F2] border border-[#E2E8E4] rounded-xl pl-8 pr-3 text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-[#0F5132] focus:outline-none"
+                    className="w-full h-8 text-xs bg-[#F1F4F2] dark:bg-[#202422] border border-[#E2E8E4] dark:border-[#2F3532] rounded-xl pl-8 pr-3 text-slate-800 dark:text-[#ECEEED] placeholder:text-slate-400 dark:placeholder:text-[#68706C] focus:ring-2 focus:ring-[#0F5132] focus:outline-none"
                   />
-                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
+                  <Search className="w-3.5 h-3.5 text-slate-400 dark:text-[#68706C] absolute left-2.5 top-2.5" />
                 </div>
 
                 {/* Specific Student Select Dropdown */}
                 <div className="flex items-center gap-1.5 shrink-0">
-                  <span className="text-xs font-bold text-slate-700">Student:</span>
+                  <span className="text-xs font-bold text-slate-700 dark:text-[#ECEEED]">Student:</span>
                   <select
                     value={selectedSheetId}
                     onChange={(e) => setSelectedSheetId(e.target.value)}
-                    className="h-8 text-xs bg-[#F1F4F2] border border-[#E2E8E4] rounded-xl px-2.5 font-semibold text-slate-800 focus:ring-2 focus:ring-[#0F5132] focus:outline-none cursor-pointer max-w-[240px] truncate"
+                    className="h-8 text-xs bg-[#F1F4F2] dark:bg-[#202422] border border-[#E2E8E4] dark:border-[#2F3532] rounded-xl px-2.5 font-semibold text-slate-800 dark:text-[#ECEEED] focus:ring-2 focus:ring-[#0F5132] focus:outline-none cursor-pointer max-w-[240px] truncate"
                   >
                     {displayedSheets.map((s) => (
                       <option key={s.id} value={s.id}>
@@ -360,7 +360,7 @@ export const ReportsCenterScreen: React.FC = () => {
                   type="button"
                   onClick={handleDownloadStudentPdf}
                   disabled={!selectedSheetId || isDownloadingStudentPdf}
-                  className="px-3.5 py-2 rounded-xl bg-[#0F5132] hover:bg-[#0B3D26] disabled:opacity-40 text-white text-xs font-bold shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+                  className="px-3.5 py-2 rounded-xl bg-[#0F5132] hover:bg-[#0B3D26] dark:bg-[#1F6E4A] dark:hover:bg-[#27855A] disabled:opacity-40 text-white text-xs font-bold shadow-none transition flex items-center gap-1.5 cursor-pointer"
                   title="Download selected student's official PDF marksheet"
                 >
                   <Download className="w-3.5 h-3.5" />
@@ -374,10 +374,10 @@ export const ReportsCenterScreen: React.FC = () => {
                   type="button"
                   onClick={handleExportClassExcel}
                   disabled={!effectivePaperIdForClass || isExportingExcel}
-                  className="px-3 py-2 rounded-xl bg-white hover:bg-[#F1F4F2] disabled:opacity-40 text-slate-700 text-xs font-semibold border border-[#E2E8E4] shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+                  className="px-3 py-2 rounded-xl bg-white dark:bg-[#202422] hover:bg-[#F1F4F2] dark:hover:bg-[#2F3532] disabled:opacity-40 text-slate-700 dark:text-[#ECEEED] text-xs font-semibold border border-[#E2E8E4] dark:border-[#2F3532] shadow-none transition flex items-center gap-1.5 cursor-pointer"
                   title="Export class roster and itemized scores to Excel"
                 >
-                  <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-700" />
+                  <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-700 dark:text-[#7CC9A3]" />
                   <span>{isExportingExcel ? 'Exporting...' : 'Export Class Excel (.xlsx)'}</span>
                 </button>
 
@@ -386,10 +386,10 @@ export const ReportsCenterScreen: React.FC = () => {
                   type="button"
                   onClick={handleExportClassPdf}
                   disabled={!effectivePaperIdForClass || isExportingPdf}
-                  className="px-3 py-2 rounded-xl bg-white hover:bg-[#F1F4F2] disabled:opacity-40 text-slate-700 text-xs font-semibold border border-[#E2E8E4] shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+                  className="px-3 py-2 rounded-xl bg-white dark:bg-[#202422] hover:bg-[#F1F4F2] dark:hover:bg-[#2F3532] disabled:opacity-40 text-slate-700 dark:text-[#ECEEED] text-xs font-semibold border border-[#E2E8E4] dark:border-[#2F3532] shadow-none transition flex items-center gap-1.5 cursor-pointer"
                   title="Download consolidated class-wide mark roster PDF"
                 >
-                  <FileText className="w-3.5 h-3.5 text-slate-600" />
+                  <FileText className="w-3.5 h-3.5 text-slate-600 dark:text-[#969E9A]" />
                   <span>{isExportingPdf ? 'Generating...' : 'Export Class PDF (.pdf)'}</span>
                 </button>
               </div>
@@ -397,13 +397,13 @@ export const ReportsCenterScreen: React.FC = () => {
 
             {/* Bottom Row: Quick-Select Student Pills */}
             {displayedSheets.length > 0 && (
-              <div className="pt-2 border-t border-[#E2E8E4]">
+              <div className="pt-2 border-t border-[#E2E8E4] dark:border-[#2A2F2C]">
                 <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-[#969E9A]">
                     Quick-Select Candidate ({displayedSheets.length} found):
                   </span>
                   {currentSheet && (
-                    <span className="text-[11px] font-mono text-[#0F5132] font-semibold">
+                    <span className="text-[11px] font-mono text-[#0F5132] dark:text-[#7CC9A3] font-semibold">
                       Viewing: {currentSheet.student_name} ({currentSheet.roll_number})
                     </span>
                   )}
@@ -418,26 +418,26 @@ export const ReportsCenterScreen: React.FC = () => {
                         onClick={() => setSelectedSheetId(s.id)}
                         className={`px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition-all border flex items-center gap-1.5 cursor-pointer shrink-0 ${
                           isSelected
-                            ? 'bg-[#E8F3EE] text-[#0F5132] border-[#0F5132] font-semibold shadow-xs'
-                            : 'bg-[#F1F4F2] text-slate-700 hover:bg-[#E2E8E4] border-[#E2E8E4]'
+                            ? 'bg-[#E8F3EE] dark:bg-[#1A2B23] text-[#0F5132] dark:text-[#7CC9A3] border-[#0F5132] dark:border-[#294236] font-semibold shadow-none'
+                            : 'bg-[#F1F4F2] dark:bg-[#202422] text-slate-700 dark:text-[#969E9A] hover:bg-[#E2E8E4] dark:hover:bg-[#2A2F2C] border-[#E2E8E4] dark:border-[#2F3532]'
                         }`}
                       >
-                        <span className="font-semibold">{s.student_name}</span>
-                        <span className="text-[11px] font-mono text-slate-400">·</span>
+                        <span className="font-semibold text-slate-900 dark:text-[#ECEEED]">{s.student_name}</span>
+                        <span className="text-[11px] font-mono text-slate-400 dark:text-[#68706C]">·</span>
                         <span className="font-mono text-[11px]">{s.roll_number}</span>
-                        <span className="text-[11px] font-mono text-slate-400">·</span>
-                        <span className="font-mono font-bold text-[#0F5132]">
+                        <span className="text-[11px] font-mono text-slate-400 dark:text-[#68706C]">·</span>
+                        <span className="font-mono font-bold text-[#0F5132] dark:text-[#7CC9A3]">
                           {s.score}/{s.max_marks}
                         </span>
                         <span
                           className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
                             s.grade === 'O' || s.grade.startsWith('A')
-                              ? 'bg-emerald-100 text-emerald-800'
+                              ? 'bg-emerald-100 dark:bg-[#1A2B23] text-emerald-800 dark:text-[#7CC9A3] border border-transparent dark:border-[#294236]'
                               : s.grade.startsWith('B')
-                              ? 'bg-teal-100 text-teal-800'
+                              ? 'bg-teal-100 dark:bg-[#1B2929] text-teal-800 dark:text-[#3A7D8C] border border-transparent dark:border-[#274040]'
                               : s.grade === 'F'
-                              ? 'bg-rose-100 text-rose-800'
-                              : 'bg-amber-100 text-amber-800'
+                              ? 'bg-rose-100 dark:bg-[#2B191D] text-rose-800 dark:text-[#E57D8A] border border-transparent dark:border-[#45262C]'
+                              : 'bg-amber-100 dark:bg-[#2B2416] text-amber-800 dark:text-[#E5B567] border border-transparent dark:border-[#42361F]'
                           }`}
                         >
                           {s.grade}
@@ -456,7 +456,7 @@ export const ReportsCenterScreen: React.FC = () => {
               <BentoMarksheetView sheetId={selectedSheetId} />
             </div>
           ) : (
-            <div className="bg-white border border-[#E2E8E4] rounded-[20px] p-8 text-center text-slate-500 text-xs">
+            <div className="bg-white dark:bg-[#181B19] border border-[#E2E8E4] dark:border-[#2A2F2C] rounded-[20px] p-8 text-center text-slate-500 dark:text-[#969E9A] text-xs shadow-none">
               Select a student from the list above to preview their Bento Marksheet.
             </div>
           )}

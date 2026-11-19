@@ -490,20 +490,20 @@ export const EvaluateScreen: React.FC = () => {
     (activeQuestion?.flags || []).some((f: any) => f.code === 'not_attempted');
 
   return (
-    <section aria-label="Evaluation Workspace" className="h-full max-h-full flex flex-col min-h-0 bg-slate-50 select-none overflow-hidden">
+    <section aria-label="Evaluation Workspace" className="h-full max-h-full flex flex-col min-h-0 bg-[#F6F7F5] dark:bg-[#111312] select-none overflow-hidden">
       {/* ==================================================================== */}
       {/* 1. TOP HEADER: Paper · Student · Score/Max · Grade · Navigation · Actions */}
       {/* ==================================================================== */}
-      <header className="px-4 py-1.5 h-11 bg-white border-b border-slate-200 flex items-center justify-between gap-2 shrink-0 shadow-2xs z-10">
+      <header className="px-4 py-1.5 h-11 bg-white dark:bg-[#181B19] border-b border-[#E2E8E4] dark:border-[#2A2F2C] flex items-center justify-between gap-2 shrink-0 shadow-none dark:shadow-none z-10">
         <div className="flex items-center gap-3 min-w-0">
           <div className="min-w-0">
-            <h2 className="text-xs font-bold text-slate-900 truncate flex items-center gap-2">
+            <h2 className="text-xs font-bold text-[#111827] dark:text-[#ECEEED] truncate flex items-center gap-2">
               <span>{paper?.title || state.paperTitle || 'Assessment Evaluation'}</span>
-              <span className="text-slate-300 font-normal">|</span>
-              <span className="text-[#0B3D26] font-semibold truncate">
+              <span className="text-[#E2E8E4] dark:text-[#2A2F2C] font-normal">|</span>
+              <span className="text-[#0F5132] dark:text-[#7CC9A3] font-semibold truncate">
                 {sheet?.student_name || state.studentName || 'Student Sheet'}
                 {(sheet?.roll_number || state.rollNumber) && (
-                  <span className="text-slate-500 font-mono text-[11px] ml-1">
+                  <span className="text-[#6B7280] dark:text-[#68706C] font-mono text-[11px] ml-1">
                     ({sheet?.roll_number || state.rollNumber})
                   </span>
                 )}
@@ -514,14 +514,14 @@ export const EvaluateScreen: React.FC = () => {
 
         {/* Center: Score & Grade KPI Badge */}
         {sheet && (
-          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1 rounded-lg font-mono text-xs shadow-2xs">
-            <span className="text-slate-500 text-[11px]">Score:</span>
-            <strong className="text-slate-900 font-bold text-sm">
+          <div className="flex items-center gap-2 bg-[#F1F4F2] dark:bg-[#202422] border border-[#E2E8E4] dark:border-[#2F3532] px-3 py-1 rounded-lg font-mono text-xs shadow-none">
+            <span className="text-[#6B7280] dark:text-[#68706C] text-[11px]">Score:</span>
+            <strong className="text-[#111827] dark:text-[#ECEEED] font-bold text-sm">
               {sheet.total_score}
             </strong>
-            <span className="text-slate-400">/ {sheet.max_marks} M</span>
-            <span className="w-1 h-1 rounded-full bg-slate-300" />
-            <span className="font-semibold text-[#0B3D26] bg-[#E8F3EE] border border-[#0F5132]/20 px-1.5 py-0.2 rounded text-[10px]">
+            <span className="text-[#6B7280] dark:text-[#68706C]">/ {sheet.max_marks} M</span>
+            <span className="w-1 h-1 rounded-full bg-[#E2E8E4] dark:bg-[#2F3532]" />
+            <span className="font-semibold text-[#0F5132] dark:text-[#7CC9A3] bg-[#E8F3EE] dark:bg-[#1A2B23] border border-[#0F5132]/20 dark:border-[#294236] px-1.5 py-0.2 rounded text-[10px]">
               {sheet.grade || 'Evaluated'}
             </span>
           </div>
@@ -530,24 +530,24 @@ export const EvaluateScreen: React.FC = () => {
         {/* Right: Prev/Next Sheet Navigation + Action CTAs */}
         <div className="flex items-center gap-2">
           {paperSheets.length > 1 && (
-            <div className="flex items-center gap-1 border border-slate-200 rounded-lg p-0.5 bg-slate-50 text-xs">
+            <div className="flex items-center gap-1 border border-[#E2E8E4] dark:border-[#2A2F2C] rounded-lg p-0.5 bg-[#F1F4F2] dark:bg-[#202422] text-xs">
               <button
                 type="button"
                 onClick={handlePrevSheet}
                 disabled={currentSheetIndex <= 0}
-                className="p-1 rounded text-slate-600 hover:bg-white disabled:opacity-30 disabled:cursor-not-allowed"
+                className="p-1 rounded text-[#4B5563] dark:text-[#969E9A] hover:bg-white dark:hover:bg-[#181B19] disabled:opacity-30 disabled:cursor-not-allowed"
                 title="Previous Student Sheet"
               >
                 <ChevronLeft className="w-3.5 h-3.5" />
               </button>
-              <span className="text-[10px] font-mono px-1 font-semibold text-slate-600">
+              <span className="text-[10px] font-mono px-1 font-semibold text-[#4B5563] dark:text-[#969E9A]">
                 {currentSheetIndex + 1}/{paperSheets.length}
               </span>
               <button
                 type="button"
                 onClick={handleNextSheet}
                 disabled={currentSheetIndex >= paperSheets.length - 1}
-                className="p-1 rounded text-slate-600 hover:bg-white disabled:opacity-30 disabled:cursor-not-allowed"
+                className="p-1 rounded text-[#4B5563] dark:text-[#969E9A] hover:bg-white dark:hover:bg-[#181B19] disabled:opacity-30 disabled:cursor-not-allowed"
                 title="Next Student Sheet"
               >
                 <ChevronRight className="w-3.5 h-3.5" />
@@ -558,10 +558,10 @@ export const EvaluateScreen: React.FC = () => {
           <button
             type="button"
             onClick={() => setShowApproveAllModal(true)}
-            className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 transition flex items-center gap-1.5 shadow-2xs"
+            className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-[#E2E8E4] dark:border-[#2A2F2C] bg-white dark:bg-[#181B19] hover:bg-[#F1F4F2] dark:hover:bg-[#202422] text-[#4B5563] dark:text-[#969E9A] transition flex items-center gap-1.5 shadow-none"
             title="Approve all questions without unresolved flags"
           >
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+            <CheckCircle2 className="w-3.5 h-3.5 text-[#0F5132] dark:text-[#7CC9A3]" />
             <span>Approve All Unflagged</span>
           </button>
 
@@ -569,10 +569,10 @@ export const EvaluateScreen: React.FC = () => {
             type="button"
             onClick={handleFinishAndProceedToReport}
             disabled={isFinishing}
-            className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition flex items-center gap-1.5 shadow-sm text-white ${
+            className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition flex items-center gap-1.5 shadow-none text-white ${
               metrics.allResolved
-                ? 'bg-[#0F5132] hover:bg-[#0B3D26]'
-                : 'bg-amber-600 hover:bg-amber-700'
+                ? 'bg-[#0F5132] hover:bg-[#0B3D26] dark:bg-[#1F6E4A] dark:hover:bg-[#27855A]'
+                : 'bg-amber-600 hover:bg-amber-700 dark:bg-[#B45309] dark:hover:bg-[#D97706]'
             }`}
             title={metrics.allResolved ? 'Finalize sheet and view report' : 'Resolve all flags before finalizing'}
           >
@@ -595,26 +595,26 @@ export const EvaluateScreen: React.FC = () => {
         <main className="flex-1 min-h-0 h-full p-2.5 overflow-hidden">
           {isLoading ? (
             <div className="flex flex-col items-center justify-center h-full w-full space-y-3">
-              <div className="w-8 h-8 border-2 border-[#0F5132] border-t-transparent rounded-full animate-spin" />
-              <span className="text-xs text-slate-500 font-medium">Loading evaluation workspace...</span>
+              <div className="w-8 h-8 border-2 border-[#0F5132] dark:border-[#1F6E4A] border-t-transparent rounded-full animate-spin" />
+              <span className="text-xs text-[#6B7280] dark:text-[#68706C] font-medium">Loading evaluation workspace...</span>
             </div>
           ) : activeQuestion ? (
             <div className="grid grid-cols-2 gap-2.5 h-full min-h-0 overflow-hidden">
               {/* SUB-COLUMN 1: Selected Question Prompt on top + SheetImageViewer filling rest of height */}
               <div className="flex flex-col h-full min-h-0 overflow-hidden gap-2">
                 {/* 1. Question Prompt Card */}
-                <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-xs space-y-1.5 shrink-0 max-h-[35%] overflow-y-auto">
-                  <div className="flex flex-wrap items-center justify-between gap-1.5 border-b border-slate-100 pb-1.5">
+                <div className="rounded-xl border border-[#E2E8E4] dark:border-[#2A2F2C] bg-white dark:bg-[#181B19] p-3 shadow-none dark:shadow-none space-y-1.5 shrink-0 max-h-[35%] overflow-y-auto">
+                  <div className="flex flex-wrap items-center justify-between gap-1.5 border-b border-[#E2E8E4] dark:border-[#2F3532] pb-1.5">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-bold text-slate-900 font-mono">
+                      <span className="text-xs font-bold text-[#111827] dark:text-[#ECEEED] font-mono">
                         Q.{activeQuestion.q_no}
                       </span>
-                      <span className="text-slate-300">·</span>
-                      <span className="text-[11px] font-medium text-slate-600 truncate max-w-[140px]">
+                      <span className="text-[#E2E8E4] dark:text-[#2F3532]">·</span>
+                      <span className="text-[11px] font-medium text-[#4B5563] dark:text-[#969E9A] truncate max-w-[140px]">
                         {activeQuestion.section_name || 'General Section'}
                       </span>
-                      <span className="text-slate-300">·</span>
-                      <span className="text-xs font-mono font-bold text-[#0B3D26]">
+                      <span className="text-[#E2E8E4] dark:text-[#2F3532]">·</span>
+                      <span className="text-xs font-mono font-bold text-[#0F5132] dark:text-[#7CC9A3]">
                         {activeQuestion.max_marks} Marks
                       </span>
                     </div>
@@ -629,29 +629,29 @@ export const EvaluateScreen: React.FC = () => {
                         onClick={() => setIsReferenceExpanded((prev) => !prev)}
                         className={`text-[10px] font-medium px-2 py-0.5 rounded border transition flex items-center gap-1 ${
                           isReferenceExpanded
-                            ? 'bg-[#E8F3EE] border-[#0F5132]/30 text-[#0B3D26]'
-                            : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                            ? 'bg-[#E8F3EE] dark:bg-[#1A2B23] border-[#0F5132]/30 dark:border-[#294236] text-[#0F5132] dark:text-[#7CC9A3]'
+                            : 'bg-[#F1F4F2] dark:bg-[#202422] border-[#E2E8E4] dark:border-[#2F3532] text-[#4B5563] dark:text-[#969E9A] hover:bg-slate-100 dark:hover:bg-[#282E2B]'
                         }`}
                         title="View Model Answer & Rubric Criteria"
                       >
-                        <Sparkles className="w-2.5 h-2.5 text-[#0F5132]" />
+                        <Sparkles className="w-2.5 h-2.5 text-[#0F5132] dark:text-[#7CC9A3]" />
                         <span>Rubric</span>
                       </button>
                     </div>
                   </div>
 
                   {/* Question Prompt Text */}
-                  <div className="text-xs text-slate-800 leading-relaxed font-sans">
+                  <div className="text-xs text-[#111827] dark:text-[#ECEEED] leading-relaxed font-sans">
                     {activeQuestion.question_text || activeQuestion.text || 'Question Prompt'}
                   </div>
 
                   {/* MCQ Options (if any) */}
                   {activeQuestion.options && activeQuestion.options.length > 0 && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 pt-1 border-t border-slate-100 text-xs">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 pt-1 border-t border-[#E2E8E4] dark:border-[#2F3532] text-xs">
                       {activeQuestion.options.map((opt: string, idx: number) => (
                         <div
                           key={idx}
-                          className="px-2 py-0.5 rounded bg-slate-50 border border-slate-200 text-slate-700 font-mono text-[10px]"
+                          className="px-2 py-0.5 rounded bg-[#F1F4F2] dark:bg-[#202422] border border-[#E2E8E4] dark:border-[#2F3532] text-[#111827] dark:text-[#ECEEED] font-mono text-[10px]"
                         >
                           {opt}
                         </div>
@@ -661,7 +661,7 @@ export const EvaluateScreen: React.FC = () => {
 
                   {/* Inline Reference Card Dropdown if toggled */}
                   {isReferenceExpanded && (
-                    <div className="mt-2 pt-2 border-t border-slate-200">
+                    <div className="mt-2 pt-2 border-t border-[#E2E8E4] dark:border-[#2F3532]">
                       <ReferenceCard
                         paperId={state.paperId || ''}
                         questionKey={activeQuestion.question_key || activeQuestion.key || ''}
@@ -764,7 +764,7 @@ export const EvaluateScreen: React.FC = () => {
               </div>
             </div>
           ) : (
-            <div className="m-auto text-center p-8 bg-white rounded-xl border border-slate-200 text-slate-500 text-xs">
+            <div className="m-auto text-center p-8 bg-white dark:bg-[#181B19] rounded-xl border border-[#E2E8E4] dark:border-[#2A2F2C] text-[#6B7280] dark:text-[#68706C] text-xs">
               No questions found in evaluation.
             </div>
           )}
@@ -782,26 +782,26 @@ export const EvaluateScreen: React.FC = () => {
 
       {/* Confirmation Modal for "Approve All Unflagged" */}
       {showApproveAllModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 rounded-xl p-5 max-w-sm w-full shadow-2xl space-y-3">
-            <h4 className="text-sm font-bold text-slate-900">
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#181B19] border border-[#E2E8E4] dark:border-[#2A2F2C] rounded-xl p-5 max-w-sm w-full shadow-2xl space-y-3">
+            <h4 className="text-sm font-bold text-[#111827] dark:text-[#ECEEED]">
               Approve All Unflagged Questions?
             </h4>
-            <p className="text-xs text-slate-600 leading-relaxed">
+            <p className="text-xs text-[#4B5563] dark:text-[#969E9A] leading-relaxed">
               This will accept the AI suggestions for all unflagged questions that have not yet been manually approved. Flagged questions will remain open for your inspection.
             </p>
             <div className="flex justify-end gap-2 pt-2">
               <button
                 type="button"
                 onClick={() => setShowApproveAllModal(false)}
-                className="px-3 py-1.5 text-xs rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-700"
+                className="px-3 py-1.5 text-xs rounded-lg border border-[#E2E8E4] dark:border-[#2A2F2C] hover:bg-[#F1F4F2] dark:hover:bg-[#202422] text-[#4B5563] dark:text-[#969E9A]"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={handleApproveAllUnflagged}
-                className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 shadow-xs"
+                className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-[#0F5132] hover:bg-[#0B3D26] dark:bg-[#1F6E4A] dark:hover:bg-[#27855A] text-white shadow-none"
               >
                 Approve Unflagged
               </button>
@@ -812,19 +812,19 @@ export const EvaluateScreen: React.FC = () => {
 
       {/* Shortcut Help Modal Overlay */}
       {showHelpModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 rounded-xl p-6 max-w-md w-full shadow-2xl">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#181B19] border border-[#E2E8E4] dark:border-[#2A2F2C] rounded-xl p-6 max-w-md w-full shadow-2xl">
+            <div className="flex items-center justify-between pb-3 border-b border-[#E2E8E4] dark:border-[#2F3532] mb-4">
               <div className="flex items-center gap-2">
-                <HelpCircle className="w-4 h-4 text-[#0F5132]" />
-                <h3 className="text-sm font-bold text-slate-900">
+                <HelpCircle className="w-4 h-4 text-[#0F5132] dark:text-[#7CC9A3]" />
+                <h3 className="text-sm font-bold text-[#111827] dark:text-[#ECEEED]">
                   Keyboard Shortcuts
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={() => setShowHelpModal(false)}
-                className="p-1 rounded text-slate-400 hover:text-slate-700"
+                className="p-1 rounded text-[#6B7280] dark:text-[#68706C] hover:text-[#111827] dark:hover:text-[#ECEEED]"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -844,17 +844,17 @@ export const EvaluateScreen: React.FC = () => {
               ].map((s, idx) => (
                 <div
                   key={idx}
-                  className="flex items-center justify-between p-1.5 rounded hover:bg-slate-50"
+                  className="flex items-center justify-between p-1.5 rounded hover:bg-[#F1F4F2] dark:hover:bg-[#202422]"
                 >
-                  <span className="text-slate-600">{s.desc}</span>
-                  <kbd className="px-2 py-0.5 rounded bg-slate-100 border border-slate-200 font-mono text-[11px] font-bold text-slate-800">
+                  <span className="text-[#4B5563] dark:text-[#969E9A]">{s.desc}</span>
+                  <kbd className="px-2 py-0.5 rounded bg-[#F1F4F2] dark:bg-[#202422] border border-[#E2E8E4] dark:border-[#2F3532] font-mono text-[11px] font-bold text-[#111827] dark:text-[#ECEEED]">
                     {s.key}
                   </kbd>
                 </div>
               ))}
             </div>
 
-            <p className="mt-4 pt-3 border-t border-slate-100 text-[11px] text-slate-400">
+            <p className="mt-4 pt-3 border-t border-[#E2E8E4] dark:border-[#2F3532] text-[11px] text-[#6B7280] dark:text-[#68706C]">
               Shortcuts are automatically disabled while typing in any text input.
             </p>
           </div>

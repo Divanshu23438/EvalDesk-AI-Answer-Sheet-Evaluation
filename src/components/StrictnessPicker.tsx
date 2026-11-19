@@ -42,15 +42,15 @@ export const StrictnessPicker: React.FC<StrictnessPickerProps> = ({
             onClick={() => onChange(null)}
             className={`px-2 py-0.5 text-[10px] font-medium rounded transition ${
               value === null
-                ? 'bg-slate-700 text-white shadow-xs'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                ? 'bg-slate-700 dark:bg-[#2A2F2C] text-white shadow-none'
+                : 'bg-slate-100 dark:bg-[#202422] text-slate-600 dark:text-[#969E9A] hover:bg-slate-200 dark:hover:bg-[#2F3532]'
             } disabled:opacity-50 disabled:cursor-not-allowed`}
             title="Inherit strictness from paper settings"
           >
             {inheritLabel}
           </button>
         )}
-        <div className="inline-flex rounded-md border border-slate-200 p-0.5 bg-slate-50 gap-0.5">
+        <div className="inline-flex rounded-md border border-slate-200 dark:border-[#2F3532] p-0.5 bg-slate-50 dark:bg-[#202422] gap-0.5">
           {STRICTNESS_LEVELS.map((item) => {
             const isSelected = value === item.level;
             return (
@@ -61,8 +61,8 @@ export const StrictnessPicker: React.FC<StrictnessPickerProps> = ({
                 onClick={() => onChange(item.level)}
                 className={`px-1.5 py-0.5 text-[10px] font-bold rounded transition ${
                   isSelected
-                    ? 'bg-[#0F5132] text-white shadow-xs'
-                    : 'text-slate-600 hover:text-[#0F5132] hover:bg-white'
+                    ? 'bg-[#0F5132] dark:bg-[#1F6E4A] text-white shadow-none'
+                    : 'text-slate-600 dark:text-[#969E9A] hover:text-[#0F5132] dark:hover:text-[#7CC9A3] hover:bg-white dark:hover:bg-[#181B19]'
                 } disabled:opacity-50 disabled:cursor-not-allowed`}
                 title={`Level ${item.level}: ${item.name} — ${item.shortDesc}`}
               >
@@ -77,7 +77,7 @@ export const StrictnessPicker: React.FC<StrictnessPickerProps> = ({
 
   return (
     <div className="space-y-1.5">
-      <div className="grid grid-cols-5 gap-1 p-1 bg-slate-100 rounded-lg border border-slate-200">
+      <div className="grid grid-cols-5 gap-1 p-1 bg-slate-100 dark:bg-[#202422] rounded-lg border border-slate-200 dark:border-[#2F3532]">
         {STRICTNESS_LEVELS.map((item) => {
           const isSelected = currentLevel === item.level;
           return (
@@ -88,8 +88,8 @@ export const StrictnessPicker: React.FC<StrictnessPickerProps> = ({
               onClick={() => onChange(item.level)}
               className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-md text-center transition ${
                 isSelected
-                  ? 'bg-white text-[#0B3D26] font-bold shadow-xs border border-[#0F5132]/20'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50 font-medium'
+                  ? 'bg-white dark:bg-[#181B19] text-[#0B3D26] dark:text-[#7CC9A3] font-bold shadow-none border border-[#0F5132]/20 dark:border-[#294236]'
+                  : 'text-slate-600 dark:text-[#969E9A] hover:text-slate-900 dark:hover:text-[#ECEEED] hover:bg-slate-50 dark:hover:bg-[#181B19] font-medium'
               } disabled:opacity-50 disabled:cursor-not-allowed`}
             >
               <span className="text-xs">{item.level}</span>
@@ -98,8 +98,8 @@ export const StrictnessPicker: React.FC<StrictnessPickerProps> = ({
           );
         })}
       </div>
-      <p className="text-[11px] text-slate-600 leading-tight min-h-[1.2rem]">
-        <strong className="text-slate-800">Level {currentInfo.level} ({currentInfo.name}):</strong> {currentInfo.shortDesc}
+      <p className="text-[11px] text-slate-600 dark:text-[#969E9A] leading-tight min-h-[1.2rem]">
+        <strong className="text-slate-800 dark:text-[#ECEEED]">Level {currentInfo.level} ({currentInfo.name}):</strong> {currentInfo.shortDesc}
       </p>
     </div>
   );

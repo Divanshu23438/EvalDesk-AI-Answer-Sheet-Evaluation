@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useSheetStore } from '../state/useSheetStore';
+import { useTheme } from '../context/ThemeContext';
 import {
   LayoutDashboard,
   FileCheck2,
@@ -8,6 +9,8 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Search,
+  Sun,
+  Moon,
 } from 'lucide-react';
 
 interface Paper {
@@ -17,6 +20,7 @@ interface Paper {
 
 export const AppSidebar: React.FC = () => {
   const [state, store] = useSheetStore();
+  const { theme, toggleTheme } = useTheme();
   const isCollapsed = state.isSidebarCollapsed;
 
   const [recentPapers, setRecentPapers] = useState<Paper[]>([]);
@@ -117,13 +121,13 @@ export const AppSidebar: React.FC = () => {
 
   return (
     <aside
-      className={`h-full bg-white border-r border-[#E2E8E4] transition-all duration-200 flex flex-col shrink-0 select-none print:hidden ${
+      className={`h-full bg-white dark:bg-[#181B19] border-r border-[#E2E8E4] dark:border-[#2A2F2C] transition-all duration-200 flex flex-col shrink-0 select-none print:hidden shadow-none dark:shadow-none ${
         isCollapsed ? 'w-20' : 'w-64'
       }`}
       aria-label="Application Navigation Sidebar"
     >
       {/* Sidebar Header */}
-      <div className="h-12 border-b border-[#E2E8E4] flex items-center justify-between px-3 shrink-0">
+      <div className="h-12 border-b border-[#E2E8E4] dark:border-[#2A2F2C] flex items-center justify-between px-3 shrink-0">
         {!isCollapsed ? (
           <>
             <a
@@ -132,20 +136,20 @@ export const AppSidebar: React.FC = () => {
               className="flex items-center gap-2 min-w-0 hover:opacity-80 transition-opacity"
               title="Return to Home Landing"
             >
-              <div className="w-7 h-7 rounded-lg bg-[#0F5132] text-white font-bold flex items-center justify-center text-xs shadow-xs shrink-0">
+              <div className="w-7 h-7 rounded-lg bg-[#0F5132] dark:bg-[#1F6E4A] text-white font-bold flex items-center justify-center text-xs shrink-0">
                 ED
               </div>
-              <span className="font-bold text-sm tracking-tight text-slate-900 truncate">
+              <span className="font-bold text-sm tracking-tight text-[#111827] dark:text-[#ECEEED] truncate">
                 EvalDesk
               </span>
-              <span className="text-[10px] font-bold uppercase tracking-wider bg-[#E8F3EE] text-[#0F5132] border border-[#0F5132]/20 px-1 py-0.2 rounded leading-none">
+              <span className="text-[10px] font-bold uppercase tracking-wider bg-[#E8F3EE] text-[#0F5132] border border-[#0F5132]/20 dark:bg-[#1A2B23] dark:text-[#7CC9A3] dark:border-[#294236] px-1 py-0.2 rounded leading-none">
                 PRO
               </span>
             </a>
             <button
               type="button"
               onClick={handleToggle}
-              className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+              className="w-7 h-7 rounded-lg flex items-center justify-center text-[#4B5563] dark:text-[#969E9A] hover:text-[#111827] dark:hover:text-[#ECEEED] hover:bg-[#F1F4F2] dark:hover:bg-[#202422] transition-colors cursor-pointer"
               title="Collapse sidebar ([)"
               aria-label="Collapse sidebar"
             >
@@ -157,7 +161,7 @@ export const AppSidebar: React.FC = () => {
             <button
               type="button"
               onClick={handleToggle}
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:text-[#0F5132] hover:bg-[#E8F3EE] transition-colors cursor-pointer"
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-[#4B5563] dark:text-[#969E9A] hover:text-[#0F5132] dark:hover:text-[#7CC9A3] hover:bg-[#E8F3EE] dark:hover:bg-[#1A2B23] transition-colors cursor-pointer"
               title="Expand sidebar ([)"
               aria-label="Expand sidebar"
             >
@@ -171,15 +175,15 @@ export const AppSidebar: React.FC = () => {
       {!isCollapsed ? (
         <div className="px-3 pt-3 pb-1 shrink-0">
           <div className="relative flex items-center">
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 pointer-events-none" />
+            <Search className="w-3.5 h-3.5 text-[#6B7280] dark:text-[#68706C] absolute left-2.5 pointer-events-none" />
             <input
               type="text"
               placeholder="Quick search..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-8 pr-8 py-1.5 text-xs bg-[#F1F4F2] border border-[#E2E8E4] rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-[#0F5132] focus:border-[#0F5132]"
+              className="w-full pl-8 pr-8 py-1.5 text-xs bg-[#F1F4F2] dark:bg-[#202422] border border-[#E2E8E4] dark:border-[#2F3532] rounded-xl text-[#111827] dark:text-[#ECEEED] placeholder-[#6B7280] dark:placeholder-[#68706C] focus:outline-none focus:ring-1 focus:ring-[#0F5132] dark:focus:ring-[#1F6E4A] focus:border-[#0F5132] dark:focus:border-[#1F6E4A]"
             />
-            <kbd className="absolute right-2 px-1 py-0.5 text-[9px] font-mono text-slate-400 bg-white border border-[#E2E8E4] rounded">
+            <kbd className="absolute right-2 px-1 py-0.5 text-[9px] font-mono text-[#6B7280] dark:text-[#68706C] bg-white dark:bg-[#181B19] border border-[#E2E8E4] dark:border-[#2F3532] rounded">
               ⌘K
             </kbd>
           </div>
@@ -189,7 +193,7 @@ export const AppSidebar: React.FC = () => {
           <button
             type="button"
             onClick={handleToggle}
-            className="w-10 h-8 flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-600 hover:bg-[#F1F4F2] transition"
+            className="w-10 h-8 flex items-center justify-center rounded-xl text-[#4B5563] dark:text-[#969E9A] hover:text-[#111827] dark:hover:text-[#ECEEED] hover:bg-[#F1F4F2] dark:hover:bg-[#202422] transition"
             title="Quick search (⌘K)"
           >
             <Search className="w-4 h-4" />
@@ -207,23 +211,23 @@ export const AppSidebar: React.FC = () => {
               type="button"
               onClick={item.onClick}
               title={isCollapsed ? item.label : undefined}
-              className={`w-full flex items-center rounded-xl transition-all duration-150 ${
+              className={`w-full flex items-center rounded-xl transition-all duration-150 cursor-pointer ${
                 isCollapsed
                   ? `h-10 justify-center ${
                       item.isActive
-                        ? 'bg-[#E8F3EE] text-[#0F5132] shadow-2xs ring-1 ring-[#0F5132]/20'
-                        : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
+                        ? 'bg-[#E8F3EE] text-[#0F5132] dark:bg-[#1A2B23] dark:text-[#7CC9A3] dark:border dark:border-[#294236]'
+                        : 'text-[#4B5563] dark:text-[#969E9A] hover:bg-[#F1F4F2] dark:hover:bg-[#202422] hover:text-[#111827] dark:hover:text-[#ECEEED]'
                     }`
                   : `h-9 px-3 gap-3 ${
                       item.isActive
-                        ? 'bg-[#E8F3EE] text-[#0F5132] font-semibold border border-[#E8F3EE] shadow-2xs'
-                        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-medium'
+                        ? 'bg-[#E8F3EE] text-[#0F5132] dark:bg-[#1A2B23] dark:text-[#7CC9A3] dark:border dark:border-[#294236] font-semibold'
+                        : 'text-[#4B5563] dark:text-[#969E9A] hover:bg-[#F1F4F2] dark:hover:bg-[#202422] hover:text-[#111827] dark:hover:text-[#ECEEED] font-medium'
                     }`
               }`}
             >
               <Icon
                 className={`w-4 h-4 shrink-0 transition-colors ${
-                  item.isActive ? 'text-[#0F5132]' : 'text-slate-400 group-hover:text-slate-600'
+                  item.isActive ? 'text-[#0F5132] dark:text-[#7CC9A3]' : 'text-[#6B7280] dark:text-[#68706C]'
                 }`}
               />
               {!isCollapsed && (
@@ -237,7 +241,7 @@ export const AppSidebar: React.FC = () => {
       {/* Recent Papers (expanded only) */}
       {!isCollapsed && (
         <div className="px-3 pb-2 flex-1 overflow-y-auto">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 px-1">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-[#6B7280] dark:text-[#68706C] mb-1.5 px-1">
             Recent Papers
           </p>
           {papersLoading ? (
@@ -245,12 +249,12 @@ export const AppSidebar: React.FC = () => {
               {[1, 2, 3].map((i) => (
                 <div
                   key={i}
-                  className="h-6 rounded-lg bg-slate-100 animate-pulse"
+                  className="h-6 rounded-lg bg-[#F1F4F2] dark:bg-[#202422] animate-pulse"
                 />
               ))}
             </div>
           ) : recentPapers.length === 0 ? (
-            <p className="text-[11px] text-slate-400 italic px-1">No papers yet</p>
+            <p className="text-[11px] text-[#6B7280] dark:text-[#68706C] italic px-1">No papers yet</p>
           ) : (
             <ul className="space-y-0.5">
               {recentPapers
@@ -260,7 +264,7 @@ export const AppSidebar: React.FC = () => {
                   <a
                     href="#/upload"
                     onClick={() => store.setStep('upload')}
-                    className="block text-[11px] text-slate-600 hover:text-[#0F5132] hover:bg-[#E8F3EE] px-2 py-1 rounded-lg truncate transition-colors"
+                    className="block text-[11px] text-[#4B5563] dark:text-[#969E9A] hover:text-[#0F5132] dark:hover:text-[#7CC9A3] hover:bg-[#E8F3EE] dark:hover:bg-[#1A2B23] px-2 py-1 rounded-lg truncate transition-colors"
                     title={paper.title}
                   >
                     {paper.title}
@@ -272,31 +276,71 @@ export const AppSidebar: React.FC = () => {
         </div>
       )}
 
+      {/* Theme Appearance Toggle Row (Above Backend Status Indicator) */}
+      {!isCollapsed ? (
+        <div className="px-3 pb-2 shrink-0">
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-medium text-[#4B5563] dark:text-[#969E9A] hover:bg-[#F1F4F2] dark:hover:bg-[#202422] hover:text-[#111827] dark:hover:text-[#ECEEED] transition-colors cursor-pointer border border-transparent hover:border-[#E2E8E4] dark:hover:border-[#2F3532]"
+            title={theme === 'dark' ? 'Switch to Light appearance' : 'Switch to Dark appearance'}
+          >
+            <div className="flex items-center gap-2">
+              {theme === 'dark' ? (
+                <Sun className="w-3.5 h-3.5 text-[#E5B567]" />
+              ) : (
+                <Moon className="w-3.5 h-3.5 text-[#4B5563]" />
+              )}
+              <span>{theme === 'dark' ? 'Light appearance' : 'Dark appearance'}</span>
+            </div>
+            <span className="text-[10px] font-mono uppercase tracking-wider text-[#6B7280] dark:text-[#68706C]">
+              {theme === 'dark' ? 'Dark' : 'Light'}
+            </span>
+          </button>
+        </div>
+      ) : (
+        <div className="px-2 pb-2 flex justify-center shrink-0">
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="w-10 h-8 flex items-center justify-center rounded-xl text-[#4B5563] dark:text-[#969E9A] hover:bg-[#F1F4F2] dark:hover:bg-[#202422] hover:text-[#111827] dark:hover:text-[#ECEEED] transition-colors cursor-pointer border border-transparent hover:border-[#E2E8E4] dark:hover:border-[#2F3532]"
+            title={theme === 'dark' ? 'Light appearance' : 'Dark appearance'}
+            aria-label="Toggle theme appearance"
+          >
+            {theme === 'dark' ? (
+              <Sun className="w-4 h-4 text-[#E5B567]" />
+            ) : (
+              <Moon className="w-4 h-4 text-[#4B5563]" />
+            )}
+          </button>
+        </div>
+      )}
+
       {/* Backend Health Pill */}
-      <div className="px-3 pb-1 shrink-0">
+      <div className="px-3 pb-2 shrink-0">
         {backendOnline !== null && (
-          <div className="flex items-center gap-1.5 text-[10px] text-slate-500">
+          <div className="flex items-center gap-1.5 text-[10px] text-[#6B7280] dark:text-[#68706C]">
             <span
               className={`w-1.5 h-1.5 rounded-full ${
                 backendOnline ? 'bg-emerald-500' : 'bg-rose-500'
               }`}
             />
-            {backendOnline ? 'Online' : 'Offline'}
+            <span>{backendOnline ? 'Online' : 'Offline'}</span>
           </div>
         )}
       </div>
 
       {/* Sidebar Footer */}
-      <div className="p-2 border-t border-[#E2E8E4] text-center shrink-0">
+      <div className="p-2 border-t border-[#E2E8E4] dark:border-[#2A2F2C] text-center shrink-0">
         {!isCollapsed ? (
-          <div className="px-2 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-[10px] text-slate-500 flex items-center justify-between">
+          <div className="px-2 py-1.5 rounded-lg bg-[#F1F4F2] dark:bg-[#202422] border border-[#E2E8E4] dark:border-[#2F3532] text-[10px] text-[#6B7280] dark:text-[#68706C] flex items-center justify-between">
             <span className="font-medium">EvalDesk v2.4</span>
-            <kbd className="px-1 py-0.2 rounded bg-white border border-slate-300 font-mono text-[9px]">
+            <kbd className="px-1 py-0.2 rounded bg-white dark:bg-[#181B19] border border-[#E2E8E4] dark:border-[#2F3532] font-mono text-[9px] text-[#6B7280] dark:text-[#68706C]">
               [
             </kbd>
           </div>
         ) : (
-          <div className="w-7 h-7 mx-auto rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-[10px] text-[#0F5132]">
+          <div className="w-7 h-7 mx-auto rounded-lg bg-[#F1F4F2] dark:bg-[#202422] border border-[#E2E8E4] dark:border-[#2F3532] flex items-center justify-center font-bold text-[10px] text-[#0F5132] dark:text-[#7CC9A3]">
             ED
           </div>
         )}

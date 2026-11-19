@@ -1,5 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
 html,
 body,
@@ -21,6 +22,7 @@ body,
   --surface-card: #FFFFFF;
   --surface-card-border: #E2E8E4;
   --surface-muted: #F1F4F2;
+  --surface-muted-border: #E2E8E4;
   --brand-primary: #0F5132;
   --brand-primary-hover: #0B3D26;
   --brand-tint: #E8F3EE;
@@ -31,10 +33,11 @@ body,
   --rose-status-bg: #FFE4E6;
   --ink-heading: #111827;
   --ink-body: #4B5563;
+  --ink-muted: #6B7280;
   --font-display: 'Plus Jakarta Sans', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
   --card-radius: 20px;
-  --card-shadow: 0 4px 16px rgba(17, 24, 39, 0.04);
+  --card-shadow: none;
   --card-border: 1px solid #E2E8E4;
 
   /* Legacy variable mappings to Academic Palette */
@@ -60,12 +63,46 @@ body,
   --transition-slow: 250ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+.dark {
+  /* Matte Graphite & Forest-Sage Palette */
+  --bg-canvas: #111312;
+  --surface-card: #181B19;
+  --surface-card-border: #2A2F2C;
+  --surface-muted: #202422;
+  --surface-muted-border: #2F3532;
+  --brand-primary: #1F6E4A;
+  --brand-primary-hover: #27855A;
+  --brand-tint: #1A2B23;
+  --accent-teal: #3A7D8C;
+  --amber-status: #E5B567;
+  --amber-status-bg: #2B2416;
+  --rose-status: #E57D8A;
+  --rose-status-bg: #2B191D;
+  --ink-heading: #ECEEED;
+  --ink-body: #969E9A;
+  --ink-muted: #68706C;
+  --card-radius: 20px;
+  --card-shadow: none;
+  --card-border: 1px solid #2A2F2C;
+
+  --accent-indigo: #1F6E4A;
+  --accent-indigo-hover: #27855A;
+  --accent-indigo-subtle: #1A2B23;
+  --accent-indigo-border: #294236;
+  --surface-bg: #111312;
+}
+
 body {
   font-family: var(--font-display);
   background-color: var(--bg-canvas);
   color: var(--ink-heading);
   line-height: 1.45;
   font-size: 14px;
+}
+
+.dark body {
+  background-color: #111312;
+  color: #ECEEED;
 }
 
 /* App Locked Shell */
@@ -77,6 +114,10 @@ body {
   overflow: hidden;
   position: relative;
   background-color: var(--bg-canvas);
+}
+
+.dark .app {
+  background-color: #111312;
 }
 
 /* Inner Panels: Only inner containers may scroll */
@@ -110,6 +151,13 @@ body {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(156, 163, 175, 0.7);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(104, 112, 108, 0.4);
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(104, 112, 108, 0.7);
 }
 
 @keyframes scanline {
@@ -195,18 +243,31 @@ body {
     size: A4 portrait;
     margin: 10mm;
   }
-  html, body, #root {
+  html,
+  body,
+  #root,
+  html.dark,
+  html.dark body,
+  html.dark #root,
+  .dark,
+  .dark body,
+  .dark #root {
     height: auto !important;
     overflow: visible !important;
     background: #FFFFFF !important;
+    background-color: #FFFFFF !important;
+    color: #111827 !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
-  .app-shell, .app-main {
+  .app-shell, .app-main, html.dark .app-shell, html.dark .app-main {
     display: block !important;
     height: auto !important;
     width: 100% !important;
     overflow: visible !important;
+    background: #FFFFFF !important;
+    background-color: #FFFFFF !important;
+    color: #111827 !important;
   }
   aside,
   header,
@@ -227,6 +288,54 @@ body {
     animation: none !important;
     transform: none !important;
     opacity: 1 !important;
+  }
+
+  /* Force light academic variables in print even if dark mode is active */
+  :root,
+  .dark {
+    --bg-canvas: #FFFFFF !important;
+    --surface-card: #FFFFFF !important;
+    --surface-card-border: #E2E8E4 !important;
+    --surface-muted: #F1F4F2 !important;
+    --surface-muted-border: #E2E8E4 !important;
+    --brand-primary: #0F5132 !important;
+    --brand-primary-hover: #0B3D26 !important;
+    --brand-tint: #E8F3EE !important;
+    --ink-heading: #111827 !important;
+    --ink-body: #4B5563 !important;
+    --card-border: 1px solid #E2E8E4 !important;
+    --card-shadow: none !important;
+  }
+
+  /* Print overrides for dark classes */
+  .dark * {
+    text-shadow: none !important;
+    box-shadow: none !important;
+  }
+  .dark div[class*="dark:bg-[#111312]"],
+  .dark main[class*="dark:bg-[#111312]"],
+  .dark section[class*="dark:bg-[#111312]"] {
+    background-color: #FFFFFF !important;
+  }
+  .dark div[class*="dark:bg-[#181B19]"],
+  .dark section[class*="dark:bg-[#181B19]"],
+  .dark article[class*="dark:bg-[#181B19]"] {
+    background-color: #FFFFFF !important;
+    border-color: #E2E8E4 !important;
+  }
+  .dark div[class*="dark:bg-[#202422]"] {
+    background-color: #F1F4F2 !important;
+    border-color: #E2E8E4 !important;
+  }
+  .dark *[class*="dark:text-[#ECEEED]"] {
+    color: #111827 !important;
+  }
+  .dark *[class*="dark:text-[#969E9A]"] {
+    color: #4B5563 !important;
+  }
+  .dark *[class*="dark:border-[#2A2F2C]"],
+  .dark *[class*="dark:border-[#2F3532]"] {
+    border-color: #E2E8E4 !important;
   }
 }
 

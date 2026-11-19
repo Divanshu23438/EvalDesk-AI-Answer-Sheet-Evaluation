@@ -1,7 +1,36 @@
 # STATUS (update at the end of every session)
 Date / author (agent or model name): 2026-11-19 / Antigravity (Gemini 3.8 Flash)
-Current phase and task: Bento Marksheet & Reports Center Integration Complete & Verified 100%.
+Current phase and task: Editorial Non-Flashy Dark Mode Implementation Complete & Verified 100%.
 Done (task id, commit, proof file):
+- Editorial Non-Flashy Dark Mode Across EvalDesk (`src/context/ThemeContext.tsx`, `index.html`, `src/index.css`, `src/components/AppSidebar.tsx`, `src/screens/HomeScreen.tsx`, `src/screens/GuideScreen.tsx`, `src/screens/DashboardScreen.tsx`, `src/screens/UploadScreen.tsx`, `src/screens/EvaluateScreen.tsx`, `src/screens/HistoryScreen.tsx`, `src/screens/ReportsCenterScreen.tsx`, `src/screens/StudentMarksheetScreen.tsx`, `src/components/BentoMarksheetView.tsx`, `src/components/QuestionPanel.tsx`, `src/components/MarksCard.tsx`, `src/components/OcrCard.tsx`, `src/components/ReferenceCard.tsx`, `src/components/SheetImageViewer.tsx`, `src/components/StrictnessChip.tsx`, `src/components/StrictnessPicker.tsx`, `src/components/PaperDetailsForm.tsx`, `src/components/QueueRow.tsx`, `src/components/AnnotationToolbar.tsx`):
+  1. Anti-AI-Slop & Editorial Matte Graphite Tokens:
+     - 100% adherence to zero-AI-slop visual rules: NO glowing box-shadows, neon borders, radial gradient meshes, aurora backgrounds, or floating blurs. All workspace cards and panels are solid, opaque, and matte (`shadow-none dark:shadow-none`).
+     - App Canvas: `bg-[#F6F7F5] dark:bg-[#111312]`.
+     - Bento Cards, Sidebar, Modals & Panels: `bg-white dark:bg-[#181B19] border border-[#E2E8E4] dark:border-[#2A2F2C]`.
+     - Muted Inner Tiles, Table Headers & Inputs: `bg-[#F1F4F2] dark:bg-[#202422] border-[#E2E8E4] dark:border-[#2F3532] text-[#111827] dark:text-[#ECEEED]`.
+     - Primary CTAs: `bg-[#0F5132] hover:bg-[#0B3D26] dark:bg-[#1F6E4A] dark:hover:bg-[#27855A] text-white font-semibold`.
+     - Active Sidebar & Tab Pills: `bg-[#E8F3EE] text-[#0F5132] dark:bg-[#1A2B23] dark:text-[#7CC9A3] dark:border dark:border-[#294236]`.
+     - Typography: Headings/scores `text-[#111827] dark:text-[#ECEEED]`, descriptions `text-[#4B5563] dark:text-[#969E9A]`, muted timestamps `text-[#6B7280] dark:text-[#68706C]`.
+     - Semantic Badges (Low-Glare):
+       - Full Marks / Verified: `dark:bg-[#1A2B23] dark:text-[#7CC9A3] dark:border-[#294236]`.
+       - Partial / Review: `dark:bg-[#2B2416] dark:text-[#E5B567] dark:border-[#42361F]`.
+       - Deduction / Fail: `dark:bg-[#2B191D] dark:text-[#E57D8A] dark:border-[#45262C]`.
+     - Charts & Progress Rings: Solid `#2D8A61` (forest sage) and `#3A7D8C` (muted slate-teal) with `#2A2F2C` track strokes.
+  2. Theme Provider & Persistence:
+     - Implemented `ThemeContext.tsx` with `Theme` ('light' | 'dark'), `evaldesk_theme` `localStorage` persistence, DOM `.dark` class management, cross-tab `storage` synchronization, and `useTheme()` hook.
+     - Pre-hydration inline script in `<head>` of `index.html` executes synchronously before HTML rendering to prevent white flash of un-themed content.
+     - Tailwind v4 `@custom-variant dark (&:where(.dark, .dark *));` configured in `src/index.css`.
+  3. Navigation & Screen Integration:
+     - `src/components/AppSidebar.tsx`: Added subtle theme toggle row above backend health pill (full label in `w-64`, icon in `w-20`).
+     - `src/screens/HomeScreen.tsx`: Added theme toggle button to top navigation bar; converted device mockups and feature cards to matte graphite `#111312` / `#181B19` surfaces.
+     - `src/screens/GuideScreen.tsx`: Added first-class documentation screen at `#/guide` for 10-point scale, strictness calibration matrix, and shortcuts cheat sheet.
+     - `src/screens/DashboardScreen.tsx`, `UploadScreen.tsx`, `EvaluateScreen.tsx`, `HistoryScreen.tsx`, `ReportsCenterScreen.tsx`, `StudentMarksheetScreen.tsx`: Fully converted with matte graphite tokens.
+  4. Print Mode Safeguard:
+     - `@media print` rules in `src/index.css` force pure white paper background (`#FFFFFF`), dark ink (`#111827`), and hairline borders (`#E2E8E4`) even when dark mode is enabled on screen.
+  5. Verification & Tests Passed 100%:
+     - `npx tsc --noEmit`: 0 errors.
+     - `python scripts/check_all.py`: `RESULT: ALL PASS` (banned strings, git secrets, pytest, tsc, and live provider health).
+     - Automated Playwright browser verification (`C:/Users/lenovo/.../verify_dark_mode.py` and `verify_evaluate.py`): verified `#/`, `#/dashboard`, `#/upload`, `#/history`, `#/reports`, `#/guide`, `#/evaluate` with `.dark: True`, `badBackdrop: False`, and verified print styles (`bodyBg: rgb(255, 255, 255)`, `bodyColor: rgb(17, 24, 39)`).
 - Bento Marksheet & Reports Center Integration (`src/components/BentoMarksheetView.tsx`, `src/screens/ReportsCenterScreen.tsx`, `src/screens/StudentMarksheetScreen.tsx`, `src/components/AppSidebar.tsx`, `src/index.css`, `scripts/verify_bento_reports.py`):
   1. Bento Student Marksheet Component (`src/components/BentoMarksheetView.tsx`):
      - Ported the 12-column Bento Marksheet design from `.stitch_ref/code.html` into a fully dynamic React + TypeScript component.

@@ -168,7 +168,7 @@ export const AnnotationToolbar: React.FC<AnnotationToolbarProps> = ({
   return (
     <div
       data-testid="annotation-toolbar"
-      className={`flex flex-col items-center gap-1.5 p-1.5 bg-white/95 backdrop-blur-md rounded-xl shadow-lg border border-slate-200 select-none z-30 transition-all ${className}`}
+      className={`flex flex-col items-center gap-1.5 p-1.5 bg-white dark:bg-[#181B19] rounded-xl shadow-none dark:shadow-none border border-[#E2E8E4] dark:border-[#2A2F2C] select-none z-30 transition-all ${className}`}
       style={{ minWidth: '44px' }}
     >
       {/* Mobile Collapse Toggle Button */}
@@ -176,7 +176,7 @@ export const AnnotationToolbar: React.FC<AnnotationToolbarProps> = ({
         type="button"
         data-testid="btn-collapse-toolbar"
         onClick={() => setIsCollapsedMobile((prev) => !prev)}
-        className="md:hidden p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+        className="md:hidden p-1.5 rounded-lg text-[#6B7280] dark:text-[#68706C] hover:bg-slate-100 dark:hover:bg-[#202422] hover:text-[#111827] dark:hover:text-[#ECEEED]"
         title="Toggle Toolbar"
       >
         <Menu className="w-4 h-4" />
@@ -191,8 +191,8 @@ export const AnnotationToolbar: React.FC<AnnotationToolbarProps> = ({
           onClick={() => onSelectTool('select')}
           className={`p-2 rounded-lg text-xs transition flex items-center justify-center ${
             activeTool === 'select'
-              ? 'bg-[#0F5132] text-white shadow-xs'
-              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+              ? 'bg-[#0F5132] dark:bg-[#1F6E4A] text-white shadow-none'
+              : 'text-[#4B5563] dark:text-[#969E9A] hover:bg-slate-100 dark:hover:bg-[#202422] hover:text-[#111827] dark:hover:text-[#ECEEED]'
           }`}
           title="Select / Pick (V)"
         >
@@ -206,8 +206,8 @@ export const AnnotationToolbar: React.FC<AnnotationToolbarProps> = ({
           onClick={() => onSelectTool('pen')}
           className={`p-2 rounded-lg text-xs transition flex items-center justify-center ${
             activeTool === 'pen'
-              ? 'bg-[#0F5132] text-white shadow-xs'
-              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+              ? 'bg-[#0F5132] dark:bg-[#1F6E4A] text-white shadow-none'
+              : 'text-[#4B5563] dark:text-[#969E9A] hover:bg-slate-100 dark:hover:bg-[#202422] hover:text-[#111827] dark:hover:text-[#ECEEED]'
           }`}
           title="Pen (P)"
         >
@@ -221,8 +221,8 @@ export const AnnotationToolbar: React.FC<AnnotationToolbarProps> = ({
           onClick={() => onSelectTool('highlight')}
           className={`p-2 rounded-lg text-xs transition flex items-center justify-center ${
             activeTool === 'highlight'
-              ? 'bg-[#0F5132] text-white shadow-xs'
-              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+              ? 'bg-[#0F5132] dark:bg-[#1F6E4A] text-white shadow-none'
+              : 'text-[#4B5563] dark:text-[#969E9A] hover:bg-slate-100 dark:hover:bg-[#202422] hover:text-[#111827] dark:hover:text-[#ECEEED]'
           }`}
           title="Highlighter (H)"
         >
@@ -236,8 +236,8 @@ export const AnnotationToolbar: React.FC<AnnotationToolbarProps> = ({
           onClick={() => onSelectTool('tick')}
           className={`p-2 rounded-lg text-xs transition flex items-center justify-center ${
             activeTool === 'tick'
-              ? 'bg-emerald-600 text-white shadow-xs'
-              : 'text-slate-600 hover:bg-slate-100 hover:text-emerald-700'
+              ? 'bg-[#0F5132] dark:bg-[#1F6E4A] text-white shadow-none'
+              : 'text-[#4B5563] dark:text-[#969E9A] hover:bg-slate-100 dark:hover:bg-[#202422] hover:text-[#0F5132] dark:hover:text-[#7CC9A3]'
           }`}
           title="Tick Mark (T)"
         >
@@ -251,8 +251,8 @@ export const AnnotationToolbar: React.FC<AnnotationToolbarProps> = ({
           onClick={() => onSelectTool('cross')}
           className={`p-2 rounded-lg text-xs transition flex items-center justify-center ${
             activeTool === 'cross'
-              ? 'bg-rose-600 text-white shadow-xs'
-              : 'text-slate-600 hover:bg-slate-100 hover:text-rose-700'
+              ? 'bg-rose-600 dark:bg-[#E57D8A] text-white shadow-none'
+              : 'text-[#4B5563] dark:text-[#969E9A] hover:bg-slate-100 dark:hover:bg-[#202422] hover:text-rose-700 dark:hover:text-[#E57D8A]'
           }`}
           title="Cross Mark (X)"
         >
@@ -266,8 +266,8 @@ export const AnnotationToolbar: React.FC<AnnotationToolbarProps> = ({
           onClick={() => onSelectTool('text')}
           className={`p-2 rounded-lg text-xs transition flex items-center justify-center ${
             activeTool === 'text'
-              ? 'bg-[#0F5132] text-white shadow-xs'
-              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+              ? 'bg-[#0F5132] dark:bg-[#1F6E4A] text-white shadow-none'
+              : 'text-[#4B5563] dark:text-[#969E9A] hover:bg-slate-100 dark:hover:bg-[#202422] hover:text-[#111827] dark:hover:text-[#ECEEED]'
           }`}
           title="Text Note (N)"
         >
@@ -281,15 +281,15 @@ export const AnnotationToolbar: React.FC<AnnotationToolbarProps> = ({
           onClick={() => onSelectTool('eraser')}
           className={`p-2 rounded-lg text-xs transition flex items-center justify-center ${
             activeTool === 'eraser'
-              ? 'bg-slate-700 text-white shadow-xs'
-              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+              ? 'bg-slate-700 dark:bg-[#2F3532] text-white shadow-none'
+              : 'text-[#4B5563] dark:text-[#969E9A] hover:bg-slate-100 dark:hover:bg-[#202422] hover:text-[#111827] dark:hover:text-[#ECEEED]'
           }`}
           title="Eraser (E)"
         >
           <Eraser className="w-4 h-4" />
         </button>
 
-        <div className="w-full h-px bg-slate-200 my-1" />
+        <div className="w-full h-px bg-[#E2E8E4] dark:bg-[#2F3532] my-1" />
 
         {/* Color Palette (Red, Blue, Green, Black) */}
         <div className="flex flex-col items-center gap-1.5 py-0.5">
@@ -300,7 +300,7 @@ export const AnnotationToolbar: React.FC<AnnotationToolbarProps> = ({
               data-testid={`color-picker-${c.value.replace('#', '')}`}
               onClick={() => onChangeColor(c.value)}
               className={`w-5 h-5 rounded-full border-2 transition-transform ${
-                activeColor === c.value ? 'scale-125 border-slate-900 shadow-sm' : 'border-transparent hover:scale-110'
+                activeColor === c.value ? 'scale-125 border-slate-900 dark:border-white shadow-none' : 'border-transparent hover:scale-110'
               }`}
               style={{ backgroundColor: c.value }}
               title={c.label}
@@ -308,7 +308,7 @@ export const AnnotationToolbar: React.FC<AnnotationToolbarProps> = ({
           ))}
         </div>
 
-        <div className="w-full h-px bg-slate-200 my-1" />
+        <div className="w-full h-px bg-[#E2E8E4] dark:bg-[#2F3532] my-1" />
 
         {/* Line Widths (3 options) */}
         <div className="flex flex-col items-center gap-1 py-0.5">
@@ -318,20 +318,20 @@ export const AnnotationToolbar: React.FC<AnnotationToolbarProps> = ({
               type="button"
               data-testid={`width-picker-${w.value}`}
               onClick={() => onChangeWidth(w.value)}
-              className={`w-7 h-5 flex items-center justify-center rounded hover:bg-slate-100 transition ${
-                activeWidth === w.value ? 'bg-slate-200/80 font-bold' : ''
+              className={`w-7 h-5 flex items-center justify-center rounded hover:bg-slate-100 dark:hover:bg-[#202422] transition ${
+                activeWidth === w.value ? 'bg-slate-200/80 dark:bg-[#2F3532] font-bold' : ''
               }`}
               title={`Stroke: ${w.label}`}
             >
               <div
-                className="w-4 rounded-full bg-slate-700"
+                className="w-4 rounded-full bg-slate-700 dark:bg-[#ECEEED]"
                 style={{ height: `${Math.max(1, w.value)}px` }}
               />
             </button>
           ))}
         </div>
 
-        <div className="w-full h-px bg-slate-200 my-1" />
+        <div className="w-full h-px bg-[#E2E8E4] dark:bg-[#2F3532] my-1" />
 
         {/* Visibility Switch: For Student vs Private */}
         <button
@@ -340,12 +340,12 @@ export const AnnotationToolbar: React.FC<AnnotationToolbarProps> = ({
           onClick={() => onChangeVisibility(visibility === 'student' ? 'private' : 'student')}
           className={`p-2 rounded-lg text-xs transition flex items-center justify-center ${
             visibility === 'private'
-              ? 'bg-amber-100 text-amber-800 border border-amber-300 shadow-xs'
-              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+              ? 'bg-amber-100 dark:bg-[#2B2416] text-amber-800 dark:text-[#E5B567] border border-amber-300 dark:border-[#42361F] shadow-none'
+              : 'text-[#4B5563] dark:text-[#969E9A] hover:bg-slate-100 dark:hover:bg-[#202422] hover:text-[#111827] dark:hover:text-[#ECEEED]'
           }`}
           title={visibility === 'private' ? 'Visibility: Private (Hidden from student)' : 'Visibility: For student'}
         >
-          {visibility === 'private' ? <Lock className="w-4 h-4 text-amber-700" /> : <Globe className="w-4 h-4" />}
+          {visibility === 'private' ? <Lock className="w-4 h-4 text-amber-700 dark:text-[#E5B567]" /> : <Globe className="w-4 h-4" />}
         </button>
 
         {/* Show / Hide Toggle */}
@@ -354,14 +354,14 @@ export const AnnotationToolbar: React.FC<AnnotationToolbarProps> = ({
           data-testid="btn-toggle-show-ink"
           onClick={onToggleVisible}
           className={`p-2 rounded-lg text-xs transition flex items-center justify-center ${
-            !isVisible ? 'bg-slate-200 text-slate-500' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+            !isVisible ? 'bg-slate-200 dark:bg-[#202422] text-[#6B7280] dark:text-[#68706C]' : 'text-[#4B5563] dark:text-[#969E9A] hover:bg-slate-100 dark:hover:bg-[#202422] hover:text-[#111827] dark:hover:text-[#ECEEED]'
           }`}
           title={isVisible ? 'Hide ink layer' : 'Show ink layer'}
         >
           {isVisible ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
         </button>
 
-        <div className="w-full h-px bg-slate-200 my-1" />
+        <div className="w-full h-px bg-[#E2E8E4] dark:bg-[#2F3532] my-1" />
 
         {/* Undo (Ctrl+Z) */}
         <button
@@ -369,7 +369,7 @@ export const AnnotationToolbar: React.FC<AnnotationToolbarProps> = ({
           data-testid="btn-undo"
           onClick={onUndo}
           disabled={!canUndo}
-          className="p-2 rounded-lg text-xs transition flex items-center justify-center text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:pointer-events-none"
+          className="p-2 rounded-lg text-xs transition flex items-center justify-center text-[#4B5563] dark:text-[#969E9A] hover:bg-slate-100 dark:hover:bg-[#202422] disabled:opacity-30 disabled:pointer-events-none"
           title="Undo (Ctrl+Z)"
         >
           <Undo2 className="w-4 h-4" />
@@ -381,7 +381,7 @@ export const AnnotationToolbar: React.FC<AnnotationToolbarProps> = ({
           data-testid="btn-redo"
           onClick={onRedo}
           disabled={!canRedo}
-          className="p-2 rounded-lg text-xs transition flex items-center justify-center text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:pointer-events-none"
+          className="p-2 rounded-lg text-xs transition flex items-center justify-center text-[#4B5563] dark:text-[#969E9A] hover:bg-slate-100 dark:hover:bg-[#202422] disabled:opacity-30 disabled:pointer-events-none"
           title="Redo (Ctrl+Y)"
         >
           <Redo2 className="w-4 h-4" />
@@ -394,8 +394,8 @@ export const AnnotationToolbar: React.FC<AnnotationToolbarProps> = ({
           onClick={handleClearClick}
           className={`p-2 rounded-lg text-xs transition flex items-center justify-center ${
             showClearConfirm
-              ? 'bg-rose-600 text-white animate-pulse'
-              : 'text-slate-500 hover:bg-rose-50 hover:text-rose-600'
+              ? 'bg-rose-600 dark:bg-[#E57D8A] text-white animate-pulse'
+              : 'text-[#6B7280] dark:text-[#68706C] hover:bg-rose-50 dark:hover:bg-[#2B191D] hover:text-rose-600 dark:hover:text-[#E57D8A]'
           }`}
           title={showClearConfirm ? `Confirm Clear Page ${currentPage}?` : 'Clear page annotations'}
         >
@@ -405,7 +405,7 @@ export const AnnotationToolbar: React.FC<AnnotationToolbarProps> = ({
         {/* Small Autosave Status Pill */}
         <div
           data-testid="autosave-status"
-          className="mt-1 pt-1 border-t border-slate-100 flex flex-col items-center text-[10px]"
+          className="mt-1 pt-1 border-t border-[#E2E8E4] dark:border-[#2F3532] flex flex-col items-center text-[10px]"
           title={
             saveStatus === 'saving'
               ? 'Saving annotations to server...'
@@ -417,17 +417,17 @@ export const AnnotationToolbar: React.FC<AnnotationToolbarProps> = ({
           }
         >
           {saveStatus === 'saving' && (
-            <span className="flex items-center gap-0.5 text-[#0F5132] font-medium">
+            <span className="flex items-center gap-0.5 text-[#0F5132] dark:text-[#7CC9A3] font-medium">
               <Loader2 className="w-3 h-3 animate-spin" />
             </span>
           )}
           {saveStatus === 'saved' && (
-            <span className="flex items-center gap-0.5 text-emerald-600 font-medium">
+            <span className="flex items-center gap-0.5 text-emerald-600 dark:text-[#7CC9A3] font-medium">
               <CheckCircle2 className="w-3 h-3" />
             </span>
           )}
           {saveStatus === 'error' && (
-            <span className="flex items-center gap-0.5 text-rose-600 font-medium">
+            <span className="flex items-center gap-0.5 text-rose-600 dark:text-[#E57D8A] font-medium">
               <AlertCircle className="w-3 h-3" />
             </span>
           )}

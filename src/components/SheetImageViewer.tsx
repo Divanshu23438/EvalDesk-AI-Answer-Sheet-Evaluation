@@ -149,12 +149,12 @@ export const SheetImageViewer: React.FC<SheetImageViewerProps> = ({
   const fullPageUrl = `/api/sheets/${sheetId}/pages/${activePage}/image?v=${imgKey}&w=1200`;
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white shadow-xs overflow-hidden flex flex-col h-full min-h-0">
+    <div className="rounded-xl border border-[#E2E8E4] dark:border-[#2A2F2C] bg-white dark:bg-[#181B19] shadow-none dark:shadow-none overflow-hidden flex flex-col h-full min-h-0">
       {/* Viewer Toolbar */}
-      <div className="px-3 py-2 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs shrink-0">
+      <div className="px-3 py-2 bg-[#F1F4F2] dark:bg-[#202422] border-b border-[#E2E8E4] dark:border-[#2F3532] flex flex-wrap items-center justify-between gap-2 text-xs shrink-0">
         {/* View Mode Toggle: Crop vs Full Page vs Book View */}
         <div className="flex items-center gap-1.5 flex-wrap">
-          <div className="inline-flex rounded-lg border border-slate-200 p-0.5 bg-white">
+          <div className="inline-flex rounded-lg border border-[#E2E8E4] dark:border-[#2F3532] p-0.5 bg-white dark:bg-[#181B19]">
             <button
               type="button"
               data-testid="btn-mode-crop"
@@ -164,8 +164,8 @@ export const SheetImageViewer: React.FC<SheetImageViewerProps> = ({
               }}
               className={`px-2 py-1 rounded-md text-xs font-semibold transition flex items-center gap-1.5 ${
                 viewMode === 'crop'
-                  ? 'bg-[#0F5132] text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                  ? 'bg-[#0F5132] dark:bg-[#1F6E4A] text-white shadow-none'
+                  : 'text-[#4B5563] dark:text-[#969E9A] hover:text-[#111827] dark:hover:text-[#ECEEED] hover:bg-slate-50 dark:hover:bg-[#202422]'
               }`}
             >
               <Crop className="w-3.5 h-3.5" />
@@ -180,8 +180,8 @@ export const SheetImageViewer: React.FC<SheetImageViewerProps> = ({
               }}
               className={`px-2 py-1 rounded-md text-xs font-semibold transition flex items-center gap-1.5 ${
                 viewMode === 'full'
-                  ? 'bg-[#0F5132] text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                  ? 'bg-[#0F5132] dark:bg-[#1F6E4A] text-white shadow-none'
+                  : 'text-[#4B5563] dark:text-[#969E9A] hover:text-[#111827] dark:hover:text-[#ECEEED] hover:bg-slate-50 dark:hover:bg-[#202422]'
               }`}
             >
               <Layers className="w-3.5 h-3.5" />
@@ -193,8 +193,8 @@ export const SheetImageViewer: React.FC<SheetImageViewerProps> = ({
               onClick={() => setViewMode('book')}
               className={`px-2 py-1 rounded-md text-xs font-semibold transition flex items-center gap-1.5 ${
                 viewMode === 'book'
-                  ? 'bg-[#0F5132] text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                  ? 'bg-[#0F5132] dark:bg-[#1F6E4A] text-white shadow-none'
+                  : 'text-[#4B5563] dark:text-[#969E9A] hover:text-[#111827] dark:hover:text-[#ECEEED] hover:bg-slate-50 dark:hover:bg-[#202422]'
               }`}
             >
               <BookOpen className="w-3.5 h-3.5" />
@@ -215,8 +215,8 @@ export const SheetImageViewer: React.FC<SheetImageViewerProps> = ({
             }}
             className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 border ${
               isAnnotating
-                ? 'bg-[#0F5132] text-white border-[#0F5132] shadow-xs'
-                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 hover:text-slate-900'
+                ? 'bg-[#0F5132] dark:bg-[#1F6E4A] text-white border-[#0F5132] dark:border-[#1F6E4A] shadow-none'
+                : 'bg-white dark:bg-[#181B19] text-[#4B5563] dark:text-[#969E9A] border-[#E2E8E4] dark:border-[#2F3532] hover:bg-[#F1F4F2] dark:hover:bg-[#202422] hover:text-[#111827] dark:hover:text-[#ECEEED]'
             }`}
             title={isAnnotating ? 'Close Annotation Tools' : 'Open Annotation Tools'}
           >
@@ -228,7 +228,7 @@ export const SheetImageViewer: React.FC<SheetImageViewerProps> = ({
         {/* Multi-page chips when in full mode */}
         {viewMode === 'full' && (
           <div className="flex items-center gap-1">
-            <span className="text-[11px] text-slate-500 font-medium">Page:</span>
+            <span className="text-[11px] text-[#6B7280] dark:text-[#68706C] font-medium">Page:</span>
             {Array.from({ length: allPagesCount || 1 }, (_, i) => i + 1).map((pNum) => {
               const isAnswerPage = pageNumbers.includes(pNum);
               const isActive = activePage === pNum;
@@ -239,10 +239,10 @@ export const SheetImageViewer: React.FC<SheetImageViewerProps> = ({
                   onClick={() => setActivePage(pNum)}
                   className={`px-2 py-0.5 text-[11px] font-mono font-semibold rounded transition ${
                     isActive
-                      ? 'bg-[#0F5132] text-white shadow-xs'
+                      ? 'bg-[#0F5132] dark:bg-[#1F6E4A] text-white shadow-none'
                       : isAnswerPage
-                      ? 'bg-[#E8F3EE] text-[#0B3D26] border border-[#0F5132]/20 hover:bg-[#E8F3EE]'
-                      : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                      ? 'bg-[#E8F3EE] dark:bg-[#1A2B23] text-[#0F5132] dark:text-[#7CC9A3] border border-[#0F5132]/20 dark:border-[#294236] hover:bg-[#E8F3EE]'
+                      : 'bg-white dark:bg-[#181B19] text-[#4B5563] dark:text-[#969E9A] border border-[#E2E8E4] dark:border-[#2F3532] hover:bg-[#F1F4F2] dark:hover:bg-[#202422]'
                   }`}
                   title={isAnswerPage ? `Page ${pNum} (Answer written here)` : `Page ${pNum}`}
                 >
@@ -255,7 +255,7 @@ export const SheetImageViewer: React.FC<SheetImageViewerProps> = ({
 
         {/* Multi-page continuation indicator in Crop mode */}
         {viewMode === 'crop' && pageNumbers.length > 1 && (
-          <span className="text-[11px] font-semibold text-[#0B3D26] bg-[#E8F3EE] border border-[#0F5132]/20 px-2 py-0.5 rounded-full">
+          <span className="text-[11px] font-semibold text-[#0F5132] dark:text-[#7CC9A3] bg-[#E8F3EE] dark:bg-[#1A2B23] border border-[#0F5132]/20 dark:border-[#294236] px-2 py-0.5 rounded-full">
             Answer spans Pages {pageNumbers.join(', ')}
           </span>
         )}
@@ -266,7 +266,7 @@ export const SheetImageViewer: React.FC<SheetImageViewerProps> = ({
             type="button"
             data-testid="btn-zoom-out"
             onClick={() => handleZoom(-0.15)}
-            className="p-1 rounded text-slate-500 hover:text-slate-800 hover:bg-slate-200/60"
+            className="p-1 rounded text-[#6B7280] dark:text-[#68706C] hover:text-[#111827] dark:hover:text-[#ECEEED] hover:bg-slate-200/60 dark:hover:bg-[#2F3532]"
             title="Zoom out"
           >
             <ZoomOut className="w-3.5 h-3.5" />
@@ -275,7 +275,7 @@ export const SheetImageViewer: React.FC<SheetImageViewerProps> = ({
             type="button"
             data-testid="btn-reset-zoom"
             onClick={resetZoom}
-            className="px-1.5 py-0.5 text-[10px] font-mono font-bold text-slate-600 hover:bg-slate-200/60 rounded"
+            className="px-1.5 py-0.5 text-[10px] font-mono font-bold text-[#6B7280] dark:text-[#68706C] hover:bg-slate-200/60 dark:hover:bg-[#2F3532] rounded"
             title="Reset Zoom"
           >
             {Math.round(zoom * 100)}%
@@ -284,7 +284,7 @@ export const SheetImageViewer: React.FC<SheetImageViewerProps> = ({
             type="button"
             data-testid="btn-zoom-in"
             onClick={() => handleZoom(0.15)}
-            className="p-1 rounded text-slate-500 hover:text-slate-800 hover:bg-slate-200/60"
+            className="p-1 rounded text-[#6B7280] dark:text-[#68706C] hover:text-[#111827] dark:hover:text-[#ECEEED] hover:bg-slate-200/60 dark:hover:bg-[#2F3532]"
             title="Zoom in"
           >
             <ZoomIn className="w-3.5 h-3.5" />
@@ -295,7 +295,7 @@ export const SheetImageViewer: React.FC<SheetImageViewerProps> = ({
               type="button"
               onClick={handleRotate}
               disabled={isRotating}
-              className="p-1 rounded text-slate-500 hover:text-slate-800 hover:bg-slate-200/60 disabled:opacity-40 ml-1"
+              className="p-1 rounded text-[#6B7280] dark:text-[#68706C] hover:text-[#111827] dark:hover:text-[#ECEEED] hover:bg-slate-200/60 dark:hover:bg-[#2F3532] disabled:opacity-40 ml-1"
               title="Rotate page 90° clockwise"
             >
               <RotateCw className={`w-3.5 h-3.5 ${isRotating ? 'animate-spin' : ''}`} />
@@ -307,7 +307,7 @@ export const SheetImageViewer: React.FC<SheetImageViewerProps> = ({
             type="button"
             data-testid="btn-open-popup"
             onClick={() => setIsPopupOpen(true)}
-            className="p-1 rounded text-slate-500 hover:text-[#0F5132] hover:bg-slate-200/60 ml-1 cursor-pointer"
+            className="p-1 rounded text-[#6B7280] dark:text-[#68706C] hover:text-[#0F5132] dark:hover:text-[#7CC9A3] hover:bg-slate-200/60 dark:hover:bg-[#2F3532] ml-1 cursor-pointer"
             title="Open Full Page Book Viewer Popup"
           >
             <Maximize2 className="w-3.5 h-3.5" />
@@ -318,7 +318,7 @@ export const SheetImageViewer: React.FC<SheetImageViewerProps> = ({
       {/* Viewer Canvas */}
       <div
         ref={canvasRef}
-        className="flex-1 min-h-0 h-full overflow-hidden bg-slate-100 relative flex items-start justify-center"
+        className="flex-1 min-h-0 h-full overflow-hidden bg-[#F6F7F5] dark:bg-[#111312] relative flex items-start justify-center"
       >
         {viewMode === 'book' ? (
           /* PageBook Component with Embedded Annotation Toolbar */
@@ -377,10 +377,10 @@ export const SheetImageViewer: React.FC<SheetImageViewerProps> = ({
             />
           </div>
         ) : notAttempted ? (
-          <div className="m-auto text-center p-6 bg-white rounded-xl border border-slate-200 max-w-sm space-y-2">
+          <div className="m-auto text-center p-6 bg-white dark:bg-[#181B19] rounded-xl border border-[#E2E8E4] dark:border-[#2A2F2C] max-w-sm space-y-2">
             <AlertCircle className="w-8 h-8 text-amber-500 mx-auto" />
-            <p className="text-xs font-bold text-slate-800">Question Not Attempted</p>
-            <p className="text-[11px] text-slate-500">
+            <p className="text-xs font-bold text-[#111827] dark:text-[#ECEEED]">Question Not Attempted</p>
+            <p className="text-[11px] text-[#6B7280] dark:text-[#68706C]">
               The student left this question blank or omitted it. No submission crop is available.
             </p>
           </div>
@@ -389,7 +389,7 @@ export const SheetImageViewer: React.FC<SheetImageViewerProps> = ({
           <div className="w-full h-full overflow-auto p-3 flex items-start justify-center">
             <div
               style={{ width: `${zoom * 100}%` }}
-              className="relative mx-auto bg-white rounded-lg shadow-md border border-slate-200 overflow-hidden"
+              className="relative mx-auto bg-white rounded-lg shadow-none border border-[#E2E8E4] dark:border-[#2A2F2C] overflow-hidden"
             >
               <img
                 src={effectiveCropUrl}
@@ -404,7 +404,7 @@ export const SheetImageViewer: React.FC<SheetImageViewerProps> = ({
           <div className="w-full h-full overflow-auto p-3 flex items-start justify-center">
             <div
               style={{ width: `${zoom * 100}%` }}
-              className="relative mx-auto bg-white rounded-lg shadow-md border border-slate-200 select-none"
+              className="relative mx-auto bg-white rounded-lg shadow-none border border-[#E2E8E4] dark:border-[#2A2F2C] select-none"
             >
               <img
                 src={fullPageUrl}
@@ -421,9 +421,9 @@ export const SheetImageViewer: React.FC<SheetImageViewerProps> = ({
                     width: `${activeBbox.width}%`,
                     height: `${activeBbox.height}%`,
                   }}
-                  className="border-2 border-[#0F5132] bg-[#0F5132]/15 rounded ring-2 ring-[#0F5132]/40/40 pointer-events-none transition-all duration-150"
+                  className="border-2 border-[#0F5132] bg-[#0F5132]/15 rounded ring-2 ring-[#0F5132]/40 pointer-events-none transition-all duration-150"
                 >
-                  <span className="absolute -top-5 left-0 px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-[#0F5132] text-white shadow-xs whitespace-nowrap">
+                  <span className="absolute -top-5 left-0 px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-[#0F5132] text-white shadow-none whitespace-nowrap">
                     Answer {qNo ? `Q.${qNo}` : ''}
                   </span>
                 </div>
@@ -437,14 +437,14 @@ export const SheetImageViewer: React.FC<SheetImageViewerProps> = ({
       {isPopupOpen && (
         <div
           data-testid="full-page-popup-modal"
-          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm p-4 flex flex-col items-center justify-center overflow-hidden"
+          className="fixed inset-0 z-50 bg-black/85 p-4 flex flex-col items-center justify-center overflow-hidden"
           style={{ height: '100dvh', width: '100vw' }}
         >
           {/* Popup Close Bar */}
           <div className="w-full max-w-5xl flex items-center justify-between pb-2 text-white shrink-0">
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2">
-                <BookOpen className="w-4 h-4 text-[#0F5132]/40" />
+                <BookOpen className="w-4 h-4 text-[#0F5132]" />
                 <span className="text-sm font-semibold tracking-wide">
                   Answer Sheet Book Viewer
                 </span>
@@ -455,7 +455,7 @@ export const SheetImageViewer: React.FC<SheetImageViewerProps> = ({
                 onClick={() => setIsAnnotating((v) => !v)}
                 className={`px-2 py-0.5 rounded text-xs font-semibold transition flex items-center gap-1 border ${
                   isAnnotating
-                    ? 'bg-[#0F5132] text-white border-[#0F5132]'
+                    ? 'bg-[#0F5132] dark:bg-[#1F6E4A] text-white border-[#0F5132] dark:border-[#1F6E4A]'
                     : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white'
                 }`}
               >
@@ -475,7 +475,7 @@ export const SheetImageViewer: React.FC<SheetImageViewerProps> = ({
           </div>
 
           {/* Book Viewer Frame in Popup */}
-          <div className="w-full max-w-5xl flex-1 min-h-0 bg-slate-900 rounded-xl border border-slate-700 overflow-hidden shadow-2xl relative flex flex-col">
+          <div className="w-full max-w-5xl flex-1 min-h-0 bg-[#181B19] rounded-xl border border-[#2A2F2C] overflow-hidden shadow-2xl relative flex flex-col">
             {isAnnotating && (
               <div className="absolute left-3 top-3 bottom-3 z-30 pointer-events-auto flex items-start">
                 <AnnotationToolbar

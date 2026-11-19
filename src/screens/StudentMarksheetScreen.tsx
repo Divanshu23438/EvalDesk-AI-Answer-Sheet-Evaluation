@@ -25,7 +25,7 @@ export const StudentMarksheetScreen: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 min-h-0 bg-[#F6F7F5] overflow-y-auto">
+    <div className="flex-1 min-h-0 bg-[#F6F7F5] dark:bg-[#111312] overflow-y-auto print:!bg-white">
       <BentoMarksheetView sheetId={sheetId} onBack={handleBack} showTopBar={true} />
     </div>
   );

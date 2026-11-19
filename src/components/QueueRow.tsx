@@ -206,21 +206,21 @@ export const QueueRow: React.FC<QueueRowProps> = ({
       tabIndex={0}
       onClick={handleCardClick}
       onKeyDown={handleKeyDown}
-      className={`border rounded-xl p-3.5 transition-all text-left select-none cursor-pointer shadow-xs ${
+      className={`border rounded-xl p-3.5 transition-all text-left select-none cursor-pointer shadow-none dark:shadow-none ${
         isActive
-          ? 'border-[#0F5132]/40 bg-[#E8F3EE]/40 ring-1 ring-[#0F5132]/30'
+          ? 'border-[#0F5132]/40 bg-[#E8F3EE]/40 ring-1 ring-[#0F5132]/30 dark:bg-[#1A2B23] dark:border-[#294236] dark:ring-[#294236]'
           : isProcessing
-          ? 'border-[#0F5132]/20 bg-[#E8F3EE]/20 hover:border-[#0F5132]/30 hover:shadow-sm'
+          ? 'border-[#0F5132]/20 bg-[#E8F3EE]/20 hover:border-[#0F5132]/30 hover:shadow-none dark:bg-[#1A2B23]/40 dark:border-[#294236]'
           : sheet.status === 'needs_identity'
-          ? 'border-amber-300 bg-amber-50/30 hover:border-amber-400'
+          ? 'border-amber-300 bg-amber-50/30 hover:border-amber-400 dark:bg-[#2B2416]/40 dark:border-[#42361F]'
           : sheet.status === 'failed'
-          ? 'border-rose-200 bg-rose-50/20 hover:border-rose-300'
-          : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm'
+          ? 'border-rose-200 bg-rose-50/20 hover:border-rose-300 dark:bg-[#2B191D]/40 dark:border-[#45262C]'
+          : 'border-slate-200 dark:border-[#2A2F2C] bg-white dark:bg-[#181B19] hover:border-slate-300 dark:hover:border-[#3D4440] hover:shadow-none'
       }`}
     >
       <div className="flex items-start gap-3.5">
         {/* Page Thumbnail with optional scan-line sweep */}
-        <div className="relative w-12 h-16 rounded-md border border-slate-200 bg-slate-100 overflow-hidden shrink-0 flex items-center justify-center shadow-2xs">
+        <div className="relative w-12 h-16 rounded-md border border-slate-200 dark:border-[#2F3532] bg-slate-100 dark:bg-[#202422] overflow-hidden shrink-0 flex items-center justify-center shadow-none">
           {!thumbError && sheet.page_count > 0 ? (
             <img
               src={`/api/sheets/${sheet.id}/pages/1/image`}
@@ -230,7 +230,7 @@ export const QueueRow: React.FC<QueueRowProps> = ({
               loading="lazy"
             />
           ) : (
-            <FileText className="w-6 h-6 text-slate-400" />
+            <FileText className="w-6 h-6 text-slate-400 dark:text-[#68706C]" />
           )}
 
           {/* Animated scan-line sweep when processing */}
@@ -238,7 +238,7 @@ export const QueueRow: React.FC<QueueRowProps> = ({
 
           {/* Page count badge */}
           {sheet.page_count > 0 && (
-            <span className="absolute bottom-1 right-1 text-[9px] font-mono font-bold text-slate-600 bg-white/95 px-1 rounded shadow-2xs border border-slate-200">
+            <span className="absolute bottom-1 right-1 text-[9px] font-mono font-bold text-slate-600 dark:text-[#969E9A] bg-white/95 dark:bg-[#202422] px-1 rounded shadow-none border border-slate-200 dark:border-[#2F3532]">
               p.1{sheet.page_count > 1 ? `-${sheet.page_count}` : ''}
             </span>
           )}
@@ -248,7 +248,7 @@ export const QueueRow: React.FC<QueueRowProps> = ({
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2 mb-1">
             <h4
-              className="text-xs font-semibold text-slate-800 truncate"
+              className="text-xs font-semibold text-slate-800 dark:text-[#ECEEED] truncate"
               title={sheet.filename}
             >
               {sheet.filename}
@@ -265,7 +265,7 @@ export const QueueRow: React.FC<QueueRowProps> = ({
                     e.stopPropagation();
                     onSelect();
                   }}
-                  className="p-1 text-slate-400 hover:text-[#0F5132] rounded hover:bg-slate-100 transition"
+                  className="p-1 text-slate-400 hover:text-[#0F5132] dark:hover:text-[#7CC9A3] rounded hover:bg-slate-100 dark:hover:bg-[#202422] transition"
                   title="Open in Evaluation Workspace"
                 >
                   <Eye className="w-3.5 h-3.5" />
@@ -276,7 +276,7 @@ export const QueueRow: React.FC<QueueRowProps> = ({
                 type="button"
                 onClick={handleDelete}
                 disabled={isDeleting}
-                className="p-1 text-slate-400 hover:text-rose-600 rounded hover:bg-slate-100 transition"
+                className="p-1 text-slate-400 hover:text-rose-600 dark:hover:text-[#E57D8A] rounded hover:bg-slate-100 dark:hover:bg-[#202422] transition"
                 title="Delete Sheet"
               >
                 <Trash2 className="w-3.5 h-3.5" />
@@ -285,18 +285,18 @@ export const QueueRow: React.FC<QueueRowProps> = ({
           </div>
 
           {/* Verified Student Details / Metadata */}
-          <div className="flex items-center gap-2 text-[11px] text-slate-500 mb-2 truncate">
+          <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-[#969E9A] mb-2 truncate">
             {sheet.student_name ? (
-              <span className="inline-flex items-center gap-1 text-emerald-700 font-medium">
-                <Check className="w-3 h-3 text-emerald-600 shrink-0" />
-                <strong className="text-slate-800">{sheet.student_name}</strong>
+              <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-[#7CC9A3] font-medium">
+                <Check className="w-3 h-3 text-emerald-600 dark:text-[#7CC9A3] shrink-0" />
+                <strong className="text-slate-800 dark:text-[#ECEEED]">{sheet.student_name}</strong>
                 {sheet.roll && (
-                  <span className="font-mono text-[10px] text-emerald-800 bg-emerald-50 border border-emerald-200 px-1 rounded">
+                  <span className="font-mono text-[10px] text-emerald-800 dark:text-[#7CC9A3] bg-emerald-50 dark:bg-[#1A2B23] border border-emerald-200 dark:border-[#294236] px-1 rounded">
                     ({sheet.roll})
                   </span>
                 )}
                 {sheet.class_name && (
-                  <span className="text-[10px] text-[#0B3D26] bg-[#E8F3EE] border border-[#0F5132]/20 px-1 rounded font-medium">
+                  <span className="text-[10px] text-[#0B3D26] dark:text-[#7CC9A3] bg-[#E8F3EE] dark:bg-[#1A2B23] border border-[#0F5132]/20 dark:border-[#294236] px-1 rounded font-medium">
                     {sheet.class_name}
                   </span>
                 )}
@@ -310,7 +310,7 @@ export const QueueRow: React.FC<QueueRowProps> = ({
                       setIsEditingIdentity((prev) => !prev);
                     }
                   }}
-                  className="p-0.5 ml-0.5 text-slate-400 hover:text-[#0F5132] rounded hover:bg-slate-100 transition inline-flex items-center"
+                  className="p-0.5 ml-0.5 text-slate-400 hover:text-[#0F5132] dark:hover:text-[#7CC9A3] rounded hover:bg-slate-100 dark:hover:bg-[#202422] transition inline-flex items-center"
                   title="Edit student name & roll number (✎)"
                   aria-label="Edit student identity"
                 >
@@ -330,7 +330,7 @@ export const QueueRow: React.FC<QueueRowProps> = ({
                       setIsEditingIdentity((prev) => !prev);
                     }
                   }}
-                  className="p-0.5 ml-0.5 text-slate-400 hover:text-[#0F5132] rounded hover:bg-slate-100 transition inline-flex items-center"
+                  className="p-0.5 ml-0.5 text-slate-400 hover:text-[#0F5132] dark:hover:text-[#7CC9A3] rounded hover:bg-slate-100 dark:hover:bg-[#202422] transition inline-flex items-center"
                   title="Enter student name & roll number (✎)"
                   aria-label="Edit student identity"
                 >
@@ -341,8 +341,8 @@ export const QueueRow: React.FC<QueueRowProps> = ({
 
             {sheet.total_score !== undefined && sheet.total_score > 0 && (
               <>
-                <span className="text-slate-300">·</span>
-                <span className="font-mono font-semibold text-slate-700">
+                <span className="text-slate-300 dark:text-[#2A2F2C]">·</span>
+                <span className="font-mono font-semibold text-slate-700 dark:text-[#ECEEED]">
                   {sheet.total_score}M
                 </span>
               </>
@@ -368,14 +368,14 @@ export const QueueRow: React.FC<QueueRowProps> = ({
 
           {/* Live Inline 5-Stage Processing Tracker */}
           {isProcessing && (
-            <div className="mt-2 pt-2 border-t border-[#E8F3EE] space-y-2">
+            <div className="mt-2 pt-2 border-t border-[#E8F3EE] dark:border-[#2A2F2C] space-y-2">
               <div className="flex items-center justify-between text-[11px]">
-                <span className="font-medium text-[#0B3D26] flex items-center gap-1.5 truncate">
-                  <span className="w-2 h-2 rounded-full bg-[#0F5132] animate-pulse" />
+                <span className="font-medium text-[#0B3D26] dark:text-[#7CC9A3] flex items-center gap-1.5 truncate">
+                  <span className="w-2 h-2 rounded-full bg-[#0F5132] dark:bg-[#7CC9A3] animate-pulse" />
                   {sheet.stage || 'Processing student answer sheet...'}
                 </span>
                 {questionsTotal > 0 && (
-                  <span className="font-mono text-[10px] text-[#0F5132] font-semibold shrink-0">
+                  <span className="font-mono text-[10px] text-[#0F5132] dark:text-[#7CC9A3] font-semibold shrink-0">
                     {questionsMarked}/{questionsTotal} Qs
                   </span>
                 )}
@@ -388,10 +388,10 @@ export const QueueRow: React.FC<QueueRowProps> = ({
                     key={st.label}
                     className={`h-1.5 rounded-full transition-all ${
                       st.done
-                        ? 'bg-emerald-500'
+                        ? 'bg-emerald-500 dark:bg-[#2D8A61]'
                         : st.active
-                        ? 'bg-[#0F5132] animate-pulse'
-                        : 'bg-slate-200'
+                        ? 'bg-[#0F5132] dark:bg-[#1F6E4A] animate-pulse'
+                        : 'bg-slate-200 dark:bg-[#202422]'
                     }`}
                     title={`Stage ${i + 1}: ${st.label}`}
                   />
@@ -407,7 +407,7 @@ export const QueueRow: React.FC<QueueRowProps> = ({
                       e.stopPropagation();
                       if (onSelect) onSelect();
                     }}
-                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#0F5132] hover:text-[#0F5132] hover:underline"
+                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#0F5132] dark:text-[#7CC9A3] hover:underline"
                   >
                     <span>Open first reviewed question</span>
                     <ArrowRight className="w-3 h-3" />
@@ -420,13 +420,13 @@ export const QueueRow: React.FC<QueueRowProps> = ({
           {/* Real Upload Progress Bar */}
           {isUploading && (
             <div className="space-y-1 mb-2">
-              <div className="flex justify-between text-[10px] text-slate-500">
+              <div className="flex justify-between text-[10px] text-slate-500 dark:text-[#969E9A]">
                 <span>Uploading...</span>
                 <span className="font-mono">{sheet.uploadProgress}%</span>
               </div>
-              <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+              <div className="w-full bg-slate-100 dark:bg-[#202422] rounded-full h-1.5 overflow-hidden">
                 <div
-                  className="bg-[#0F5132] h-full transition-all duration-200"
+                  className="bg-[#0F5132] dark:bg-[#1F6E4A] h-full transition-all duration-200"
                   style={{ width: `${sheet.uploadProgress}%` }}
                 />
               </div>
@@ -437,17 +437,17 @@ export const QueueRow: React.FC<QueueRowProps> = ({
           {sheet.status === 'failed' && (
             <div
               onClick={(e) => e.stopPropagation()}
-              className="mt-2 p-2 rounded-lg bg-rose-50 border border-rose-200 text-[11px] text-rose-700 flex items-center justify-between gap-2"
+              className="mt-2 p-2 rounded-lg bg-rose-50 dark:bg-[#2B191D] border border-rose-200 dark:border-[#45262C] text-[11px] text-rose-700 dark:text-[#E57D8A] flex items-center justify-between gap-2"
             >
               <div className="flex items-center gap-1.5 min-w-0">
-                <AlertCircle className="w-3.5 h-3.5 shrink-0 text-rose-600" />
+                <AlertCircle className="w-3.5 h-3.5 shrink-0 text-rose-600 dark:text-[#E57D8A]" />
                 <span className="truncate">{sheet.error_message || 'Evaluation failed'}</span>
               </div>
               <button
                 type="button"
                 onClick={handleRetry}
                 disabled={isRetrying}
-                className="px-2.5 py-0.5 text-[11px] font-semibold rounded bg-white text-rose-700 border border-rose-300 hover:bg-rose-50 disabled:opacity-50 transition flex items-center gap-1 shrink-0 shadow-xs"
+                className="px-2.5 py-0.5 text-[11px] font-semibold rounded bg-white dark:bg-[#202422] text-rose-700 dark:text-[#E57D8A] border border-rose-300 dark:border-[#45262C] hover:bg-rose-50 dark:hover:bg-[#2A2F2C] disabled:opacity-50 transition flex items-center gap-1 shrink-0 shadow-none"
               >
                 <RefreshCw className={`w-3 h-3 ${isRetrying ? 'animate-spin' : ''}`} />
                 Retry
