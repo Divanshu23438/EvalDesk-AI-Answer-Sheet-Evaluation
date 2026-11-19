@@ -188,16 +188,16 @@ def main():
         grid_parent = page.locator(".grid.grid-cols-1.md\\:grid-cols-2").first
         assert grid_parent.is_visible(), "Comparison grid not visible"
 
-        # Check card elements
-        cards = grid_parent.locator("> div")
+        # Check card elements (dropdown <details>)
+        cards = grid_parent.locator("> details, > div")
         assert cards.count() == 2, f"Expected 2 cards in comparison grid, found {cards.count()}"
 
         card1_class = cards.nth(0).get_attribute("class") or ""
         card2_class = cards.nth(1).get_attribute("class") or ""
         print(f"  Card 1 classes: {card1_class}")
         print(f"  Card 2 classes: {card2_class}")
-        assert "rounded-xl bg-slate-50/90 border border-slate-200/80 p-3.5 flex flex-col justify-start" in card1_class
-        assert "rounded-xl bg-indigo-50/35 border border-indigo-100 p-3.5 flex flex-col justify-start" in card2_class
+        assert "rounded-xl bg-slate-50/90 border border-slate-200/80" in card1_class
+        assert "rounded-xl bg-indigo-50/35 border border-indigo-100" in card2_class
 
         # Check height is auto and natural (no min-h-[120px] or max-h-56)
         assert "min-h-[120px]" not in card1_class and "max-h-56" not in card1_class

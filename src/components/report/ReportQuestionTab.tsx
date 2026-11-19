@@ -137,30 +137,50 @@ export const ReportQuestionTab: React.FC<ReportQuestionTabProps> = ({ question }
         )}
       </div>
 
-      {/* Auto-Sized 2-Column Comparison Box */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-stretch">
+      {/* Auto-Sized 2-Column Comparison Box Dropdowns */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-start">
         {/* Left Column: Student Answer (OCR) */}
-        <div className="rounded-xl bg-slate-50/90 border border-slate-200/80 p-3.5 flex flex-col justify-start">
-          <div className="flex items-center justify-between gap-2 mb-2">
+        <details className="group rounded-xl bg-slate-50/90 border border-slate-200/80 overflow-hidden flex flex-col justify-start" open>
+          <summary className="px-3.5 py-2.5 flex items-center justify-between gap-2 cursor-pointer select-none hover:bg-slate-100/70 transition-colors list-none">
             <span className="text-xs font-semibold text-slate-700">Student Answer (OCR)</span>
-            <span className="whitespace-nowrap shrink-0 text-[11px] font-mono text-slate-500">
-              Match {legDisplay}%
-            </span>
-          </div>
-          <div className="text-[13px] text-slate-800 leading-relaxed whitespace-pre-wrap break-words select-text">
+            <div className="flex items-center space-x-2">
+              <span className="whitespace-nowrap shrink-0 text-[11px] font-mono text-slate-500">
+                Match {legDisplay}%
+              </span>
+              <svg
+                className="w-3.5 h-3.5 text-slate-400 group-open:rotate-180 transition-transform"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path d="M19 9l-7 7-7-7" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+              </svg>
+            </div>
+          </summary>
+          <div className="px-3.5 pb-3.5 pt-2 border-t border-slate-200/60 text-[13px] text-slate-800 leading-relaxed whitespace-pre-wrap break-words select-text">
             {question.ocr_text || '(No OCR extracted text for this question)'}
           </div>
-        </div>
+        </details>
 
         {/* Right Column: Expected Answer */}
-        <div className="rounded-xl bg-indigo-50/35 border border-indigo-100 p-3.5 flex flex-col justify-start">
-          <div className="flex items-center justify-between gap-2 mb-2">
+        <details className="group rounded-xl bg-indigo-50/35 border border-indigo-100 overflow-hidden flex flex-col justify-start" open>
+          <summary className="px-3.5 py-2.5 flex items-center justify-between gap-2 cursor-pointer select-none hover:bg-indigo-50/70 transition-colors list-none">
             <span className="text-xs font-semibold text-slate-700">Expected Answer</span>
-            <span className="whitespace-nowrap shrink-0 text-[11px] font-mono text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
-              {question.reference?.source || 'Model Key'}
-            </span>
-          </div>
-          <div className="text-[13px] text-slate-700 leading-relaxed whitespace-pre-wrap break-words select-text">
+            <div className="flex items-center space-x-2">
+              <span className="whitespace-nowrap shrink-0 text-[11px] font-mono text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
+                {question.reference?.source || 'Model Key'}
+              </span>
+              <svg
+                className="w-3.5 h-3.5 text-slate-400 group-open:rotate-180 transition-transform"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path d="M19 9l-7 7-7-7" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+              </svg>
+            </div>
+          </summary>
+          <div className="px-3.5 pb-3.5 pt-2 border-t border-indigo-100/60 text-[13px] text-slate-700 leading-relaxed whitespace-pre-wrap break-words select-text">
             {question.reference?.model_answer ? (
               question.reference.model_answer
             ) : question.reference?.key_points && question.reference.key_points.length > 0 ? (
@@ -175,7 +195,7 @@ export const ReportQuestionTab: React.FC<ReportQuestionTabProps> = ({ question }
               <span className="text-slate-400 italic">No formal model answer registered for this question.</span>
             )}
           </div>
-        </div>
+        </details>
       </div>
 
       {/* 4 Collapsible <details> Accordion Dropdown Boxes */}
