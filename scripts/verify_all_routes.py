@@ -73,7 +73,7 @@ def test_routes():
 
     routes_to_test = [
         ("Upload Route", f"{FRONTEND_URL}/#/upload", "UploadScreen", "Step 1A", "1_upload_screen.png"),
-        ("Dashboard Route", f"{FRONTEND_URL}/#/dashboard", "DashboardScreen", "Evaluation Dashboard", "2_dashboard_screen.png"),
+        ("Dashboard Route", f"{FRONTEND_URL}/#/dashboard", "DashboardScreen", "Average Score", "2_dashboard_screen.png"),
         ("History Route", f"{FRONTEND_URL}/#/history", "HistoryScreen", "Evaluation History", "3_history_screen.png"),
         ("Reports Center Route", f"{FRONTEND_URL}/#/reports", "ReportsCenterScreen", "Results Center", "4_reports_center_screen.png"),
         ("Guide Route", f"{FRONTEND_URL}/#/guide", "GuideScreen", "Teacher User Manual", "4b_guide_screen.png"),
