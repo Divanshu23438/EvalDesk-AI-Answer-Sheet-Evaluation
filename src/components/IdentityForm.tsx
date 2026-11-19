@@ -64,7 +64,7 @@ export const IdentityForm: React.FC<IdentityFormProps> = ({
           onChange={(e) => setName(e.target.value)}
           placeholder="Student name"
           aria-label="Student name"
-          className="col-span-3 text-xs px-2 py-1 rounded-md border border-amber-300 bg-white focus:outline-none focus:border-indigo-500"
+          className="col-span-3 text-xs px-2 py-1 rounded-md border border-amber-300 bg-white focus:outline-none focus:border-[#0F5132]"
         />
         <input
           type="text"
@@ -72,7 +72,7 @@ export const IdentityForm: React.FC<IdentityFormProps> = ({
           onChange={(e) => setRoll(e.target.value)}
           placeholder="Roll no."
           aria-label="Roll number"
-          className="col-span-2 text-xs px-2 py-1 rounded-md border border-amber-300 bg-white focus:outline-none focus:border-indigo-500 font-mono"
+          className="col-span-2 text-xs px-2 py-1 rounded-md border border-amber-300 bg-white focus:outline-none focus:border-[#0F5132] font-mono"
         />
         <input
           type="text"
@@ -80,7 +80,7 @@ export const IdentityForm: React.FC<IdentityFormProps> = ({
           onChange={(e) => setClassName(e.target.value)}
           placeholder="Class"
           aria-label="Class"
-          className="col-span-1 text-xs px-2 py-1 rounded-md border border-amber-300 bg-white focus:outline-none focus:border-indigo-500"
+          className="col-span-1 text-xs px-2 py-1 rounded-md border border-amber-300 bg-white focus:outline-none focus:border-[#0F5132]"
         />
       </div>
 
@@ -99,7 +99,7 @@ export const IdentityForm: React.FC<IdentityFormProps> = ({
           <button
             type="submit"
             disabled={saving || !name.trim() || !roll.trim()}
-            className="px-3 py-1 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-md transition flex items-center gap-1.5 shrink-0"
+            className="px-3 py-1 text-xs font-semibold text-white bg-[#0F5132] hover:bg-[#0B3D26] disabled:opacity-40 disabled:cursor-not-allowed rounded-md transition flex items-center gap-1.5 shrink-0"
           >
             {saving && <RefreshCw className="w-3 h-3 animate-spin" />}
             <span>Save and evaluate</span>

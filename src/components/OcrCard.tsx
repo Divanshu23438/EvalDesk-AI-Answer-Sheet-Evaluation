@@ -125,7 +125,7 @@ export const OcrCard: React.FC<OcrCardProps> = ({
               newParts.push(
                 <mark
                   key={`quote-${qIdx}-${pIdx}-${i}`}
-                  className="bg-[var(--accent-indigo-subtle)] text-[var(--accent-indigo)] font-semibold px-1 py-0.5 rounded"
+                  className="bg-[var(--brand-tint)] text-[var(--brand-primary)] font-semibold px-1 py-0.5 rounded"
                   title="Evidence quote matching rubric point"
                 >
                   {quote}
@@ -155,7 +155,7 @@ export const OcrCard: React.FC<OcrCardProps> = ({
       {/* Card Header */}
       <div className="px-3 py-2 bg-[var(--surface-canvas)] border-b border-[var(--surface-border)] flex items-center justify-between gap-2 shrink-0">
         <div className="flex items-center gap-2">
-          <FileText className="w-3.5 h-3.5 text-[var(--accent-indigo)]" />
+          <FileText className="w-3.5 h-3.5 text-[var(--brand-primary)]" />
           <h4 className="text-xs font-semibold text-[var(--ink-primary)] uppercase tracking-wider">
             1. OCR Detected
           </h4>
@@ -172,7 +172,7 @@ export const OcrCard: React.FC<OcrCardProps> = ({
             <button
               type="button"
               onClick={() => setShowReaderDiff(!showReaderDiff)}
-              className="text-[10px] font-medium text-[var(--accent-indigo)] hover:underline px-1.5 py-0.5"
+              className="text-[10px] font-medium text-[var(--brand-primary)] hover:underline px-1.5 py-0.5"
             >
               {showReaderDiff ? 'Hide Diff' : 'Compare Readers'}
             </button>
@@ -182,7 +182,7 @@ export const OcrCard: React.FC<OcrCardProps> = ({
             <button
               type="button"
               onClick={() => setIsEditing(true)}
-              className="p-1 rounded text-[var(--ink-muted)] hover:text-[var(--accent-indigo)] hover:bg-[var(--surface-subtle)] transition"
+              className="p-1 rounded text-[var(--ink-muted)] hover:text-[var(--brand-primary)] hover:bg-[var(--surface-subtle)] transition"
               title="Edit extracted text (E)"
             >
               <Edit3 className="w-3.5 h-3.5" />
@@ -229,7 +229,7 @@ export const OcrCard: React.FC<OcrCardProps> = ({
                   <button
                     type="button"
                     onClick={() => handleApplyReaderText(rKey, readerTexts[rKey])}
-                    className="text-[10px] text-[var(--accent-indigo)] hover:underline"
+                    className="text-[10px] text-[var(--brand-primary)] hover:underline"
                   >
                     Use this
                   </button>
@@ -250,7 +250,7 @@ export const OcrCard: React.FC<OcrCardProps> = ({
             <textarea
               value={editText}
               onChange={(e) => setEditText(e.target.value)}
-              className="w-full flex-1 p-2 text-xs rounded border border-[var(--accent-indigo)] bg-[var(--surface-bg)] text-[var(--ink-primary)] font-mono resize-none focus:outline-none"
+              className="w-full flex-1 p-2 text-xs rounded border border-[var(--brand-primary)] bg-[var(--surface-bg)] text-[var(--ink-primary)] font-mono resize-none focus:outline-none"
               placeholder="Edit student extracted text character-by-character..."
               autoFocus
             />
@@ -263,7 +263,7 @@ export const OcrCard: React.FC<OcrCardProps> = ({
                   type="button"
                   onClick={handleSaveEdit}
                   disabled={isSaving}
-                  className="px-2.5 py-1 text-xs font-semibold rounded bg-[var(--accent-indigo)] text-white hover:bg-[var(--accent-indigo-hover)] transition flex items-center gap-1"
+                  className="px-2.5 py-1 text-xs font-semibold rounded bg-[var(--brand-primary)] text-white hover:bg-[var(--brand-primary-hover)] transition flex items-center gap-1"
                 >
                   <Check className="w-3 h-3" /> Save Edit
                 </button>
@@ -279,7 +279,7 @@ export const OcrCard: React.FC<OcrCardProps> = ({
 
       {/* Recheck Offer Footer after edit */}
       {!isEditing && editText !== ocrText && onRequestRecheck && (
-        <div className="px-3 py-1.5 bg-[var(--accent-indigo-subtle)] border-t border-[var(--accent-indigo-border)] flex items-center justify-between shrink-0 text-xs text-[var(--accent-indigo)] font-medium">
+        <div className="px-3 py-1.5 bg-[var(--brand-tint)] border-t border-[var(--surface-card-border)] flex items-center justify-between shrink-0 text-xs text-[var(--brand-primary)] font-medium">
           <span>Text modified · Recheck recommended</span>
           <button
             type="button"

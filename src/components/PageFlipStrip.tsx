@@ -131,7 +131,7 @@ export const PageFlipStrip: React.FC<{ pages: SheetPageStatus[] }> = ({ pages })
       <div className="flex items-center justify-between text-xs" aria-live="polite">
         <div className="flex items-center gap-2">
           {activeReading ? (
-            <RefreshCw className="w-3.5 h-3.5 text-indigo-600 animate-spin shrink-0" />
+            <RefreshCw className="w-3.5 h-3.5 text-[#0F5132] animate-spin shrink-0" />
           ) : failedPage ? (
             <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
           ) : doneCount === total && total > 0 ? (
@@ -141,7 +141,7 @@ export const PageFlipStrip: React.FC<{ pages: SheetPageStatus[] }> = ({ pages })
           )}
           <span
             className={`font-semibold ${
-              failedPage ? 'text-rose-700' : activeReading ? 'text-indigo-900' : 'text-slate-800'
+              failedPage ? 'text-rose-700' : activeReading ? 'text-[#0F5132]' : 'text-slate-800'
             }`}
           >
             {statusText}
@@ -149,7 +149,7 @@ export const PageFlipStrip: React.FC<{ pages: SheetPageStatus[] }> = ({ pages })
         </div>
 
         <div className="flex items-center gap-1.5 font-mono text-[11px] text-slate-600 bg-white/80 border border-slate-200 px-2 py-0.5 rounded-md shadow-2xs">
-          <span className="font-bold text-indigo-700">{doneCount}</span>
+          <span className="font-bold text-[#0B3D26]">{doneCount}</span>
           <span className="text-slate-400">/</span>
           <span>{total}</span>
         </div>
@@ -266,7 +266,7 @@ export const PageFlipStrip: React.FC<{ pages: SheetPageStatus[] }> = ({ pages })
             <button
               type="button"
               onClick={() => setSelectedPageNum(null)}
-              className="text-indigo-600 hover:text-indigo-800 underline font-medium"
+              className="text-[#0F5132] hover:text-[#0F5132] underline font-medium"
             >
               Resume Live
             </button>
@@ -287,11 +287,11 @@ export const PageFlipStrip: React.FC<{ pages: SheetPageStatus[] }> = ({ pages })
                 onClick={() => setSelectedPageNum(p.n)}
                 className={`px-2 py-1 rounded-md text-xs font-mono font-semibold transition flex items-center gap-1 border shrink-0 ${
                   isSelected
-                    ? 'ring-2 ring-indigo-500 border-indigo-400 bg-indigo-50 text-indigo-900 shadow-xs'
+                    ? 'ring-2 ring-[#0F5132] border-[#0F5132]/40 bg-[#E8F3EE] text-[#0F5132] shadow-xs'
                     : isDone
                     ? 'border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
                     : isReading
-                    ? 'border-indigo-400 bg-indigo-50 text-indigo-700 animate-pulse'
+                    ? 'border-[#0F5132]/40 bg-[#E8F3EE] text-[#0B3D26] animate-pulse'
                     : isFailed
                     ? 'border-rose-300 bg-rose-50 text-rose-700 hover:bg-rose-100'
                     : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
@@ -300,7 +300,7 @@ export const PageFlipStrip: React.FC<{ pages: SheetPageStatus[] }> = ({ pages })
               >
                 <span>{p.n}</span>
                 {isDone && <Check className="w-3 h-3 text-emerald-600" />}
-                {isReading && <RefreshCw className="w-3 h-3 text-indigo-600 animate-spin" />}
+                {isReading && <RefreshCw className="w-3 h-3 text-[#0F5132] animate-spin" />}
                 {isFailed && <AlertTriangle className="w-3 h-3 text-rose-600" />}
               </button>
             );

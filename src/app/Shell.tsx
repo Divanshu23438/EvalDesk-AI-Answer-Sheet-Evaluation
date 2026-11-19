@@ -174,7 +174,7 @@ export const Shell: React.FC = () => {
                       className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border border-slate-200 bg-slate-50 text-slate-700"
                       title="Target Assessment Paper"
                     >
-                      <FileText className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                      <FileText className="w-3.5 h-3.5 text-[#0F5132] shrink-0" />
                       <span className="truncate max-w-[240px] font-semibold text-slate-800">
                         {state.paperTitle || 'Assessment Paper'}
                       </span>
@@ -187,21 +187,21 @@ export const Shell: React.FC = () => {
                   )
                 ) : state.step === 'dashboard' ? (
                   <div className="flex items-center gap-2 text-xs">
-                    <LayoutDashboard className="w-4 h-4 text-indigo-600" />
+                    <LayoutDashboard className="w-4 h-4 text-[#0F5132]" />
                     <span className="font-bold text-slate-900 text-sm">Dashboard</span>
                     <span className="text-slate-300">/</span>
                     <span className="text-slate-500">Live Overview</span>
                   </div>
                 ) : state.step === 'history' ? (
                   <div className="flex items-center gap-2 text-xs">
-                    <History className="w-4 h-4 text-indigo-600" />
+                    <History className="w-4 h-4 text-[#0F5132]" />
                     <span className="font-bold text-slate-900 text-sm">History</span>
                     <span className="text-slate-300">/</span>
                     <span className="text-slate-500">Evaluated Sheets</span>
                   </div>
                 ) : (
                   <div className="flex items-center gap-2 text-xs">
-                    <FileSpreadsheet className="w-4 h-4 text-indigo-600" />
+                    <FileSpreadsheet className="w-4 h-4 text-[#0F5132]" />
                     <span className="font-bold text-slate-900 text-sm">Reports</span>
                     <span className="text-slate-300">/</span>
                     <span className="text-slate-500">Batch Results &amp; Marksheets</span>
@@ -228,7 +228,7 @@ export const Shell: React.FC = () => {
                           onClick={() => handleStepClick(step.id)}
                           className={`px-3 py-1 rounded-full text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer ${
                             isActive
-                              ? 'bg-indigo-50 border border-indigo-200 text-indigo-700 shadow-2xs'
+                              ? 'bg-[#E8F3EE] border border-[#0F5132]/20 text-[#0F5132] shadow-2xs'
                               : isPast
                               ? 'text-slate-700 hover:bg-slate-100'
                               : 'text-slate-400 hover:text-slate-600'
@@ -237,7 +237,7 @@ export const Shell: React.FC = () => {
                           <span
                             className={`w-4 h-4 rounded-full text-[10px] font-bold flex items-center justify-center ${
                               isActive
-                                ? 'bg-indigo-600 text-white'
+                                ? 'bg-[#0F5132] text-white'
                                 : isPast
                                 ? 'bg-emerald-100 text-emerald-800'
                                 : 'border border-slate-300 text-slate-400'
@@ -247,7 +247,7 @@ export const Shell: React.FC = () => {
                           </span>
                           <span>{step.label}</span>
                           {isActive && (
-                            <span className="text-[9px] uppercase tracking-wider bg-indigo-600 text-white px-1 rounded font-bold">
+                            <span className="text-[9px] uppercase tracking-wider bg-[#0F5132] text-white px-1 rounded font-bold">
                               Active
                             </span>
                           )}
@@ -439,7 +439,7 @@ export const Shell: React.FC = () => {
                         }
                       }}
                       disabled={!state.sheetId}
-                      className="px-4 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center gap-1.5 shadow-sm"
+                      className="px-4 py-1.5 rounded-lg bg-[#0F5132] text-white text-xs font-semibold hover:bg-[#0B3D26] disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center gap-1.5 shadow-sm"
                     >
                       <span>Open Evaluation Workspace</span>
                       <ArrowRight className="w-3.5 h-3.5" />

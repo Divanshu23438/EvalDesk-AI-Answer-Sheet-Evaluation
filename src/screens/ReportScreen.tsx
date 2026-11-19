@@ -559,7 +559,7 @@ export const ReportScreen: React.FC = () => {
           className="w-2 hover:w-2.5 -mx-1 flex items-center justify-center cursor-col-resize z-20 group transition-all shrink-0 self-stretch"
           title="Drag to resize panes"
         >
-          <div className="w-1 group-hover:w-1.5 h-16 bg-slate-300 group-hover:bg-indigo-500 rounded-full transition-all" />
+          <div className="w-1 group-hover:w-1.5 h-16 bg-slate-300 group-hover:bg-[#0F5132] rounded-full transition-all" />
         </div>
 
         {/* ==================== RIGHT PANE (Overview, Questions, Analytics) ==================== */}
@@ -582,7 +582,7 @@ export const ReportScreen: React.FC = () => {
                 aria-selected={activeTab === 'overview'}
                 className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
                   activeTab === 'overview'
-                    ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                    ? 'bg-[#E8F3EE] text-[#0F5132] border border-[#0F5132]/20'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
                 onClick={() => setActiveTab('overview')}
@@ -595,7 +595,7 @@ export const ReportScreen: React.FC = () => {
                 aria-selected={activeTab === 'question'}
                 className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
                   activeTab === 'question'
-                    ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                    ? 'bg-[#E8F3EE] text-[#0F5132] border border-[#0F5132]/20'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
                 onClick={() => setActiveTab('question')}
@@ -608,7 +608,7 @@ export const ReportScreen: React.FC = () => {
                 aria-selected={activeTab === 'analytics'}
                 className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center space-x-1.5 cursor-pointer ${
                   activeTab === 'analytics'
-                    ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                    ? 'bg-[#E8F3EE] text-[#0F5132] border border-[#0F5132]/20'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
                 onClick={() => setActiveTab('analytics')}
@@ -632,7 +632,7 @@ export const ReportScreen: React.FC = () => {
               <select
                 value={sectionFilter}
                 onChange={(e) => setSectionFilter(e.target.value)}
-                className="h-8 text-xs bg-slate-50 border border-slate-200 rounded-lg px-2.5 text-slate-700 font-medium focus:ring-1 focus:ring-indigo-500 focus:outline-none cursor-pointer"
+                className="h-8 text-xs bg-slate-50 border border-slate-200 rounded-lg px-2.5 text-slate-700 font-medium focus:ring-1 focus:ring-[#0F5132] focus:outline-none cursor-pointer"
               >
                 <option value="all">All Questions ({normalizedQuestions.length})</option>
                 {distinctSections.map((sec) => (
@@ -646,7 +646,7 @@ export const ReportScreen: React.FC = () => {
                 <button
                   onClick={handlePrevQuestion}
                   disabled={selectedQuestionIndex <= 0}
-                  className="hover:text-indigo-600 px-0.5 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                  className="hover:text-[#0F5132] px-0.5 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
                   title="Previous Question"
                   type="button"
                 >
@@ -658,7 +658,7 @@ export const ReportScreen: React.FC = () => {
                 <button
                   onClick={handleNextQuestion}
                   disabled={selectedQuestionIndex >= normalizedQuestions.length - 1}
-                  className="hover:text-indigo-600 px-0.5 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                  className="hover:text-[#0F5132] px-0.5 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
                   title="Next Question"
                   type="button"
                 >
@@ -675,7 +675,7 @@ export const ReportScreen: React.FC = () => {
           >
             {isLoading ? (
               <div className="h-full flex flex-col items-center justify-center p-8 space-y-3">
-                <div className="w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                <div className="w-6 h-6 border-2 border-[#0F5132] border-t-transparent rounded-full animate-spin" />
                 <span className="text-xs font-mono text-slate-500">Loading evaluation report...</span>
               </div>
             ) : errorMessage ? (
@@ -683,7 +683,7 @@ export const ReportScreen: React.FC = () => {
                 <span className="text-rose-600 font-bold text-xs">{errorMessage}</span>
                 <button
                   onClick={() => state.sheetId && fetchStudentReport(state.sheetId)}
-                  className="px-3 py-1 rounded bg-indigo-50 text-indigo-700 text-xs font-semibold border border-indigo-200 hover:bg-indigo-100"
+                  className="px-3 py-1 rounded bg-[#E8F3EE] text-[#0F5132] text-xs font-semibold border border-[#0F5132]/20 hover:bg-[#E8F3EE]"
                 >
                   Retry Loading
                 </button>

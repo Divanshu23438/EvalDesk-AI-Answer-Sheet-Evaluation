@@ -166,7 +166,7 @@ export const MarksCard: React.FC<MarksCardProps> = ({
       {/* Header with Strictness Chip and Counted Toggle */}
       <div className="px-3.5 py-2 bg-slate-50 border-b border-slate-200 flex items-center justify-between gap-2 shrink-0">
         <div className="flex items-center gap-2">
-          <Award className="w-4 h-4 text-indigo-600" />
+          <Award className="w-4 h-4 text-[#0F5132]" />
           <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
             Marks & Why
           </h4>
@@ -185,7 +185,7 @@ export const MarksCard: React.FC<MarksCardProps> = ({
             setCounted(nextCounted);
             onMarksChange?.(marks, nextCounted, isResolved);
           }}
-          className="flex items-center gap-1 text-[11px] font-medium text-slate-600 hover:text-indigo-600"
+          className="flex items-center gap-1 text-[11px] font-medium text-slate-600 hover:text-[#0F5132]"
           title="Toggle whether this question counts toward final paper score (Section Choice Rules)"
         >
           {counted ? (
@@ -201,7 +201,7 @@ export const MarksCard: React.FC<MarksCardProps> = ({
       <div className="p-3 overflow-y-auto space-y-2.5 text-xs flex-1 min-h-0">
         {/* Recheck Skeleton Overlay if rechecking */}
         {isRechecking ? (
-          <div className="py-8 flex flex-col items-center justify-center text-center text-xs text-indigo-600">
+          <div className="py-8 flex flex-col items-center justify-center text-center text-xs text-[#0F5132]">
             <Sparkles className="w-6 h-6 animate-spin mb-2" />
             <p className="font-semibold">Rechecking evaluation with AI...</p>
             <p className="text-[11px] text-slate-500">Verifying rubric criteria and evidence quotes</p>
@@ -268,7 +268,7 @@ export const MarksCard: React.FC<MarksCardProps> = ({
 
             {/* Undo Banner after Recheck */}
             {undoMarks !== null && (
-              <div className="p-2.5 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-900 text-xs flex items-center justify-between gap-2 animate-in fade-in">
+              <div className="p-2.5 rounded-lg bg-[#E8F3EE] border border-[#0F5132]/20 text-[#0F5132] text-xs flex items-center justify-between gap-2 animate-in fade-in">
                 <span>
                   Score was <strong>{undoMarks} M</strong> before recheck
                 </span>
@@ -276,7 +276,7 @@ export const MarksCard: React.FC<MarksCardProps> = ({
                   type="button"
                   onClick={handleUndo}
                   disabled={isSaving}
-                  className="px-2.5 py-1 rounded-md bg-white border border-indigo-300 text-indigo-700 hover:bg-indigo-100 font-semibold text-[11px] flex items-center gap-1 shadow-2xs transition"
+                  className="px-2.5 py-1 rounded-md bg-white border border-[#0F5132]/30 text-[#0B3D26] hover:bg-[#E8F3EE] font-semibold text-[11px] flex items-center gap-1 shadow-2xs transition"
                 >
                   <RotateCcw className="w-3 h-3" />
                   <span>Undo</span>
@@ -384,7 +384,7 @@ export const MarksCard: React.FC<MarksCardProps> = ({
           className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 hover:bg-white text-slate-700 disabled:opacity-40 transition flex items-center gap-1.5 shadow-2xs"
           title="Recheck question with custom strictness (R)"
         >
-          <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+          <Sparkles className="w-3.5 h-3.5 text-[#0F5132]" />
           <span>Recheck...</span>
         </button>
 
@@ -395,7 +395,7 @@ export const MarksCard: React.FC<MarksCardProps> = ({
           className={`px-4 py-1.5 text-xs font-semibold rounded-lg text-white transition flex items-center gap-1.5 shadow-xs disabled:opacity-40 ${
             isResolved
               ? 'bg-emerald-600 hover:bg-emerald-700'
-              : 'bg-indigo-600 hover:bg-indigo-700'
+              : 'bg-[#0F5132] hover:bg-[#0B3D26]'
           }`}
           title="Approve marks for this question (A)"
         >

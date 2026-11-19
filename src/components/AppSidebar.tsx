@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSheetStore } from '../state/useSheetStore';
 import {
   LayoutDashboard,
@@ -7,11 +7,78 @@ import {
   FileSpreadsheet,
   PanelLeftClose,
   PanelLeftOpen,
+  Search,
 } from 'lucide-react';
+
+interface Paper {
+  id: string;
+  title: string;
+}
 
 export const AppSidebar: React.FC = () => {
   const [state, store] = useSheetStore();
   const isCollapsed = state.isSidebarCollapsed;
+
+  const [recentPapers, setRecentPapers] = useState<Paper[]>([]);
+  const [papersLoading, setPapersLoading] = useState(true);
+  const [backendOnline, setBackendOnline] = useState<boolean | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // localStorage sidebar persistence: read on mount
+  useEffect(() => {
+    const stored = localStorage.getItem('evaldesk_sidebar_collapsed');
+    if (stored !== null) {
+      const shouldCollapse = stored === 'true';
+      if (shouldCollapse !== state.isSidebarCollapsed) {
+        store.toggleSidebar();
+      }
+    }
+  // Only run on mount
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleToggle = () => {
+    const next = !isCollapsed;
+    localStorage.setItem('evaldesk_sidebar_collapsed', String(next));
+    store.toggleSidebar();
+  };
+
+  // Fetch backend health
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/health')
+      .then((r) => {
+        if (!cancelled) setBackendOnline(r.ok);
+      })
+      .catch(() => {
+        if (!cancelled) setBackendOnline(false);
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  // Fetch recent papers
+  useEffect(() => {
+    let cancelled = false;
+    setPapersLoading(true);
+    fetch('/api/papers')
+      .then((r) => r.json())
+      .then((data) => {
+        if (cancelled) return;
+        const list: Paper[] = Array.isArray(data?.papers)
+          ? data.papers.slice(0, 5).map((p: any) => ({ id: p.id, title: p.title ?? p.name ?? 'Untitled' }))
+          : Array.isArray(data)
+          ? (data as any[]).slice(0, 5).map((p: any) => ({ id: p.id, title: p.title ?? p.name ?? 'Untitled' }))
+          : [];
+        setRecentPapers(list);
+      })
+      .catch(() => {
+        if (!cancelled) setRecentPapers([]);
+      })
+      .finally(() => {
+        if (!cancelled) setPapersLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, []);
 
   const navItems = [
     {
@@ -50,13 +117,13 @@ export const AppSidebar: React.FC = () => {
 
   return (
     <aside
-      className={`h-full bg-white border-r border-slate-200 transition-all duration-200 flex flex-col shrink-0 select-none ${
-        isCollapsed ? 'w-16' : 'w-60'
+      className={`h-full bg-white border-r border-[#E2E8E4] transition-all duration-200 flex flex-col shrink-0 select-none print:hidden ${
+        isCollapsed ? 'w-20' : 'w-64'
       }`}
       aria-label="Application Navigation Sidebar"
     >
       {/* Sidebar Header */}
-      <div className="h-12 border-b border-slate-200 flex items-center justify-between px-3 shrink-0">
+      <div className="h-12 border-b border-[#E2E8E4] flex items-center justify-between px-3 shrink-0">
         {!isCollapsed ? (
           <>
             <a
@@ -65,20 +132,20 @@ export const AppSidebar: React.FC = () => {
               className="flex items-center gap-2 min-w-0 hover:opacity-80 transition-opacity"
               title="Return to Home Landing"
             >
-              <div className="w-7 h-7 rounded-lg bg-[#2563EB] text-white font-bold flex items-center justify-center text-xs shadow-xs shrink-0">
+              <div className="w-7 h-7 rounded-lg bg-[#0F5132] text-white font-bold flex items-center justify-center text-xs shadow-xs shrink-0">
                 ED
               </div>
               <span className="font-bold text-sm tracking-tight text-slate-900 truncate">
                 EvalDesk
               </span>
-              <span className="text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-600 border border-slate-300 px-1 py-0.2 rounded leading-none">
+              <span className="text-[10px] font-bold uppercase tracking-wider bg-[#E8F3EE] text-[#0F5132] border border-[#0F5132]/20 px-1 py-0.2 rounded leading-none">
                 PRO
               </span>
             </a>
             <button
               type="button"
-              onClick={() => store.toggleSidebar()}
-              className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+              onClick={handleToggle}
+              className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
               title="Collapse sidebar ([)"
               aria-label="Collapse sidebar"
             >
@@ -89,8 +156,8 @@ export const AppSidebar: React.FC = () => {
           <div className="w-full flex items-center justify-center">
             <button
               type="button"
-              onClick={() => store.toggleSidebar()}
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+              onClick={handleToggle}
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:text-[#0F5132] hover:bg-[#E8F3EE] transition-colors cursor-pointer"
               title="Expand sidebar ([)"
               aria-label="Expand sidebar"
             >
@@ -100,8 +167,38 @@ export const AppSidebar: React.FC = () => {
         )}
       </div>
 
+      {/* Quick Search (⌘K) */}
+      {!isCollapsed ? (
+        <div className="px-3 pt-3 pb-1 shrink-0">
+          <div className="relative flex items-center">
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Quick search..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-8 pr-8 py-1.5 text-xs bg-[#F1F4F2] border border-[#E2E8E4] rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-[#0F5132] focus:border-[#0F5132]"
+            />
+            <kbd className="absolute right-2 px-1 py-0.5 text-[9px] font-mono text-slate-400 bg-white border border-[#E2E8E4] rounded">
+              ⌘K
+            </kbd>
+          </div>
+        </div>
+      ) : (
+        <div className="px-2 pt-2 flex justify-center shrink-0">
+          <button
+            type="button"
+            onClick={handleToggle}
+            className="w-10 h-8 flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-600 hover:bg-[#F1F4F2] transition"
+            title="Quick search (⌘K)"
+          >
+            <Search className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* Navigation Menu */}
-      <nav className="flex-1 py-3 px-2 space-y-1.5 overflow-y-auto overflow-x-hidden">
+      <nav className="py-3 px-2 space-y-1.5 overflow-y-auto overflow-x-hidden">
         {navItems.map((item) => {
           const Icon = item.icon;
           return (
@@ -114,19 +211,19 @@ export const AppSidebar: React.FC = () => {
                 isCollapsed
                   ? `h-10 justify-center ${
                       item.isActive
-                        ? 'bg-indigo-50 text-indigo-600 shadow-2xs ring-1 ring-indigo-200'
+                        ? 'bg-[#E8F3EE] text-[#0F5132] shadow-2xs ring-1 ring-[#0F5132]/20'
                         : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
                     }`
                   : `h-9 px-3 gap-3 ${
                       item.isActive
-                        ? 'bg-indigo-50 text-indigo-700 font-semibold border border-indigo-100 shadow-2xs'
+                        ? 'bg-[#E8F3EE] text-[#0F5132] font-semibold border border-[#E8F3EE] shadow-2xs'
                         : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-medium'
                     }`
               }`}
             >
               <Icon
                 className={`w-4 h-4 shrink-0 transition-colors ${
-                  item.isActive ? 'text-indigo-600' : 'text-slate-400 group-hover:text-slate-600'
+                  item.isActive ? 'text-[#0F5132]' : 'text-slate-400 group-hover:text-slate-600'
                 }`}
               />
               {!isCollapsed && (
@@ -137,8 +234,60 @@ export const AppSidebar: React.FC = () => {
         })}
       </nav>
 
+      {/* Recent Papers (expanded only) */}
+      {!isCollapsed && (
+        <div className="px-3 pb-2 flex-1 overflow-y-auto">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 px-1">
+            Recent Papers
+          </p>
+          {papersLoading ? (
+            <div className="space-y-1.5">
+              {[1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className="h-6 rounded-lg bg-slate-100 animate-pulse"
+                />
+              ))}
+            </div>
+          ) : recentPapers.length === 0 ? (
+            <p className="text-[11px] text-slate-400 italic px-1">No papers yet</p>
+          ) : (
+            <ul className="space-y-0.5">
+              {recentPapers
+                .filter((p) => !searchQuery.trim() || p.title.toLowerCase().includes(searchQuery.toLowerCase()))
+                .map((paper) => (
+                <li key={paper.id}>
+                  <a
+                    href="#/upload"
+                    onClick={() => store.setStep('upload')}
+                    className="block text-[11px] text-slate-600 hover:text-[#0F5132] hover:bg-[#E8F3EE] px-2 py-1 rounded-lg truncate transition-colors"
+                    title={paper.title}
+                  >
+                    {paper.title}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
+      {/* Backend Health Pill */}
+      <div className="px-3 pb-1 shrink-0">
+        {backendOnline !== null && (
+          <div className="flex items-center gap-1.5 text-[10px] text-slate-500">
+            <span
+              className={`w-1.5 h-1.5 rounded-full ${
+                backendOnline ? 'bg-emerald-500' : 'bg-rose-500'
+              }`}
+            />
+            {backendOnline ? 'Online' : 'Offline'}
+          </div>
+        )}
+      </div>
+
       {/* Sidebar Footer */}
-      <div className="p-2 border-t border-slate-200 text-center shrink-0">
+      <div className="p-2 border-t border-[#E2E8E4] text-center shrink-0">
         {!isCollapsed ? (
           <div className="px-2 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-[10px] text-slate-500 flex items-center justify-between">
             <span className="font-medium">EvalDesk v2.4</span>
@@ -147,7 +296,7 @@ export const AppSidebar: React.FC = () => {
             </kbd>
           </div>
         ) : (
-          <div className="w-7 h-7 mx-auto rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-[10px] text-indigo-600">
+          <div className="w-7 h-7 mx-auto rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-[10px] text-[#0F5132]">
             ED
           </div>
         )}

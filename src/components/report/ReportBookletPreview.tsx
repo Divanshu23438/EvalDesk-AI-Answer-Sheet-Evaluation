@@ -114,7 +114,7 @@ export const ReportBookletPreview: React.FC<ReportBookletPreviewProps> = ({
           <div className="flex items-center space-x-1 bg-slate-50 border border-slate-200 rounded-md px-1.5 py-0.5">
             <button
               onClick={handleZoomOut}
-              className="p-1 hover:text-indigo-600 text-slate-500 transition-colors cursor-pointer"
+              className="p-1 hover:text-[#0F5132] text-slate-500 transition-colors cursor-pointer"
               title="Zoom Out"
               type="button"
             >
@@ -127,7 +127,7 @@ export const ReportBookletPreview: React.FC<ReportBookletPreviewProps> = ({
             </span>
             <button
               onClick={handleZoomIn}
-              className="p-1 hover:text-indigo-600 text-slate-500 transition-colors cursor-pointer"
+              className="p-1 hover:text-[#0F5132] text-slate-500 transition-colors cursor-pointer"
               title="Zoom In"
               type="button"
             >
@@ -198,7 +198,7 @@ export const ReportBookletPreview: React.FC<ReportBookletPreviewProps> = ({
               {/* Bounding box overlay highlight */}
               {activeBbox && (
                 <div
-                  className="absolute border-2 border-indigo-600 bg-indigo-500/15 rounded pointer-events-none transition-all duration-200 z-10"
+                  className="absolute border-2 border-[#0F5132] bg-[#0F5132]/15 rounded pointer-events-none transition-all duration-200 z-10"
                   style={{
                     top: `${activeBbox.top}%`,
                     left: `${activeBbox.left}%`,
@@ -206,7 +206,7 @@ export const ReportBookletPreview: React.FC<ReportBookletPreviewProps> = ({
                     height: `${activeBbox.height}%`,
                   }}
                 >
-                  <div className="absolute -top-3.5 right-0 bg-indigo-600 text-white text-[9px] font-mono font-bold px-1.5 py-0.5 rounded shadow-xs tracking-wider whitespace-nowrap">
+                  <div className="absolute -top-3.5 right-0 bg-[#0F5132] text-white text-[9px] font-mono font-bold px-1.5 py-0.5 rounded shadow-xs tracking-wider whitespace-nowrap">
                     ANS Q{activeQuestion?.q_no || ''} · {matchPct}% MATCH
                   </div>
                 </div>
@@ -234,7 +234,7 @@ export const ReportBookletPreview: React.FC<ReportBookletPreviewProps> = ({
 
                 {activeQuestion ? (
                   <div className="p-3 bg-amber-50/60 border border-amber-200 rounded-md relative z-10">
-                    <div className="text-[10px] font-mono font-bold text-indigo-700 uppercase tracking-wider mb-1">
+                    <div className="text-[10px] font-mono font-bold text-[#0B3D26] uppercase tracking-wider mb-1">
                       ANS Q{activeQuestion.q_no} · {matchPct}% OCR MATCH
                     </div>
                     <div className="text-slate-800 text-xs font-mono whitespace-pre-wrap leading-relaxed">

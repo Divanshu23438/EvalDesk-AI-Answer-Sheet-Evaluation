@@ -61,8 +61,8 @@ export const StrictnessPicker: React.FC<StrictnessPickerProps> = ({
                 onClick={() => onChange(item.level)}
                 className={`px-1.5 py-0.5 text-[10px] font-bold rounded transition ${
                   isSelected
-                    ? 'bg-indigo-600 text-white shadow-xs'
-                    : 'text-slate-600 hover:text-indigo-600 hover:bg-white'
+                    ? 'bg-[#0F5132] text-white shadow-xs'
+                    : 'text-slate-600 hover:text-[#0F5132] hover:bg-white'
                 } disabled:opacity-50 disabled:cursor-not-allowed`}
                 title={`Level ${item.level}: ${item.name} — ${item.shortDesc}`}
               >
@@ -88,7 +88,7 @@ export const StrictnessPicker: React.FC<StrictnessPickerProps> = ({
               onClick={() => onChange(item.level)}
               className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-md text-center transition ${
                 isSelected
-                  ? 'bg-white text-indigo-700 font-bold shadow-xs border border-indigo-200'
+                  ? 'bg-white text-[#0B3D26] font-bold shadow-xs border border-[#0F5132]/20'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50 font-medium'
               } disabled:opacity-50 disabled:cursor-not-allowed`}
             >

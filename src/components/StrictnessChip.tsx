@@ -11,8 +11,8 @@ const LEVEL_NAMES: Record<number, string> = {
 const LEVEL_STYLES: Record<number, { bg: string; text: string; border: string }> = {
   1: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
   2: { bg: 'bg-teal-50', text: 'text-teal-700', border: 'border-teal-200' },
-  3: { bg: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-200' },
-  4: { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200' },
+  3: { bg: 'bg-[#E8F3EE]', text: 'text-[#0B3D26]', border: 'border-[#0F5132]/20' },
+  4: { bg: 'bg-[#E8F3EE]', text: 'text-[#0B3D26]', border: 'border-[#0D9488]/20' },
   5: { bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200' },
 };
 

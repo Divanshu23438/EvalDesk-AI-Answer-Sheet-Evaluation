@@ -80,7 +80,7 @@ export const ReportQuestionTab: React.FC<ReportQuestionTabProps> = ({ question }
       <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex items-start justify-between gap-4">
         <div className="space-y-1.5 flex-1 min-w-0">
           <div className="flex items-center space-x-2">
-            <span className="px-2 py-0.5 rounded-md bg-indigo-600 text-white font-mono font-bold text-xs">
+            <span className="px-2 py-0.5 rounded-md bg-[#0F5132] text-white font-mono font-bold text-xs">
               Q{question.q_no} {question.section_name ? `· ${question.section_name}` : ''}
             </span>
             <span className="px-2 py-0.5 rounded-md bg-slate-200/80 text-slate-700 font-mono text-[11px] font-medium">
@@ -105,9 +105,9 @@ export const ReportQuestionTab: React.FC<ReportQuestionTabProps> = ({ question }
       </div>
 
       {/* AI Feedback & Weak Concepts Card */}
-      <div className="p-4 rounded-xl bg-indigo-50/40 border border-indigo-100 space-y-2">
+      <div className="p-4 rounded-xl bg-[#E8F3EE]/40 border border-[#E8F3EE] space-y-2">
         <div className="flex items-center space-x-2">
-          <svg className="w-4 h-4 text-indigo-600 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+          <svg className="w-4 h-4 text-[#0F5132] shrink-0" fill="currentColor" viewBox="0 0 20 20">
             <path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14H8a4 4 0 01-.97-7.881 4.01 4.01 0 017.94 0A4 4 0 0112 14z" />
           </svg>
           <span className="font-bold text-slate-900 text-xs tracking-wide">AI Diagnostic Feedback</span>
@@ -163,11 +163,11 @@ export const ReportQuestionTab: React.FC<ReportQuestionTabProps> = ({ question }
         </details>
 
         {/* Right Column: Expected Answer */}
-        <details className="group rounded-xl bg-indigo-50/35 border border-indigo-100 overflow-hidden flex flex-col justify-start" open>
-          <summary className="px-3.5 py-2.5 flex items-center justify-between gap-2 cursor-pointer select-none hover:bg-indigo-50/70 transition-colors list-none">
+        <details className="group rounded-xl bg-[#E8F3EE]/35 border border-[#E8F3EE] overflow-hidden flex flex-col justify-start" open>
+          <summary className="px-3.5 py-2.5 flex items-center justify-between gap-2 cursor-pointer select-none hover:bg-[#E8F3EE]/70 transition-colors list-none">
             <span className="text-xs font-semibold text-slate-700">Expected Answer</span>
             <div className="flex items-center space-x-2">
-              <span className="whitespace-nowrap shrink-0 text-[11px] font-mono text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
+              <span className="whitespace-nowrap shrink-0 text-[11px] font-mono text-[#0F5132] bg-[#E8F3EE] px-2 py-0.5 rounded-full">
                 {question.reference?.source || 'Model Key'}
               </span>
               <svg
@@ -180,7 +180,7 @@ export const ReportQuestionTab: React.FC<ReportQuestionTabProps> = ({ question }
               </svg>
             </div>
           </summary>
-          <div className="px-3.5 pb-3.5 pt-2 border-t border-indigo-100/60 text-[13px] text-slate-700 leading-relaxed whitespace-pre-wrap break-words select-text">
+          <div className="px-3.5 pb-3.5 pt-2 border-t border-[#E8F3EE]/60 text-[13px] text-slate-700 leading-relaxed whitespace-pre-wrap break-words select-text">
             {question.reference?.model_answer ? (
               question.reference.model_answer
             ) : question.reference?.key_points && question.reference.key_points.length > 0 ? (

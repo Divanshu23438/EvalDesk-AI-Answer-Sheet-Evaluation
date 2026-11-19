@@ -231,7 +231,7 @@ export const QuestionSidebar: React.FC<QuestionSidebarProps> = ({
                     isCollapsed ? 'justify-center p-2' : 'p-2 justify-between gap-2'
                   } ${
                     isCurrent
-                      ? 'bg-[var(--accent-indigo-subtle)] text-[var(--accent-indigo)] font-semibold border border-[var(--accent-indigo-border)] shadow-xs'
+                      ? 'bg-[var(--brand-tint)] text-[var(--brand-primary)] font-semibold border border-[var(--surface-card-border)] shadow-xs'
                       : 'hover:bg-[var(--surface-hover)] text-[var(--ink-primary)]'
                   }`}
                   title={isCollapsed ? `Q${q.q_no}: ${q.text || q.question_text}` : undefined}

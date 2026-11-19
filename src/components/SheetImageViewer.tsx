@@ -164,7 +164,7 @@ export const SheetImageViewer: React.FC<SheetImageViewerProps> = ({
               }}
               className={`px-2 py-1 rounded-md text-xs font-semibold transition flex items-center gap-1.5 ${
                 viewMode === 'crop'
-                  ? 'bg-indigo-600 text-white shadow-xs'
+                  ? 'bg-[#0F5132] text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
               }`}
             >
@@ -180,7 +180,7 @@ export const SheetImageViewer: React.FC<SheetImageViewerProps> = ({
               }}
               className={`px-2 py-1 rounded-md text-xs font-semibold transition flex items-center gap-1.5 ${
                 viewMode === 'full'
-                  ? 'bg-indigo-600 text-white shadow-xs'
+                  ? 'bg-[#0F5132] text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
               }`}
             >
@@ -193,7 +193,7 @@ export const SheetImageViewer: React.FC<SheetImageViewerProps> = ({
               onClick={() => setViewMode('book')}
               className={`px-2 py-1 rounded-md text-xs font-semibold transition flex items-center gap-1.5 ${
                 viewMode === 'book'
-                  ? 'bg-indigo-600 text-white shadow-xs'
+                  ? 'bg-[#0F5132] text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
               }`}
             >
@@ -215,7 +215,7 @@ export const SheetImageViewer: React.FC<SheetImageViewerProps> = ({
             }}
             className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 border ${
               isAnnotating
-                ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                ? 'bg-[#0F5132] text-white border-[#0F5132] shadow-xs'
                 : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 hover:text-slate-900'
             }`}
             title={isAnnotating ? 'Close Annotation Tools' : 'Open Annotation Tools'}
@@ -239,9 +239,9 @@ export const SheetImageViewer: React.FC<SheetImageViewerProps> = ({
                   onClick={() => setActivePage(pNum)}
                   className={`px-2 py-0.5 text-[11px] font-mono font-semibold rounded transition ${
                     isActive
-                      ? 'bg-indigo-600 text-white shadow-xs'
+                      ? 'bg-[#0F5132] text-white shadow-xs'
                       : isAnswerPage
-                      ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100'
+                      ? 'bg-[#E8F3EE] text-[#0B3D26] border border-[#0F5132]/20 hover:bg-[#E8F3EE]'
                       : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
                   }`}
                   title={isAnswerPage ? `Page ${pNum} (Answer written here)` : `Page ${pNum}`}
@@ -255,7 +255,7 @@ export const SheetImageViewer: React.FC<SheetImageViewerProps> = ({
 
         {/* Multi-page continuation indicator in Crop mode */}
         {viewMode === 'crop' && pageNumbers.length > 1 && (
-          <span className="text-[11px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full">
+          <span className="text-[11px] font-semibold text-[#0B3D26] bg-[#E8F3EE] border border-[#0F5132]/20 px-2 py-0.5 rounded-full">
             Answer spans Pages {pageNumbers.join(', ')}
           </span>
         )}
@@ -307,7 +307,7 @@ export const SheetImageViewer: React.FC<SheetImageViewerProps> = ({
             type="button"
             data-testid="btn-open-popup"
             onClick={() => setIsPopupOpen(true)}
-            className="p-1 rounded text-slate-500 hover:text-indigo-600 hover:bg-slate-200/60 ml-1 cursor-pointer"
+            className="p-1 rounded text-slate-500 hover:text-[#0F5132] hover:bg-slate-200/60 ml-1 cursor-pointer"
             title="Open Full Page Book Viewer Popup"
           >
             <Maximize2 className="w-3.5 h-3.5" />
@@ -421,9 +421,9 @@ export const SheetImageViewer: React.FC<SheetImageViewerProps> = ({
                     width: `${activeBbox.width}%`,
                     height: `${activeBbox.height}%`,
                   }}
-                  className="border-2 border-indigo-600 bg-indigo-500/15 rounded ring-2 ring-indigo-400/40 pointer-events-none transition-all duration-150"
+                  className="border-2 border-[#0F5132] bg-[#0F5132]/15 rounded ring-2 ring-[#0F5132]/40/40 pointer-events-none transition-all duration-150"
                 >
-                  <span className="absolute -top-5 left-0 px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-indigo-600 text-white shadow-xs whitespace-nowrap">
+                  <span className="absolute -top-5 left-0 px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-[#0F5132] text-white shadow-xs whitespace-nowrap">
                     Answer {qNo ? `Q.${qNo}` : ''}
                   </span>
                 </div>
@@ -444,7 +444,7 @@ export const SheetImageViewer: React.FC<SheetImageViewerProps> = ({
           <div className="w-full max-w-5xl flex items-center justify-between pb-2 text-white shrink-0">
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2">
-                <BookOpen className="w-4 h-4 text-indigo-400" />
+                <BookOpen className="w-4 h-4 text-[#0F5132]/40" />
                 <span className="text-sm font-semibold tracking-wide">
                   Answer Sheet Book Viewer
                 </span>
@@ -455,7 +455,7 @@ export const SheetImageViewer: React.FC<SheetImageViewerProps> = ({
                 onClick={() => setIsAnnotating((v) => !v)}
                 className={`px-2 py-0.5 rounded text-xs font-semibold transition flex items-center gap-1 border ${
                   isAnnotating
-                    ? 'bg-indigo-600 text-white border-indigo-500'
+                    ? 'bg-[#0F5132] text-white border-[#0F5132]'
                     : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white'
                 }`}
               >

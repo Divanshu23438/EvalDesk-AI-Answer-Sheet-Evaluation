@@ -208,9 +208,9 @@ export const QueueRow: React.FC<QueueRowProps> = ({
       onKeyDown={handleKeyDown}
       className={`border rounded-xl p-3.5 transition-all text-left select-none cursor-pointer shadow-xs ${
         isActive
-          ? 'border-indigo-400 bg-indigo-50/40 ring-1 ring-indigo-300'
+          ? 'border-[#0F5132]/40 bg-[#E8F3EE]/40 ring-1 ring-[#0F5132]/30'
           : isProcessing
-          ? 'border-indigo-200 bg-indigo-50/20 hover:border-indigo-300 hover:shadow-sm'
+          ? 'border-[#0F5132]/20 bg-[#E8F3EE]/20 hover:border-[#0F5132]/30 hover:shadow-sm'
           : sheet.status === 'needs_identity'
           ? 'border-amber-300 bg-amber-50/30 hover:border-amber-400'
           : sheet.status === 'failed'
@@ -265,7 +265,7 @@ export const QueueRow: React.FC<QueueRowProps> = ({
                     e.stopPropagation();
                     onSelect();
                   }}
-                  className="p-1 text-slate-400 hover:text-indigo-600 rounded hover:bg-slate-100 transition"
+                  className="p-1 text-slate-400 hover:text-[#0F5132] rounded hover:bg-slate-100 transition"
                   title="Open in Evaluation Workspace"
                 >
                   <Eye className="w-3.5 h-3.5" />
@@ -296,7 +296,7 @@ export const QueueRow: React.FC<QueueRowProps> = ({
                   </span>
                 )}
                 {sheet.class_name && (
-                  <span className="text-[10px] text-indigo-700 bg-indigo-50 border border-indigo-200 px-1 rounded font-medium">
+                  <span className="text-[10px] text-[#0B3D26] bg-[#E8F3EE] border border-[#0F5132]/20 px-1 rounded font-medium">
                     {sheet.class_name}
                   </span>
                 )}
@@ -310,7 +310,7 @@ export const QueueRow: React.FC<QueueRowProps> = ({
                       setIsEditingIdentity((prev) => !prev);
                     }
                   }}
-                  className="p-0.5 ml-0.5 text-slate-400 hover:text-indigo-600 rounded hover:bg-slate-100 transition inline-flex items-center"
+                  className="p-0.5 ml-0.5 text-slate-400 hover:text-[#0F5132] rounded hover:bg-slate-100 transition inline-flex items-center"
                   title="Edit student name & roll number (✎)"
                   aria-label="Edit student identity"
                 >
@@ -330,7 +330,7 @@ export const QueueRow: React.FC<QueueRowProps> = ({
                       setIsEditingIdentity((prev) => !prev);
                     }
                   }}
-                  className="p-0.5 ml-0.5 text-slate-400 hover:text-indigo-600 rounded hover:bg-slate-100 transition inline-flex items-center"
+                  className="p-0.5 ml-0.5 text-slate-400 hover:text-[#0F5132] rounded hover:bg-slate-100 transition inline-flex items-center"
                   title="Enter student name & roll number (✎)"
                   aria-label="Edit student identity"
                 >
@@ -368,14 +368,14 @@ export const QueueRow: React.FC<QueueRowProps> = ({
 
           {/* Live Inline 5-Stage Processing Tracker */}
           {isProcessing && (
-            <div className="mt-2 pt-2 border-t border-indigo-100 space-y-2">
+            <div className="mt-2 pt-2 border-t border-[#E8F3EE] space-y-2">
               <div className="flex items-center justify-between text-[11px]">
-                <span className="font-medium text-indigo-700 flex items-center gap-1.5 truncate">
-                  <span className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse" />
+                <span className="font-medium text-[#0B3D26] flex items-center gap-1.5 truncate">
+                  <span className="w-2 h-2 rounded-full bg-[#0F5132] animate-pulse" />
                   {sheet.stage || 'Processing student answer sheet...'}
                 </span>
                 {questionsTotal > 0 && (
-                  <span className="font-mono text-[10px] text-indigo-900 font-semibold shrink-0">
+                  <span className="font-mono text-[10px] text-[#0F5132] font-semibold shrink-0">
                     {questionsMarked}/{questionsTotal} Qs
                   </span>
                 )}
@@ -390,7 +390,7 @@ export const QueueRow: React.FC<QueueRowProps> = ({
                       st.done
                         ? 'bg-emerald-500'
                         : st.active
-                        ? 'bg-indigo-600 animate-pulse'
+                        ? 'bg-[#0F5132] animate-pulse'
                         : 'bg-slate-200'
                     }`}
                     title={`Stage ${i + 1}: ${st.label}`}
@@ -407,7 +407,7 @@ export const QueueRow: React.FC<QueueRowProps> = ({
                       e.stopPropagation();
                       if (onSelect) onSelect();
                     }}
-                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600 hover:text-indigo-800 hover:underline"
+                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#0F5132] hover:text-[#0F5132] hover:underline"
                   >
                     <span>Open first reviewed question</span>
                     <ArrowRight className="w-3 h-3" />
@@ -426,7 +426,7 @@ export const QueueRow: React.FC<QueueRowProps> = ({
               </div>
               <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
                 <div
-                  className="bg-indigo-600 h-full transition-all duration-200"
+                  className="bg-[#0F5132] h-full transition-all duration-200"
                   style={{ width: `${sheet.uploadProgress}%` }}
                 />
               </div>

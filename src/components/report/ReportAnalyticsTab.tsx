@@ -128,7 +128,7 @@ export const ReportAnalyticsTab: React.FC<ReportAnalyticsTabProps> = ({
   const rawErrorCategories = [
     { name: 'Conceptual Mistakes', loss: conceptualLost, color: '#E11D48', dotClass: 'bg-rose-600', textClass: 'text-rose-700', bgClass: 'bg-rose-50/50 border-rose-100' },
     { name: 'Incomplete Steps', loss: incompleteLost, color: '#F59E0B', dotClass: 'bg-amber-500', textClass: 'text-amber-700', bgClass: 'bg-amber-50/50 border-amber-100' },
-    { name: 'Syntax / Rubric Flags', loss: syntaxFlagsLost, color: '#6366F1', dotClass: 'bg-indigo-500', textClass: 'text-indigo-700', bgClass: 'bg-indigo-50/50 border-indigo-100' },
+    { name: 'Syntax / Rubric Flags', loss: syntaxFlagsLost, color: '#6366F1', dotClass: 'bg-[#0F5132]', textClass: 'text-[#0B3D26]', bgClass: 'bg-[#E8F3EE]/50 border-[#E8F3EE]' },
     { name: 'Other Deductions', loss: otherLost, color: '#94A3B8', dotClass: 'bg-slate-400', textClass: 'text-slate-600', bgClass: 'bg-slate-50 border-slate-200' },
   ].filter((c) => c.loss > 0 || totalLost === 0);
 
@@ -231,7 +231,7 @@ export const ReportAnalyticsTab: React.FC<ReportAnalyticsTabProps> = ({
   return (
     <div className="h-full flex flex-col overflow-y-auto p-5 space-y-5">
       {/* Analytics Header Banner */}
-      <div className="p-4 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 text-white flex items-center justify-between shadow-xs">
+      <div className="p-4 rounded-xl bg-gradient-to-r from-[#0F5132] to-[#0B3D26] text-white flex items-center justify-between shadow-xs">
         <div className="space-y-1">
           <div className="flex items-center space-x-2">
             <span className="font-bold text-sm tracking-wide">Comprehensive Exam Evaluation Analytics</span>
@@ -239,7 +239,7 @@ export const ReportAnalyticsTab: React.FC<ReportAnalyticsTabProps> = ({
               Sync: {questions.length} Questions
             </span>
           </div>
-          <p className="text-xs text-indigo-100">
+          <p className="text-xs text-[#E8F3EE]">
             Deep diagnostic telemetry across Question Marks, Section Distributions, Teacher Deductions, and Question Formats.
           </p>
         </div>
@@ -259,7 +259,7 @@ export const ReportAnalyticsTab: React.FC<ReportAnalyticsTabProps> = ({
           <button
             className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors cursor-pointer ${
               activeFilter === 'all'
-                ? 'bg-indigo-600 text-white shadow-xs'
+                ? 'bg-[#0F5132] text-white shadow-xs'
                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900'
             }`}
             onClick={() => setActiveFilter('all')}
@@ -270,7 +270,7 @@ export const ReportAnalyticsTab: React.FC<ReportAnalyticsTabProps> = ({
           <button
             className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors cursor-pointer ${
               activeFilter === 'secMarks'
-                ? 'bg-indigo-600 text-white shadow-xs'
+                ? 'bg-[#0F5132] text-white shadow-xs'
                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900'
             }`}
             onClick={() => setActiveFilter('secMarks')}
@@ -281,7 +281,7 @@ export const ReportAnalyticsTab: React.FC<ReportAnalyticsTabProps> = ({
           <button
             className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors cursor-pointer ${
               activeFilter === 'secErrors'
-                ? 'bg-indigo-600 text-white shadow-xs'
+                ? 'bg-[#0F5132] text-white shadow-xs'
                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900'
             }`}
             onClick={() => setActiveFilter('secErrors')}
@@ -292,7 +292,7 @@ export const ReportAnalyticsTab: React.FC<ReportAnalyticsTabProps> = ({
           <button
             className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors cursor-pointer ${
               activeFilter === 'secFormats'
-                ? 'bg-indigo-600 text-white shadow-xs'
+                ? 'bg-[#0F5132] text-white shadow-xs'
                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900'
             }`}
             onClick={() => setActiveFilter('secFormats')}
@@ -325,11 +325,11 @@ export const ReportAnalyticsTab: React.FC<ReportAnalyticsTabProps> = ({
         <div className="space-y-4">
           <div className="flex items-center justify-between pt-1">
             <div className="flex items-center space-x-2">
-              <span className="w-2 h-4 bg-indigo-600 rounded-sm" />
+              <span className="w-2 h-4 bg-[#0F5132] rounded-sm" />
               <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
                 1. Question &amp; Section Marks Telemetry
               </h3>
-              <span className="px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 font-mono text-[10px] font-semibold border border-indigo-200">
+              <span className="px-2 py-0.5 rounded bg-[#E8F3EE] text-[#0B3D26] font-mono text-[10px] font-semibold border border-[#0F5132]/20">
                 Q1 to Q{questions.length} ({maxMarks.toFixed(1)} Total Marks)
               </span>
             </div>
@@ -369,8 +369,8 @@ export const ReportAnalyticsTab: React.FC<ReportAnalyticsTabProps> = ({
                 </div>
                 {hasCohortAvg && (
                   <div className="flex items-center space-x-1">
-                    <span className="w-3 border-t border-dashed border-indigo-400" />
-                    <span className="text-indigo-600">Cohort Avg {Math.round(cohortAvgPct)}%</span>
+                    <span className="w-3 border-t border-dashed border-[#0F5132]/40" />
+                    <span className="text-[#0F5132]">Cohort Avg {Math.round(cohortAvgPct)}%</span>
                   </div>
                 )}
               </div>
@@ -380,10 +380,10 @@ export const ReportAnalyticsTab: React.FC<ReportAnalyticsTabProps> = ({
             <div className="bg-slate-50/70 border border-slate-200/80 rounded-lg p-3 pt-6 relative select-none">
               {hasCohortAvg && (
                 <div
-                  className="absolute left-10 right-4 border-t border-dashed border-indigo-400/80 pointer-events-none z-10 flex justify-end"
+                  className="absolute left-10 right-4 border-t border-dashed border-[#0F5132]/40/80 pointer-events-none z-10 flex justify-end"
                   style={{ top: `${Math.max(10, Math.min(90, 100 - cohortAvgPct))}%` }}
                 >
-                  <span className="text-[9px] font-mono text-indigo-700 bg-white/95 px-1 py-0.2 rounded -mt-2 border border-indigo-200">
+                  <span className="text-[9px] font-mono text-[#0B3D26] bg-white/95 px-1 py-0.2 rounded -mt-2 border border-[#0F5132]/20">
                     Cohort Avg {Math.round(cohortAvgPct)}%
                   </span>
                 </div>
@@ -419,7 +419,7 @@ export const ReportAnalyticsTab: React.FC<ReportAnalyticsTabProps> = ({
                       key={q.eval_id || idx}
                       onClick={() => onSelectQuestion(idx)}
                       className={`flex-1 flex flex-col items-center h-full justify-end group cursor-pointer ${
-                        isSelected ? 'ring-2 ring-indigo-500 ring-offset-1 rounded-sm' : ''
+                        isSelected ? 'ring-2 ring-[#0F5132] ring-offset-1 rounded-sm' : ''
                       }`}
                       title={`Q${q.q_no}: ${qEarned} / ${qMax} (${Math.round(pct)}%) - Click to review`}
                     >
@@ -432,7 +432,7 @@ export const ReportAnalyticsTab: React.FC<ReportAnalyticsTabProps> = ({
                           style={{ height: `${pct}%` }}
                         />
                       </div>
-                      <span className={`text-[9px] font-mono font-semibold mt-1 ${isSelected ? 'text-indigo-600 font-bold' : 'text-slate-700'}`}>
+                      <span className={`text-[9px] font-mono font-semibold mt-1 ${isSelected ? 'text-[#0F5132] font-bold' : 'text-slate-700'}`}>
                         Q{q.q_no}
                       </span>
                     </div>
@@ -493,20 +493,20 @@ export const ReportAnalyticsTab: React.FC<ReportAnalyticsTabProps> = ({
                     <span className="text-[10px] font-mono text-slate-400 mt-0.5">
                       / {maxMarks.toFixed(1)} M
                     </span>
-                    <span className="text-[9px] font-bold text-indigo-600">
+                    <span className="text-[9px] font-bold text-[#0F5132]">
                       {percentage.toFixed(1)}%
                     </span>
                   </div>
                 </div>
 
                 <div className="space-y-2 text-xs font-mono flex-1">
-                  <div className="p-2 rounded-lg bg-indigo-50/50 border border-indigo-100 flex items-center justify-between">
+                  <div className="p-2 rounded-lg bg-[#E8F3EE]/50 border border-[#E8F3EE] flex items-center justify-between">
                     <div className="flex items-center space-x-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-indigo-600" />
+                      <span className="w-2.5 h-2.5 rounded-full bg-[#0F5132]" />
                       <span className="font-sans text-slate-700 font-medium">Marks Scored</span>
                     </div>
                     <div className="text-right">
-                      <div className="font-bold text-indigo-700">{totalScore.toFixed(1)} M</div>
+                      <div className="font-bold text-[#0B3D26]">{totalScore.toFixed(1)} M</div>
                       <div className="text-[10px] text-slate-500">{percentage.toFixed(1)}%</div>
                     </div>
                   </div>
@@ -662,7 +662,7 @@ export const ReportAnalyticsTab: React.FC<ReportAnalyticsTabProps> = ({
                     Ranked Deductions
                   </span>
                 </div>
-                <span className="text-[10px] font-mono text-indigo-600 font-semibold whitespace-nowrap shrink-0">
+                <span className="text-[10px] font-mono text-[#0F5132] font-semibold whitespace-nowrap shrink-0">
                   Line: Cumulative %
                 </span>
               </div>

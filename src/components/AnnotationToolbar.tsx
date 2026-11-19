@@ -191,7 +191,7 @@ export const AnnotationToolbar: React.FC<AnnotationToolbarProps> = ({
           onClick={() => onSelectTool('select')}
           className={`p-2 rounded-lg text-xs transition flex items-center justify-center ${
             activeTool === 'select'
-              ? 'bg-indigo-600 text-white shadow-xs'
+              ? 'bg-[#0F5132] text-white shadow-xs'
               : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
           }`}
           title="Select / Pick (V)"
@@ -206,7 +206,7 @@ export const AnnotationToolbar: React.FC<AnnotationToolbarProps> = ({
           onClick={() => onSelectTool('pen')}
           className={`p-2 rounded-lg text-xs transition flex items-center justify-center ${
             activeTool === 'pen'
-              ? 'bg-indigo-600 text-white shadow-xs'
+              ? 'bg-[#0F5132] text-white shadow-xs'
               : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
           }`}
           title="Pen (P)"
@@ -221,7 +221,7 @@ export const AnnotationToolbar: React.FC<AnnotationToolbarProps> = ({
           onClick={() => onSelectTool('highlight')}
           className={`p-2 rounded-lg text-xs transition flex items-center justify-center ${
             activeTool === 'highlight'
-              ? 'bg-indigo-600 text-white shadow-xs'
+              ? 'bg-[#0F5132] text-white shadow-xs'
               : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
           }`}
           title="Highlighter (H)"
@@ -266,7 +266,7 @@ export const AnnotationToolbar: React.FC<AnnotationToolbarProps> = ({
           onClick={() => onSelectTool('text')}
           className={`p-2 rounded-lg text-xs transition flex items-center justify-center ${
             activeTool === 'text'
-              ? 'bg-indigo-600 text-white shadow-xs'
+              ? 'bg-[#0F5132] text-white shadow-xs'
               : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
           }`}
           title="Text Note (N)"
@@ -417,7 +417,7 @@ export const AnnotationToolbar: React.FC<AnnotationToolbarProps> = ({
           }
         >
           {saveStatus === 'saving' && (
-            <span className="flex items-center gap-0.5 text-indigo-600 font-medium">
+            <span className="flex items-center gap-0.5 text-[#0F5132] font-medium">
               <Loader2 className="w-3 h-3 animate-spin" />
             </span>
           )}

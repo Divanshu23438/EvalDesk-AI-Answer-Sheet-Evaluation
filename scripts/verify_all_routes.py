@@ -72,13 +72,13 @@ def test_routes():
     print(f"Using sample sheet ID: {sample_sheet_id}")
 
     routes_to_test = [
-        ("Empty Hash / Default", f"{FRONTEND_URL}/", "UploadScreen", "Step 1A", "0_default_hash_upload.png"),
-        ("Upload Route", f"{FRONTEND_URL}/#/upload", "UploadScreen", "Step 1A", "1_upload_screen.png"),
-        ("Dashboard Route", f"{FRONTEND_URL}/#/dashboard", "DashboardScreen", "Evaluation Dashboard", "2_dashboard_screen.png"),
-        ("History Route", f"{FRONTEND_URL}/#/history", "HistoryScreen", "Evaluation History", "3_history_screen.png"),
-        ("Reports Center Route", f"{FRONTEND_URL}/#/reports", "ReportsCenterScreen", "Results Center", "4_reports_center_screen.png"),
-        ("Evaluate Route", f"{FRONTEND_URL}/#/evaluate/{sample_sheet_id}", "EvaluateScreen", "Question Panel", "5_evaluate_screen.png"),
-        ("Single-Sheet Report Route", f"{FRONTEND_URL}/#/report/{sample_sheet_id}", "ReportScreen", "Overview", "6_single_sheet_report_screen.png"),
+        ("Public Home Page", f"{FRONTEND_URL}/#/", "HomeScreen", "EVALDESK", "0_public_home.png", False),
+        ("Upload Route", f"{FRONTEND_URL}/#/upload", "UploadScreen", "Step 1A", "1_upload_screen.png", True),
+        ("Dashboard Route", f"{FRONTEND_URL}/#/dashboard", "DashboardScreen", "Evaluation Dashboard", "2_dashboard_screen.png", True),
+        ("History Route", f"{FRONTEND_URL}/#/history", "HistoryScreen", "Evaluation History", "3_history_screen.png", True),
+        ("Reports Center Route", f"{FRONTEND_URL}/#/reports", "ReportsCenterScreen", "Results Center", "4_reports_center_screen.png", True),
+        ("Evaluate Route", f"{FRONTEND_URL}/#/evaluate/{sample_sheet_id}", "EvaluateScreen", "Assessment", "5_evaluate_screen.png", True),
+        ("Single-Sheet Bento Marksheet", f"{FRONTEND_URL}/#/report/{sample_sheet_id}", "StudentMarksheetScreen", "Student Marksheet", "6_bento_marksheet_screen.png", True),
     ]
 
     console_errors = []
@@ -94,30 +94,33 @@ def test_routes():
 
         page.on("pageerror", on_page_error)
 
-        for name, url, screen_name, expected_text, shot_name in routes_to_test:
+        for name, url, screen_name, expected_text, shot_name, has_sidebar in routes_to_test:
             print(f"\n--- Testing {name} ({url}) ---")
             page.goto(url, wait_until="networkidle")
-            time.sleep(1.2)
+            time.sleep(1.5)
 
-            # Check sidebar is visible
-            aside = page.locator("aside")
-            assert aside.count() > 0, f"AppSidebar missing on {name}"
-            print("  PASS: <aside> AppSidebar is present")
+            if has_sidebar:
+                # Check sidebar is visible
+                aside = page.locator("aside")
+                assert aside.count() > 0, f"AppSidebar missing on {name}"
+                print("  PASS: <aside> AppSidebar is present")
 
-            # Check main content area exists
-            main = page.locator("main")
-            assert main.count() > 0, f"<main> element missing on {name}"
+                # Check main content area exists
+                main = page.locator("main")
+                assert main.count() > 0, f"<main> element missing on {name}"
 
-            # Check main has full height and width
-            box = main.first.bounding_box()
-            assert box is not None, f"<main> bounding box is None on {name}"
-            assert box["height"] > 300, f"<main> height is too small ({box['height']}px) on {name}"
-            assert box["width"] > 500, f"<main> width is too small ({box['width']}px) on {name}"
-            print(f"  PASS: <main> has dimensions {box['width']}x{box['height']}")
+                # Check main has full height and width
+                box = main.first.bounding_box()
+                assert box is not None, f"<main> bounding box is None on {name}"
+                assert box["height"] > 300, f"<main> height is too small ({box['height']}px) on {name}"
+                assert box["width"] > 500, f"<main> width is too small ({box['width']}px) on {name}"
+                print(f"  PASS: <main> has dimensions {box['width']}x{box['height']}")
+            else:
+                print("  PASS: Public route rendered without sidebar as expected")
 
             # Check expected content
-            innerText = main.first.inner_text()
-            assert expected_text in innerText or expected_text in page.content(), f"Expected text '{expected_text}' not found on {name}"
+            content = page.content()
+            assert expected_text in content, f"Expected text '{expected_text}' not found on {name}"
             print(f"  PASS: Expected text '{expected_text}' found in DOM")
 
             # Screenshot

@@ -831,7 +831,7 @@ export const UploadScreen: React.FC = () => {
                     type="button"
                     onClick={handleLockPaper}
                     disabled={questions.length === 0}
-                    className="px-2.5 py-1 text-[11px] font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-md transition flex items-center gap-1 shadow-2xs"
+                    className="px-2.5 py-1 text-[11px] font-semibold text-white bg-[#0F5132] hover:bg-[#0B3D26] disabled:opacity-40 disabled:cursor-not-allowed rounded-md transition flex items-center gap-1 shadow-2xs"
                     title="Lock Paper and enable student intake"
                   >
                     <Lock className="w-3 h-3" />
@@ -844,7 +844,7 @@ export const UploadScreen: React.FC = () => {
             {/* Paper Selection Bar & Inline Create */}
             <div className="flex items-center gap-2 mb-2.5">
               {isCreatingNewPaper ? (
-                <div className="flex-1 flex items-center justify-between text-xs font-semibold text-indigo-900 bg-indigo-50/70 border border-indigo-200 px-3 py-1.5 rounded-md">
+                <div className="flex-1 flex items-center justify-between text-xs font-semibold text-[#0F5132] bg-[#E8F3EE]/70 border border-[#0F5132]/20 px-3 py-1.5 rounded-md">
                   <span>Create New Assessment Paper</span>
                   <button
                     type="button"
@@ -860,7 +860,7 @@ export const UploadScreen: React.FC = () => {
                   <select
                     value={state.paperId || ''}
                     onChange={(e) => handleSelectPaper(e.target.value)}
-                    className="flex-1 text-xs font-medium text-slate-800 bg-slate-50 border border-slate-200 rounded-md px-2.5 py-1 focus:outline-none focus:border-indigo-500"
+                    className="flex-1 text-xs font-medium text-slate-800 bg-slate-50 border border-slate-200 rounded-md px-2.5 py-1 focus:outline-none focus:border-[#0F5132]"
                   >
                     {papers.length === 0 ? (
                       <option value="">No papers available</option>
@@ -876,7 +876,7 @@ export const UploadScreen: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setIsCreatingNewPaper(true)}
-                      className="px-2 py-1 text-xs font-medium text-slate-600 hover:text-indigo-600 border border-slate-200 hover:bg-slate-50 rounded-md transition flex items-center gap-1 shrink-0"
+                      className="px-2 py-1 text-xs font-medium text-slate-600 hover:text-[#0F5132] border border-slate-200 hover:bg-slate-50 rounded-md transition flex items-center gap-1 shrink-0"
                     >
                       <Plus className="w-3 h-3" />
                       <span>New</span>
@@ -892,10 +892,10 @@ export const UploadScreen: React.FC = () => {
                 type="button"
                 onClick={handleAutoFetchPaperDetails}
                 disabled={isAutoFetchingDetails}
-                className="px-2.5 py-1 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-md transition flex items-center gap-1.5 shadow-2xs cursor-pointer disabled:opacity-50"
+                className="px-2.5 py-1 text-xs font-semibold text-[#0B3D26] bg-[#E8F3EE] hover:bg-[#E8F3EE] border border-[#0F5132]/20 rounded-md transition flex items-center gap-1.5 shadow-2xs cursor-pointer disabled:opacity-50"
                 title="Auto-fetch exam title, subject, code, class, and marks"
               >
-                <Sparkles className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                <Sparkles className="w-3.5 h-3.5 text-[#0F5132] shrink-0" />
                 <span>{isAutoFetchingDetails ? 'Fetching Details...' : 'Auto-Fetch Exam Details'}</span>
               </button>
 
@@ -927,7 +927,7 @@ export const UploadScreen: React.FC = () => {
                     type="button"
                     onClick={handleCreatePaper}
                     disabled={!newPaperMeta.title.trim() && !newPaperTitle.trim()}
-                    className="px-3.5 py-1 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-md transition flex items-center gap-1.5 shadow-2xs"
+                    className="px-3.5 py-1 text-xs font-semibold text-white bg-[#0F5132] hover:bg-[#0B3D26] disabled:opacity-40 disabled:cursor-not-allowed rounded-md transition flex items-center gap-1.5 shadow-2xs"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     <span>Create Assessment</span>
@@ -986,20 +986,20 @@ export const UploadScreen: React.FC = () => {
                     }}
                     className={`p-2.5 rounded-lg border border-dashed text-xs font-semibold transition flex flex-col items-center justify-center gap-1 cursor-pointer select-none min-h-[64px] ${
                       isPaperDragOver
-                        ? 'border-indigo-600 bg-indigo-100/70 text-indigo-900 scale-[1.01]'
+                        ? 'border-[#0F5132] bg-[#E8F3EE]/70 text-[#0F5132] scale-[1.01]'
                         : questions.length > 0
-                        ? 'border-indigo-300 bg-indigo-50/40 hover:bg-indigo-50 text-indigo-800'
-                        : 'border-indigo-200 hover:border-indigo-400 bg-indigo-50/20 hover:bg-indigo-50/50 text-indigo-700'
+                        ? 'border-[#0F5132]/30 bg-[#E8F3EE]/40 hover:bg-[#E8F3EE] text-[#0F5132]'
+                        : 'border-[#0F5132]/20 hover:border-[#0F5132]/40 bg-[#E8F3EE]/20 hover:bg-[#E8F3EE]/50 text-[#0B3D26]'
                     }`}
                   >
                     {isExtractingPaper ? (
                       <>
-                        <RefreshCw className="w-4 h-4 animate-spin text-indigo-600" />
-                        <span className="font-semibold text-indigo-950">Extracting Questions...</span>
+                        <RefreshCw className="w-4 h-4 animate-spin text-[#0F5132]" />
+                        <span className="font-semibold text-[#0B3D26]">Extracting Questions...</span>
                       </>
                     ) : (
                       <>
-                        <FileUp className="w-4 h-4 text-indigo-600" />
+                        <FileUp className="w-4 h-4 text-[#0F5132]" />
                         <span>{questions.length > 0 ? 'Replace Question Paper' : 'Upload Question Paper'}</span>
                         <span className="text-[10px] text-slate-500 font-normal">PDF or Image (Required)</span>
                       </>
@@ -1109,7 +1109,7 @@ export const UploadScreen: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setIsPaperDrawerOpen(true)}
-                      className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1"
+                      className="text-xs font-semibold text-[#0F5132] hover:text-[#0F5132] hover:underline flex items-center gap-1"
                     >
                       <Settings className="w-3 h-3" />
                       <span>Edit Questions & Rubric</span>
@@ -1118,7 +1118,7 @@ export const UploadScreen: React.FC = () => {
                       type="button"
                       onClick={handleLockPaper}
                       disabled={questions.length === 0}
-                      className="px-2.5 py-1 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 rounded-md transition shadow-2xs flex items-center gap-1"
+                      className="px-2.5 py-1 text-xs font-semibold text-white bg-[#0F5132] hover:bg-[#0B3D26] disabled:opacity-40 rounded-md transition shadow-2xs flex items-center gap-1"
                     >
                       <Lock className="w-3 h-3" />
                       <span>Lock Paper</span>
@@ -1138,7 +1138,7 @@ export const UploadScreen: React.FC = () => {
                       Teacher Key Linked
                     </span>
                   ) : (
-                    <span className="text-[10px] bg-indigo-50 text-indigo-700 border border-indigo-200 px-1.5 py-0.5 rounded font-medium">
+                    <span className="text-[10px] bg-[#E8F3EE] text-[#0B3D26] border border-[#0F5132]/20 px-1.5 py-0.5 rounded font-medium">
                       AI Reference Active
                     </span>
                   )}
@@ -1147,7 +1147,7 @@ export const UploadScreen: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setIsPaperDrawerOpen(true)}
-                    className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 hover:underline"
+                    className="text-xs font-semibold text-[#0F5132] hover:text-[#0F5132] hover:underline"
                   >
                     View Rubric
                   </button>
@@ -1222,8 +1222,8 @@ export const UploadScreen: React.FC = () => {
                   !state.paperIsLocked
                     ? 'border-2 border-dashed border-slate-200 bg-slate-50/50 cursor-not-allowed opacity-75'
                     : isSheetDragOver
-                    ? 'border-2 border-solid border-indigo-600 bg-indigo-50/60 scale-[1.01] cursor-pointer'
-                    : 'border-2 border-dashed border-indigo-300 hover:border-indigo-500 bg-indigo-50/30 hover:bg-indigo-50/50 cursor-pointer'
+                    ? 'border-2 border-solid border-[#0F5132] bg-[#E8F3EE]/60 scale-[1.01] cursor-pointer'
+                    : 'border-2 border-dashed border-[#0F5132]/30 hover:border-[#0F5132] bg-[#E8F3EE]/30 hover:bg-[#E8F3EE]/50 cursor-pointer'
                 }`}
               >
                 <input
@@ -1240,7 +1240,7 @@ export const UploadScreen: React.FC = () => {
                   disabled={!state.paperIsLocked}
                 />
 
-                <div className="w-12 h-12 rounded-full bg-indigo-100 group-hover:bg-indigo-200 group-hover:scale-105 text-indigo-600 flex items-center justify-center mb-2.5 transition shadow-xs">
+                <div className="w-12 h-12 rounded-full bg-[#E8F3EE] group-hover:bg-[#0F5132]/20 group-hover:scale-105 text-[#0F5132] flex items-center justify-center mb-2.5 transition shadow-xs">
                   <UploadCloud className="w-6 h-6" />
                 </div>
 
@@ -1258,9 +1258,9 @@ export const UploadScreen: React.FC = () => {
                 {state.paperIsLocked && (
                   <button
                     type="button"
-                    className="px-3 py-1 text-xs font-semibold text-indigo-700 bg-white hover:bg-indigo-50 border border-indigo-200 rounded-lg shadow-2xs transition flex items-center gap-1.5"
+                    className="px-3 py-1 text-xs font-semibold text-[#0B3D26] bg-white hover:bg-[#E8F3EE] border border-[#0F5132]/20 rounded-lg shadow-2xs transition flex items-center gap-1.5"
                   >
-                    <FileText className="w-3.5 h-3.5 text-indigo-500" />
+                    <FileText className="w-3.5 h-3.5 text-[#0F5132]" />
                     <span>Select Student Scripts</span>
                   </button>
                 )}
@@ -1274,7 +1274,7 @@ export const UploadScreen: React.FC = () => {
                     </div>
                     <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
                       <div
-                        className="bg-indigo-600 h-full transition-all duration-200"
+                        className="bg-[#0F5132] h-full transition-all duration-200"
                         style={{ width: `${uploadingProgress}%` }}
                       />
                     </div>
@@ -1318,7 +1318,7 @@ export const UploadScreen: React.FC = () => {
                     onChange={(e) => setSplitFiles(e.target.checked)}
                     className="sr-only peer"
                   />
-                  <div className="w-8 h-4.5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-indigo-600" />
+                  <div className="w-8 h-4.5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-[#0F5132]" />
                 </label>
               </div>
 
@@ -1328,7 +1328,7 @@ export const UploadScreen: React.FC = () => {
                   Auto-detect Roll No. & Name: <strong className="text-emerald-700">ON</strong>
                 </span>
                 <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200 font-medium">
-                  <Sparkles className="w-2.5 h-2.5 text-indigo-600" />
+                  <Sparkles className="w-2.5 h-2.5 text-[#0F5132]" />
                   OCR: <strong className="text-slate-800">Hindi + English</strong>
                 </span>
               </div>
@@ -1346,7 +1346,7 @@ export const UploadScreen: React.FC = () => {
           <div className="p-3.5 border-b border-slate-200 flex items-center justify-between bg-slate-50/70 shrink-0">
             <div className="flex items-center space-x-2">
               <h2 className="text-sm font-bold text-slate-900">Uploaded Batch Queue</h2>
-              <span className="bg-indigo-100 text-indigo-800 text-xs font-semibold px-2 py-0.5 rounded-full font-mono">
+              <span className="bg-[#E8F3EE] text-[#0F5132] text-xs font-semibold px-2 py-0.5 rounded-full font-mono">
                 {sheets.length} {sheets.length === 1 ? 'sheet' : 'sheets'}
               </span>
               {isLoadingSheets && (
@@ -1357,7 +1357,7 @@ export const UploadScreen: React.FC = () => {
               <button
                 type="button"
                 onClick={loadSheets}
-                className="p-1 text-slate-500 hover:text-indigo-600 rounded hover:bg-slate-100 transition"
+                className="p-1 text-slate-500 hover:text-[#0F5132] rounded hover:bg-slate-100 transition"
                 title="Refresh Queue"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
@@ -1475,7 +1475,7 @@ export const UploadScreen: React.FC = () => {
               type="button"
               onClick={handleStartProcessingOrOpen}
               disabled={sheets.length === 0 || !state.paperIsLocked}
-              className="px-4 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center gap-1.5 shadow-sm"
+              className="px-4 py-1.5 text-xs font-semibold rounded-lg bg-[#0F5132] hover:bg-[#0B3D26] text-white disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center gap-1.5 shadow-sm"
             >
               <span>Open Evaluation</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -1525,9 +1525,9 @@ export const UploadScreen: React.FC = () => {
                   type="button"
                   disabled={state.paperIsLocked || isGeneratingRubric}
                   onClick={handleGenerateRubric}
-                  className="px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition flex items-center gap-1.5 disabled:opacity-50"
+                  className="px-3 py-1.5 text-xs font-semibold text-[#0B3D26] bg-[#E8F3EE] hover:bg-[#E8F3EE] border border-[#0F5132]/20 rounded-lg transition flex items-center gap-1.5 disabled:opacity-50"
                 >
-                  <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                  <Sparkles className="w-3.5 h-3.5 text-[#0F5132]" />
                   <span>Generate AI Rubric References</span>
                 </button>
 
@@ -1579,7 +1579,7 @@ export const UploadScreen: React.FC = () => {
                           Teacher Key
                         </span>
                       ) : q.model_answer ? (
-                        <span className="text-[10px] bg-indigo-100 text-indigo-800 font-semibold px-1.5 py-0.5 rounded border border-indigo-200">
+                        <span className="text-[10px] bg-[#E8F3EE] text-[#0F5132] font-semibold px-1.5 py-0.5 rounded border border-[#0F5132]/20">
                           AI Reference
                         </span>
                       ) : (
@@ -1626,7 +1626,7 @@ export const UploadScreen: React.FC = () => {
                       setQuestions(copy);
                     }}
                     placeholder="Question prompt in English or Hindi..."
-                    className="w-full text-xs p-2 rounded border border-slate-200 bg-white text-slate-800 focus:outline-none focus:border-indigo-500 font-sans"
+                    className="w-full text-xs p-2 rounded border border-slate-200 bg-white text-slate-800 focus:outline-none focus:border-[#0F5132] font-sans"
                   />
 
                   <div className="flex items-center gap-2 text-[11px] text-slate-500">
@@ -1652,8 +1652,8 @@ export const UploadScreen: React.FC = () => {
                   )}
 
                   {q.key_points && q.key_points.length > 0 && (
-                    <div className="text-[11px] text-slate-600 bg-indigo-50/50 border border-indigo-100 p-2 rounded">
-                      <strong className="text-indigo-900 block mb-1">Key Points ({q.key_points.length}):</strong>
+                    <div className="text-[11px] text-slate-600 bg-[#E8F3EE]/50 border border-[#E8F3EE] p-2 rounded">
+                      <strong className="text-[#0F5132] block mb-1">Key Points ({q.key_points.length}):</strong>
                       <ul className="list-disc list-inside space-y-0.5">
                         {q.key_points.map((kp, kIdx) => (
                           <li key={kIdx} className="truncate">
@@ -1691,7 +1691,7 @@ export const UploadScreen: React.FC = () => {
                       type="button"
                       onClick={handleLockPaper}
                       disabled={questions.length === 0}
-                      className="px-3.5 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 rounded-lg transition shadow-2xs"
+                      className="px-3.5 py-1.5 text-xs font-semibold text-white bg-[#0F5132] hover:bg-[#0B3D26] disabled:opacity-40 rounded-lg transition shadow-2xs"
                     >
                       Lock Paper
                     </button>

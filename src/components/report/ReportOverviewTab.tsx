@@ -96,7 +96,7 @@ export const ReportOverviewTab: React.FC<ReportOverviewTabProps> = ({
       {/* Student Summary Card */}
       <div className="bg-white border border-slate-200 rounded-xl p-4 flex items-center justify-between shadow-xs">
         <div className="flex items-center space-x-3.5">
-          <div className="w-10 h-10 rounded-full bg-indigo-100 border border-indigo-200 flex items-center justify-center font-bold text-indigo-700 text-sm shrink-0">
+          <div className="w-10 h-10 rounded-full bg-[#E8F3EE] border border-[#0F5132]/20 flex items-center justify-center font-bold text-[#0B3D26] text-sm shrink-0">
             {initials}
           </div>
           <div>
@@ -146,10 +146,10 @@ export const ReportOverviewTab: React.FC<ReportOverviewTabProps> = ({
         <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs">
           <div className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">GRADE &amp; PERCENTAGE</div>
           <div className="mt-1 flex items-baseline justify-between">
-            <span className="text-2xl font-mono font-bold text-indigo-600 tabular-nums">
+            <span className="text-2xl font-mono font-bold text-[#0F5132] tabular-nums">
               {percentage.toFixed(1)}%
             </span>
-            <span className="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 text-[10px] font-bold border border-indigo-200">
+            <span className="px-1.5 py-0.5 rounded bg-[#E8F3EE] text-[#0B3D26] text-[10px] font-bold border border-[#0F5132]/20">
               Grade {grade}
             </span>
           </div>
@@ -178,9 +178,9 @@ export const ReportOverviewTab: React.FC<ReportOverviewTabProps> = ({
       </div>
 
       {/* AI Diagnostic Feedback Card (Strengths & Weak Concepts) */}
-      <div className="p-4 rounded-xl bg-indigo-50/40 border border-indigo-100 space-y-2">
+      <div className="p-4 rounded-xl bg-[#E8F3EE]/40 border border-[#E8F3EE] space-y-2">
         <div className="flex items-center space-x-2">
-          <svg className="w-4 h-4 text-indigo-600 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+          <svg className="w-4 h-4 text-[#0F5132] shrink-0" fill="currentColor" viewBox="0 0 20 20">
             <path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14H8a4 4 0 01-.97-7.881 4.01 4.01 0 017.94 0A4 4 0 0112 14z" />
           </svg>
           <span className="font-bold text-slate-900 text-xs tracking-wide">AI Diagnostic Feedback</span>
@@ -240,8 +240,8 @@ export const ReportOverviewTab: React.FC<ReportOverviewTabProps> = ({
             </div>
             {hasCohortAvg ? (
               <div className="flex items-center space-x-1">
-                <span className="w-3 border-t border-dashed border-indigo-400" />
-                <span className="text-indigo-600">Cohort Avg ({Math.round(cohortAvgPct)}%)</span>
+                <span className="w-3 border-t border-dashed border-[#0F5132]/40" />
+                <span className="text-[#0F5132]">Cohort Avg ({Math.round(cohortAvgPct)}%)</span>
               </div>
             ) : (
               <span className="text-slate-400 text-[9px]">Cohort avg available after 2+ sheets</span>
@@ -254,10 +254,10 @@ export const ReportOverviewTab: React.FC<ReportOverviewTabProps> = ({
           {/* Cohort Benchmark Line (Only when evaluated sheets >= 2) */}
           {hasCohortAvg && (
             <div
-              className="absolute left-10 right-4 border-t border-dashed border-indigo-400/80 pointer-events-none z-10 flex justify-end"
+              className="absolute left-10 right-4 border-t border-dashed border-[#0F5132]/40/80 pointer-events-none z-10 flex justify-end"
               style={{ top: `${Math.max(10, Math.min(90, 100 - cohortAvgPct))}%` }}
             >
-              <span className="text-[9px] font-mono text-indigo-700 bg-white/95 px-1 py-0.2 rounded -mt-2 border border-indigo-200">
+              <span className="text-[9px] font-mono text-[#0B3D26] bg-white/95 px-1 py-0.2 rounded -mt-2 border border-[#0F5132]/20">
                 Cohort Avg {Math.round(cohortAvgPct)}%
               </span>
             </div>
@@ -374,7 +374,7 @@ export const ReportOverviewTab: React.FC<ReportOverviewTabProps> = ({
                 <tr
                   key={q.eval_id || idx}
                   onClick={() => onSelectQuestion(idx)}
-                  className="hover:bg-indigo-50/40 cursor-pointer transition-colors"
+                  className="hover:bg-[#E8F3EE]/40 cursor-pointer transition-colors"
                 >
                   <td className="py-2 px-3 pl-4 font-bold text-slate-900">
                     Q{q.q_no}
@@ -424,7 +424,7 @@ export const ReportOverviewTab: React.FC<ReportOverviewTabProps> = ({
                 <td className="p-2.5 pl-4 font-sans text-slate-800 font-medium">
                   {sec.name} ({sec.count} Qs)
                 </td>
-                <td className="p-2.5 font-bold text-indigo-700">
+                <td className="p-2.5 font-bold text-[#0B3D26]">
                   {sec.earned.toFixed(1)} / {sec.max.toFixed(1)}
                 </td>
                 <td className="p-2.5 text-slate-600">

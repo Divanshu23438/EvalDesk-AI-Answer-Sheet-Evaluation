@@ -54,6 +54,26 @@ interface DashboardSummary {
   }>;
 }
 
+function getDynamicGreeting(): { greeting: string; dateStr: string } {
+  const now = new Date();
+  const hour = now.getHours();
+  let greeting: string;
+  if (hour < 12) {
+    greeting = 'Good morning';
+  } else if (hour < 17) {
+    greeting = 'Good afternoon';
+  } else {
+    greeting = 'Good evening';
+  }
+  const dateStr = now.toLocaleDateString('en-IN', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+  return { greeting, dateStr };
+}
+
 export const DashboardScreen: React.FC = () => {
   const [, store] = useSheetStore();
   const [data, setData] = useState<DashboardSummary | null>(null);
@@ -93,17 +113,22 @@ export const DashboardScreen: React.FC = () => {
         data.score_distribution.needs_attention) || 1
     : 1;
 
+  const { greeting, dateStr } = getDynamicGreeting();
+
   return (
-    <div className="h-full flex flex-col bg-slate-50 overflow-y-auto p-4 md:p-6 space-y-5">
+    <div className="h-full flex flex-col bg-[#F6F7F5] overflow-y-auto p-4 md:p-6 space-y-5">
       {/* Top Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white border border-[#E2E8E4] rounded-[20px] p-5 shadow-[0_4px_16px_rgba(17,24,39,0.04)]">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+          <h1 className="text-xl font-bold text-[#111827] tracking-tight flex items-center gap-2">
             <span>Evaluation Dashboard</span>
-            <span className="text-[11px] font-semibold uppercase px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+            <span className="text-[11px] font-semibold uppercase px-2 py-0.5 rounded-full bg-[#E8F3EE] text-[#0F5132] border border-[#0F5132]/20">
               Live Real-Time
             </span>
           </h1>
+          <p className="text-xs text-[#4B5563] mt-0.5">
+            {greeting} &mdash; {dateStr}
+          </p>
           <p className="text-xs text-slate-500 mt-1">
             Real-time assessment metrics, class accuracy indicators, and recent evaluations.
           </p>
@@ -112,7 +137,7 @@ export const DashboardScreen: React.FC = () => {
         <button
           type="button"
           onClick={() => store.setStep('upload')}
-          className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-xs transition-all cursor-pointer self-start sm:self-auto"
+          className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-[#0F5132] hover:bg-[#0B3D26] text-white text-xs font-semibold shadow-xs transition-all cursor-pointer self-start sm:self-auto"
         >
           <Plus className="w-4 h-4" />
           <span>New Evaluation</span>
@@ -121,7 +146,7 @@ export const DashboardScreen: React.FC = () => {
 
       {isLoading && (
         <div className="flex flex-col items-center justify-center py-16 space-y-3">
-          <div className="w-7 h-7 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+          <div className="w-7 h-7 border-2 border-[#0F5132] border-t-transparent rounded-full animate-spin" />
           <p className="text-xs font-mono text-slate-500">Calculating dashboard statistics...</p>
         </div>
       )}
@@ -144,12 +169,12 @@ export const DashboardScreen: React.FC = () => {
           {/* 5 KPI Summary Cards */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3.5">
             {/* Card 1: Sheets Evaluated */}
-            <div className="bg-white border border-slate-200/90 rounded-2xl p-4 flex flex-col justify-between shadow-2xs hover:border-slate-300 transition-colors">
+            <div className="bg-white border border-[#E2E8E4] rounded-[20px] p-4 flex flex-col justify-between shadow-2xs hover:border-slate-300 transition-colors">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
                   Sheets Evaluated
                 </span>
-                <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-lg bg-[#E8F3EE] text-[#0F5132] flex items-center justify-center">
                   <FileCheck2 className="w-4 h-4" />
                 </div>
               </div>
@@ -162,7 +187,7 @@ export const DashboardScreen: React.FC = () => {
             </div>
 
             {/* Card 2: Needs Review */}
-            <div className="bg-white border border-slate-200/90 rounded-2xl p-4 flex flex-col justify-between shadow-2xs hover:border-slate-300 transition-colors">
+            <div className="bg-white border border-[#E2E8E4] rounded-[20px] p-4 flex flex-col justify-between shadow-2xs hover:border-slate-300 transition-colors">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
                   Needs Review
@@ -180,7 +205,7 @@ export const DashboardScreen: React.FC = () => {
             </div>
 
             {/* Card 3: Class Average % */}
-            <div className="bg-white border border-slate-200/90 rounded-2xl p-4 flex flex-col justify-between shadow-2xs hover:border-slate-300 transition-colors">
+            <div className="bg-white border border-[#E2E8E4] rounded-[20px] p-4 flex flex-col justify-between shadow-2xs hover:border-slate-300 transition-colors">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
                   Class Average %
@@ -198,17 +223,17 @@ export const DashboardScreen: React.FC = () => {
             </div>
 
             {/* Card 4: Avg OCR Legibility % */}
-            <div className="bg-white border border-slate-200/90 rounded-2xl p-4 flex flex-col justify-between shadow-2xs hover:border-slate-300 transition-colors">
+            <div className="bg-white border border-[#E2E8E4] rounded-[20px] p-4 flex flex-col justify-between shadow-2xs hover:border-slate-300 transition-colors">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
                   Avg OCR Legibility
                 </span>
-                <div className="w-8 h-8 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-lg bg-[#E8F3EE] text-[#0D9488] flex items-center justify-center">
                   <ScanText className="w-4 h-4" />
                 </div>
               </div>
               <div className="mt-3">
-                <div className="text-2xl font-bold font-mono text-sky-600 tracking-tight tabular-nums">
+                <div className="text-2xl font-bold font-mono text-[#0D9488] tracking-tight tabular-nums">
                   {data.avg_ocr_confidence}%
                 </div>
                 <span className="text-[11px] text-slate-500 mt-0.5 block">OCR legibility score</span>
@@ -216,17 +241,17 @@ export const DashboardScreen: React.FC = () => {
             </div>
 
             {/* Card 5: Question Papers */}
-            <div className="bg-white border border-slate-200/90 rounded-2xl p-4 flex flex-col justify-between shadow-2xs hover:border-slate-300 transition-colors col-span-2 md:col-span-1">
+            <div className="bg-white border border-[#E2E8E4] rounded-[20px] p-4 flex flex-col justify-between shadow-2xs hover:border-slate-300 transition-colors col-span-2 md:col-span-1">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
                   Question Papers
                 </span>
-                <div className="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-lg bg-[#E8F3EE] text-[#0D9488] flex items-center justify-center">
                   <BookOpen className="w-4 h-4" />
                 </div>
               </div>
               <div className="mt-3">
-                <div className="text-2xl font-bold font-mono text-purple-600 tracking-tight tabular-nums">
+                <div className="text-2xl font-bold font-mono text-[#0D9488] tracking-tight tabular-nums">
                   {data.total_papers}
                 </div>
                 <span className="text-[11px] text-slate-500 mt-0.5 block">Configured assessments</span>
@@ -237,12 +262,12 @@ export const DashboardScreen: React.FC = () => {
           {/* Graphs Section (2-Column Responsive Grid) */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             {/* Graph 1: Subject-Wise Performance */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs flex flex-col justify-between">
+            <div className="bg-white border border-[#E2E8E4] rounded-[20px] p-5 shadow-[0_4px_16px_rgba(17,24,39,0.04)] flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
-                    <BarChart2 className="w-4 h-4 text-indigo-600" />
-                    <h2 className="text-sm font-bold text-slate-900 tracking-tight">
+                    <BarChart2 className="w-4 h-4 text-[#0F5132]" />
+                    <h2 className="text-sm font-bold text-[#111827] tracking-tight">
                       Subject-Wise Average Performance
                     </h2>
                   </div>
@@ -267,14 +292,14 @@ export const DashboardScreen: React.FC = () => {
                             <span className="text-[11px] text-slate-400 font-mono">
                               {sub.sheets_count} sheets ({sub.exam_count} exams)
                             </span>
-                            <span className="font-mono font-bold text-indigo-600 tabular-nums">
+                            <span className="font-mono font-bold text-[#0F5132] tabular-nums">
                               {sub.avg_pct}%
                             </span>
                           </div>
                         </div>
                         <div className="w-full h-2 rounded-full bg-slate-100 overflow-hidden">
                           <div
-                            className="h-full bg-indigo-600 rounded-full transition-all duration-500"
+                            className="h-full bg-[#0F5132] rounded-full transition-all duration-500"
                             style={{ width: `${Math.min(100, Math.max(0, sub.avg_pct))}%` }}
                           />
                         </div>
@@ -286,18 +311,18 @@ export const DashboardScreen: React.FC = () => {
 
               <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
                 <span>Metrics derived from finalized student scores</span>
-                <span className="font-medium text-indigo-600">Scale: 0% – 100%</span>
+                <span className="font-medium text-[#0F5132]">Scale: 0% – 100%</span>
               </div>
             </div>
 
             {/* Graph 2: Evaluation Trend & Score Mastery Distribution */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs flex flex-col justify-between">
+            <div className="bg-white border border-[#E2E8E4] rounded-[20px] p-5 shadow-2xs flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4 text-indigo-600" />
-                    <h2 className="text-sm font-bold text-slate-900 tracking-tight">
-                      Score Mastery & Evaluation Activity
+                    <TrendingUp className="w-4 h-4 text-[#0F5132]" />
+                    <h2 className="text-sm font-bold text-[#111827] tracking-tight">
+                      Score Mastery &amp; Evaluation Activity
                     </h2>
                   </div>
                   <span className="text-[11px] text-slate-500 font-mono">Real Activity</span>
@@ -317,14 +342,14 @@ export const DashboardScreen: React.FC = () => {
                     </span>
                   </div>
 
-                  <div className="p-3 rounded-xl bg-indigo-50/70 border border-indigo-100 text-center">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-700 block">
+                  <div className="p-3 rounded-xl bg-[#E8F3EE]/70 border border-[#0F5132]/10 text-center">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#0F5132] block">
                       Average (50-74%)
                     </span>
-                    <span className="text-lg font-bold font-mono text-indigo-800 tabular-nums block mt-1">
+                    <span className="text-lg font-bold font-mono text-[#0F5132] tabular-nums block mt-1">
                       {data.score_distribution.average}
                     </span>
-                    <span className="text-[10px] text-indigo-600 font-mono">
+                    <span className="text-[10px] text-[#0F5132] font-mono">
                       {Math.round((data.score_distribution.average / totalSheetsDistribution) * 100)}%
                     </span>
                   </div>
@@ -381,18 +406,18 @@ export const DashboardScreen: React.FC = () => {
           </div>
 
           {/* Recent Evaluated Sheets Table */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs">
+          <div className="bg-white border border-[#E2E8E4] rounded-[20px] p-5 shadow-[0_4px_16px_rgba(17,24,39,0.04)]">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-indigo-600" />
-                <h2 className="text-sm font-bold text-slate-900 tracking-tight">
+                <Clock className="w-4 h-4 text-[#0F5132]" />
+                <h2 className="text-sm font-bold text-[#111827] tracking-tight">
                   Recent Evaluated Sheets
                 </h2>
               </div>
               <button
                 type="button"
                 onClick={() => store.setStep('history')}
-                className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 cursor-pointer"
+                className="text-xs font-semibold text-[#0F5132] hover:text-[#0B3D26] flex items-center gap-1 cursor-pointer"
               >
                 <span>View Full History</span>
                 <ArrowRight className="w-3.5 h-3.5" />
@@ -407,7 +432,7 @@ export const DashboardScreen: React.FC = () => {
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
                   <thead>
-                    <tr className="border-b border-slate-200 text-slate-500 font-semibold uppercase text-[10px] tracking-wider">
+                    <tr className="border-b border-[#E2E8E4] bg-[#F1F4F2] text-slate-500 font-semibold uppercase text-[10px] tracking-wider">
                       <th className="py-2.5 px-3">Roll No.</th>
                       <th className="py-2.5 px-3">Student Name</th>
                       <th className="py-2.5 px-3">Class</th>
@@ -438,7 +463,7 @@ export const DashboardScreen: React.FC = () => {
                         <td className="py-2.5 px-3 text-center font-mono font-semibold text-slate-800">
                           {sh.score} / {sh.max_marks}
                         </td>
-                        <td className="py-2.5 px-3 text-center font-mono font-bold text-indigo-600">
+                        <td className="py-2.5 px-3 text-center font-mono font-bold text-[#0F5132]">
                           {sh.percentage}%
                         </td>
                         <td className="py-2.5 px-3 text-center font-mono font-bold text-slate-700">
@@ -468,7 +493,7 @@ export const DashboardScreen: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => store.setStep('report', sh.sheet_id)}
-                              className="px-2 py-1 rounded bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[11px] font-semibold border border-indigo-200 transition cursor-pointer flex items-center gap-1"
+                              className="px-2 py-1 rounded bg-[#E8F3EE] hover:bg-[#E8F3EE]/80 text-[#0F5132] text-[11px] font-semibold border border-[#0F5132]/20 transition cursor-pointer flex items-center gap-1"
                               title="View Sheet Report"
                             >
                               <span>Report</span>

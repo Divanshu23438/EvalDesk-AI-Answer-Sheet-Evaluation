@@ -389,7 +389,7 @@ export const PageBook: React.FC<PageBookProps> = ({
               activePage.status === 'done'
                 ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
                 : activePage.status === 'reading'
-                ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40 animate-pulse'
+                ? 'bg-[#0F5132]/20 text-[#0F5132]/30 border-[#0F5132]/40 animate-pulse'
                 : activePage.status === 'failed'
                 ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
                 : 'bg-slate-800 text-slate-400 border-slate-700'
@@ -398,7 +398,7 @@ export const PageBook: React.FC<PageBookProps> = ({
             {activePage.status === 'done' ? 'Read' : activePage.status}
           </span>
           {isFlipping && (
-            <span className="text-[10px] font-mono text-indigo-400 animate-pulse uppercase tracking-wider">
+            <span className="text-[10px] font-mono text-[#0F5132]/40 animate-pulse uppercase tracking-wider">
               {activeStep?.direction === 'forward' ? 'Turning...' : 'Turning back...'}
             </span>
           )}
@@ -408,14 +408,14 @@ export const PageBook: React.FC<PageBookProps> = ({
         {jumpBadge && isLookingBack && (
           <div
             data-testid="badge-jump-to-latest"
-            className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-indigo-600/90 text-white text-xs font-semibold shadow-lg border border-indigo-400/50 backdrop-blur-xs animate-bounce"
+            className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-[#0F5132]/90 text-white text-xs font-semibold shadow-lg border border-[#0F5132]/40/50 backdrop-blur-xs animate-bounce"
           >
             <span>Page {jumpBadge.donePageNum} done</span>
             <button
               type="button"
               data-testid="btn-jump-to-latest"
               onClick={handleJumpToLatest}
-              className="px-2 py-0.5 rounded-full bg-white text-indigo-700 hover:bg-indigo-50 font-bold text-[11px] flex items-center gap-1 transition-colors cursor-pointer shadow-xs"
+              className="px-2 py-0.5 rounded-full bg-white text-[#0B3D26] hover:bg-[#E8F3EE] font-bold text-[11px] flex items-center gap-1 transition-colors cursor-pointer shadow-xs"
             >
               <span>Jump to latest</span>
               <ArrowRight className="w-3 h-3" />
@@ -508,7 +508,7 @@ export const PageBook: React.FC<PageBookProps> = ({
             {(isFlipping ? toPage : activePage).status === 'reading' && (
               <div
                 data-testid="soft-scan-line"
-                className="absolute left-0 right-0 h-1 bg-gradient-to-r from-indigo-500/20 via-indigo-400 to-indigo-500/20 shadow-[0_0_12px_rgba(99,102,241,0.9)] animate-bounce z-25 pointer-events-none top-1/2"
+                className="absolute left-0 right-0 h-1 bg-gradient-to-r from-[#0F5132]/20 via-[#0F5132]/40 to-[#0F5132]/20 shadow-[0_0_12px_rgba(99,102,241,0.9)] animate-bounce z-25 pointer-events-none top-1/2"
               />
             )}
 
@@ -669,7 +669,7 @@ export const PageBook: React.FC<PageBookProps> = ({
               <span className="text-slate-300 font-mono" data-testid="progress-read-count">
                 Page {doneCount} of {totalPages} read
               </span>
-              <span className="text-indigo-300 font-semibold flex items-center gap-1.5">
+              <span className="text-[#0F5132]/30 font-semibold flex items-center gap-1.5">
                 {doneCount === totalPages ? (
                   <>
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
@@ -677,7 +677,7 @@ export const PageBook: React.FC<PageBookProps> = ({
                   </>
                 ) : (
                   <>
-                    <Sparkles className="w-3.5 h-3.5 text-indigo-400 animate-spin" />
+                    <Sparkles className="w-3.5 h-3.5 text-[#0F5132]/40 animate-spin" />
                     <span>{stageName || (activePage.status === 'reading' ? 'Reading handwriting...' : 'Processing...')}</span>
                   </>
                 )}
@@ -687,7 +687,7 @@ export const PageBook: React.FC<PageBookProps> = ({
             {/* Progress Bar */}
             <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
               <div
-                className="h-full bg-gradient-to-r from-indigo-500 to-emerald-400 transition-all duration-300 rounded-full"
+                className="h-full bg-gradient-to-r from-[#0F5132] to-emerald-400 transition-all duration-300 rounded-full"
                 style={{ width: `${Math.round((doneCount / totalPages) * 100)}%` }}
               />
             </div>
@@ -718,7 +718,7 @@ export const PageBook: React.FC<PageBookProps> = ({
 
               let dotColor = 'bg-slate-600';
               if (isDone) dotColor = 'bg-emerald-400';
-              else if (isReading) dotColor = 'bg-indigo-400 animate-pulse';
+              else if (isReading) dotColor = 'bg-[#0F5132]/40 animate-pulse';
               else if (isFailed) dotColor = 'bg-rose-500';
 
               return (
@@ -732,7 +732,7 @@ export const PageBook: React.FC<PageBookProps> = ({
                     isClickable ? 'cursor-pointer hover:scale-125' : 'cursor-not-allowed opacity-35'
                   } ${
                     isCurrent
-                      ? 'w-6 h-2.5 ring-2 ring-indigo-400 ring-offset-1 ring-offset-slate-950 ' + dotColor
+                      ? 'w-6 h-2.5 ring-2 ring-[#0F5132]/40 ring-offset-1 ring-offset-slate-950 ' + dotColor
                       : 'w-2.5 h-2.5 opacity-70 hover:opacity-100 ' + dotColor
                   }`}
                   title={`Page ${page.n} (${page.status})${!isClickable ? ' - not yet read' : ''}`}

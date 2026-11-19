@@ -155,7 +155,7 @@ export const SheetViewer: React.FC<SheetViewerProps> = ({
           <button
             type="button"
             onClick={() => onPageChange(continuesPage)}
-            className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[var(--accent-indigo-subtle)] text-[var(--accent-indigo)] border border-[var(--accent-indigo-border)] text-[11px] font-semibold hover:bg-[var(--accent-indigo-border)] transition"
+            className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[var(--brand-tint)] text-[var(--brand-primary)] border border-[var(--surface-card-border)] text-[11px] font-semibold hover:bg-[var(--surface-card-border)] transition"
           >
             <CornerDownRight className="w-3 h-3" />
             Continues on p.{continuesPage}
@@ -232,7 +232,7 @@ export const SheetViewer: React.FC<SheetViewerProps> = ({
                 setImgError(false);
                 setImgKey((k) => k + 1);
               }}
-              className="px-3 py-1 text-xs font-semibold rounded bg-[var(--accent-indigo)] text-white hover:bg-[var(--accent-indigo-hover)] transition inline-flex items-center gap-1.5"
+              className="px-3 py-1 text-xs font-semibold rounded bg-[var(--brand-primary)] text-white hover:bg-[var(--brand-primary-hover)] transition inline-flex items-center gap-1.5"
             >
               <RefreshCw className="w-3 h-3" />
               Reload Page
@@ -258,9 +258,9 @@ export const SheetViewer: React.FC<SheetViewerProps> = ({
             {bboxStyle && !notAttempted && (
               <div
                 style={bboxStyle}
-                className="absolute border-2 border-[var(--accent-indigo)] bg-[var(--accent-indigo)]/15 shadow-[0_0_12px_rgba(79,70,229,0.35)] rounded pointer-events-none transition-all duration-200"
+                className="absolute border-2 border-[var(--brand-primary)] bg-[var(--brand-primary)]/15 shadow-[0_0_12px_rgba(15,81,50,0.35)] rounded pointer-events-none transition-all duration-200"
               >
-                <span className="absolute -top-5 left-0 px-1.5 py-0.5 rounded bg-[var(--accent-indigo)] text-white text-[10px] font-bold tracking-wider uppercase shadow-xs">
+                <span className="absolute -top-5 left-0 px-1.5 py-0.5 rounded bg-[var(--brand-primary)] text-white text-[10px] font-bold tracking-wider uppercase shadow-xs">
                   Answer
                 </span>
               </div>
@@ -290,7 +290,7 @@ export const SheetViewer: React.FC<SheetViewerProps> = ({
                 onClick={() => onPageChange(pageNum)}
                 className={`h-10 w-8 rounded border overflow-hidden shrink-0 relative transition ${
                   isSelected
-                    ? 'border-2 border-[var(--accent-indigo)] shadow-xs scale-105'
+                    ? 'border-2 border-[var(--brand-primary)] shadow-xs scale-105'
                     : 'border-[var(--surface-border)] hover:border-[var(--ink-muted)] opacity-70 hover:opacity-100'
                 }`}
                 title={`Jump to Page ${pageNum}`}

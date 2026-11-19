@@ -500,7 +500,7 @@ export const EvaluateScreen: React.FC = () => {
             <h2 className="text-xs font-bold text-slate-900 truncate flex items-center gap-2">
               <span>{paper?.title || state.paperTitle || 'Assessment Evaluation'}</span>
               <span className="text-slate-300 font-normal">|</span>
-              <span className="text-indigo-700 font-semibold truncate">
+              <span className="text-[#0B3D26] font-semibold truncate">
                 {sheet?.student_name || state.studentName || 'Student Sheet'}
                 {(sheet?.roll_number || state.rollNumber) && (
                   <span className="text-slate-500 font-mono text-[11px] ml-1">
@@ -521,7 +521,7 @@ export const EvaluateScreen: React.FC = () => {
             </strong>
             <span className="text-slate-400">/ {sheet.max_marks} M</span>
             <span className="w-1 h-1 rounded-full bg-slate-300" />
-            <span className="font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.2 rounded text-[10px]">
+            <span className="font-semibold text-[#0B3D26] bg-[#E8F3EE] border border-[#0F5132]/20 px-1.5 py-0.2 rounded text-[10px]">
               {sheet.grade || 'Evaluated'}
             </span>
           </div>
@@ -571,7 +571,7 @@ export const EvaluateScreen: React.FC = () => {
             disabled={isFinishing}
             className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition flex items-center gap-1.5 shadow-sm text-white ${
               metrics.allResolved
-                ? 'bg-indigo-600 hover:bg-indigo-700'
+                ? 'bg-[#0F5132] hover:bg-[#0B3D26]'
                 : 'bg-amber-600 hover:bg-amber-700'
             }`}
             title={metrics.allResolved ? 'Finalize sheet and view report' : 'Resolve all flags before finalizing'}
@@ -595,7 +595,7 @@ export const EvaluateScreen: React.FC = () => {
         <main className="flex-1 min-h-0 h-full p-2.5 overflow-hidden">
           {isLoading ? (
             <div className="flex flex-col items-center justify-center h-full w-full space-y-3">
-              <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+              <div className="w-8 h-8 border-2 border-[#0F5132] border-t-transparent rounded-full animate-spin" />
               <span className="text-xs text-slate-500 font-medium">Loading evaluation workspace...</span>
             </div>
           ) : activeQuestion ? (
@@ -614,7 +614,7 @@ export const EvaluateScreen: React.FC = () => {
                         {activeQuestion.section_name || 'General Section'}
                       </span>
                       <span className="text-slate-300">·</span>
-                      <span className="text-xs font-mono font-bold text-indigo-700">
+                      <span className="text-xs font-mono font-bold text-[#0B3D26]">
                         {activeQuestion.max_marks} Marks
                       </span>
                     </div>
@@ -629,12 +629,12 @@ export const EvaluateScreen: React.FC = () => {
                         onClick={() => setIsReferenceExpanded((prev) => !prev)}
                         className={`text-[10px] font-medium px-2 py-0.5 rounded border transition flex items-center gap-1 ${
                           isReferenceExpanded
-                            ? 'bg-indigo-50 border-indigo-300 text-indigo-700'
+                            ? 'bg-[#E8F3EE] border-[#0F5132]/30 text-[#0B3D26]'
                             : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
                         }`}
                         title="View Model Answer & Rubric Criteria"
                       >
-                        <Sparkles className="w-2.5 h-2.5 text-indigo-600" />
+                        <Sparkles className="w-2.5 h-2.5 text-[#0F5132]" />
                         <span>Rubric</span>
                       </button>
                     </div>
@@ -816,7 +816,7 @@ export const EvaluateScreen: React.FC = () => {
           <div className="bg-white border border-slate-200 rounded-xl p-6 max-w-md w-full shadow-2xl">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
               <div className="flex items-center gap-2">
-                <HelpCircle className="w-4 h-4 text-indigo-600" />
+                <HelpCircle className="w-4 h-4 text-[#0F5132]" />
                 <h3 className="text-sm font-bold text-slate-900">
                   Keyboard Shortcuts
                 </h3>

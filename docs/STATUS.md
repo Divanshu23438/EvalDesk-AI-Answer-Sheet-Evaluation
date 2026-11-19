@@ -1,7 +1,79 @@
 # STATUS (update at the end of every session)
-Date / author (agent or model name): 2026-11-18 / Antigravity (Gemini 3.8 Flash)
-Current phase and task: App Layout Shell, Hash Routing inside <main>, Inline ErrorBoundary, Undefined Property Hardening, and Multi-Route Visual Verification complete and verified.
+Date / author (agent or model name): 2026-11-19 / Antigravity (Gemini 3.8 Flash)
+Current phase and task: Browser Print Layout Optimization & Backend Porcelain/Emerald Bento PDF Generator Redesign Complete & Verified 100%.
 Done (task id, commit, proof file):
+- Browser Print Layout Optimization & Backend Bento Report Card PDF Generator (`src/components/AppSidebar.tsx`, `src/App.tsx`, `src/index.css`, `src/screens/StudentMarksheetScreen.tsx`, `backend/reports_generator.py`, `backend/main.py`, `scripts/verify_print_and_pdf.py`):
+  1. Browser Print Layout Fixes & Multi-Page Sheet Unlocking:
+     - `src/components/AppSidebar.tsx`: Added `print:hidden` to `<aside>` element so application navigation never appears on printed marksheets.
+     - `src/App.tsx`: Added `app-shell` and `app-main` CSS classes and `print:hidden` to top workflow header and bottom action bar.
+     - `src/index.css`: Added explicit `@media print` rules:
+       - Configured `@page { size: A4 portrait; margin: 10mm; }`.
+       - Unlocked `html, body, #root`, `.app-shell`, and `.app-main` with `height: auto !important; overflow: visible !important;` so multi-page student reports never clip after Page 1.
+       - Enabled print color fidelity with `-webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;`.
+       - Removed 3D rotation transform distortions in print via `[style*="rotateY"] { transform: none !important; }`.
+       - Forced `aside, header, .print\:hidden { display: none !important; }`.
+       - Handled page breaks: `.print-front-sheet { break-after: page; page-break-after: always; }` and `.print-back-sheet { display: block !important; break-inside: avoid; }`.
+     - `src/screens/StudentMarksheetScreen.tsx`:
+       - Rendered both Front Sheet (`print-front-sheet`) and Back Sheet (`print-back-sheet`) sequentially in print view while preserving interactive 3D card-flip rotation (`F`) on screen.
+       - Configured explicit pixel height `h-36` (with `h-28` bar tracks) on Question Marks Distribution bar chart so bars render at full height in print preview.
+  2. Redesigned Backend Report Card PDF (`backend/reports_generator.py` & `backend/main.py`):
+     - Overhauled `generate_student_report_card_pdf()` with Porcelain (`#F6F7F5`) & Deep Forest Emerald (`#0F5132`) Bento Report Card styling:
+       - Color Palette: Warm Porcelain canvas `#F6F7F5`, Card surfaces `#FFFFFF`, Card borders `#E2E8E4` (`ROUNDEDCORNERS: [8, 8, 8, 8]`), Primary Emerald `#0F5132` with Soft Mint `#E8F3EE` tint panels, Teal `#0D9488`, Amber `#D97706` (`#FEF3C7` bg), Rose `#E11D48` (`#FFE4E6` bg), Ink `#111827` headings, Muted `#4B5563` body.
+       - Page 1 — Executive Bento Summary & Section Breakdown:
+         - Header Bento Banner with 4pt `#0F5132` left accent stripe, `EVALDESK AI · OFFICIAL EVALUATION REPORT CARD`, bold assessment title, subject, subject code, exam name, date, sheet ID, and `✔ VERIFIED CREDENTIAL` mint pill badge.
+         - 4-Tile Bento KPI Row: Candidate Identity (Name, Roll, Class), Aggregate Score (`{score} / {max_marks} ({pct}%)` + `Grade {grade} · PASS` mint badge), OCR Legibility (`{ocr_confidence}% Dual-Engine Verified`), Evaluation Strictness (`Level {strictness} / 5 ({strictness_title})`).
+         - Section & Topic Mastery Bento Card: Vector horizontal Emerald progress bars (`make_pdf_progress_bar`) for each exam section showing earned/max marks and percentage.
+         - Key Strengths (`#E8F3EE` card) & Areas for Improvement (`#FEF3C7` card) 2-column row.
+       - Question-by-Question Bento Cards with Cropped Handwriting Screenshots:
+         - Subtle `#E8F3EE` section header bars (`{section_name} · Subtotal: X / Y Marks`) with `KeepTogether` preventing split cards across page breaks.
+         - Top row: Bold `Q.{num}` + Question text on left; status pill (`[Full Marks]`, `[Partial Marks]`, `[0 Marks]`, `[Excluded]`) + `Marks: {awarded} / {max}` on right.
+         - Body 2-Column Split (~38% Image / ~62% Text):
+           - Left (~38%): Student handwriting cropped region in clean `#F6F7F5` box (`max-height: 85pt`, aspect-ratio preserved via PIL/ReportLab `create_scaled_image()`) or `Full-page scan reference` fallback.
+           - Right (~62%): Verbatim Transcript in `#F1F4F2` rounded box (8.5pt text), Verified Evidence quote (teal `#0D9488`), and Evaluation Feedback explaining marks and deductions.
+       - Final Page — Institutional Grading Scale, AI Strictness Calibration & Sign-Off:
+         - Left: 10-Point UGC Academic Grade Scale (`O`, `A+`, `A`, `B+`, `B`, `C`, `D`, `F`) dynamically highlighting candidate's achieved grade in `#E8F3EE` with `#0F5132` left border.
+         - Right: 1–5 Strictness Calibration Scale dynamically highlighting applied level with `Applied to This Sheet` badge.
+         - Bottom: 3-column formal signature footer (`AI Rubric Verification Engine` with multi-pass audit hash, `Course Instructor / Evaluator`, `Controller of Examinations`).
+     - `backend/main.py`: Connected `get_sheet_report_endpoint` and paper reports generator to pass `class_name`, `subject`, `exam_name`, `subject_code`, `strictness`, `ocr_confidence`, and `sheet_id`.
+  3. Quality & Verification Gates Passed 100%:
+     - `scripts/verify_print_and_pdf.py`:
+       - Backend PDF export (`GET /api/sheets/{sheet_id}/export/pdf`): 436KB 4-page PDF verified with PyMuPDF (`fitz`), confirming all headers, KPI tiles, section bars, handwriting images, grading scale, strictness matrix, and signatures.
+       - Playwright print emulation (`page.emulate_media(media="print")`): verified sidebar `display: none`, header toolbar `display: none`, Front Sheet `display: block`, Back Sheet `display: block`, body overflow `visible`, and generated 5-page browser print PDF (544KB) without clipping.
+     - `cmd /c "npx tsc --noEmit"`: 0 errors.
+     - `python scripts/check_all.py`: `RESULT: ALL PASS` (banned strings, git secrets, pytest, tsc, and live provider health).
+     - `python scripts/verify_all_routes.py`: ALL 6 ROUTES VERIFIED SUCCESSFULLY WITH ZERO RUNTIME ERRORS.
+- Global Academic Design System & Palette Application (`src/index.css`, `src/App.tsx`, `src/components/AppSidebar.tsx`, `src/screens/StudentMarksheetScreen.tsx`, `src/screens/DashboardScreen.tsx`, `src/screens/HistoryScreen.tsx`, `src/screens/ReportsCenterScreen.tsx`, `src/screens/HomeScreen.tsx`, `src/screens/UploadScreen.tsx`, `src/screens/EvaluateScreen.tsx`, `docs/proof/ui/routes/`):
+  1. Complete Color Palette Migration (Zero Legacy Indigo/Purple):
+     - Eliminated all legacy `#3525cd`, `#4F46E5`, `indigo-*`, `purple-*` classes app-wide.
+     - Implemented calm academic palette:
+       - App Canvas (`--bg-canvas`): `#F6F7F5` (warm porcelain)
+       - Card / Bento Surface (`--surface-card`): `#FFFFFF` with `1px solid #E2E8E4` border, `rounded-[20px]`, and subtle elevation `0 4px 16px rgba(17, 24, 39, 0.04)`
+       - Muted Inner Surface (`--surface-muted`): `#F1F4F2` (sub-tiles, table headers, input fills)
+       - Primary Brand (`--brand-primary`): Deep Forest Emerald `#0F5132` (hover `#0B3D26`) with `#E8F3EE` soft mint tint for active sidebar pills, verified badges, and progress rings
+       - Secondary Data Accent (`--accent-teal`): `#0D9488` (secondary chart bars, OCR legibility indicators)
+       - Semantic Status: Amber `#D97706` (`#FEF3C7` bg) for partial marks/review flags; Rose `#E11D48` (`#FFE4E6` bg) for deductions/fail
+     - Typography: Loaded `Plus Jakarta Sans` for headings and body + `JetBrains Mono` for roll numbers, marks, and percentages.
+  2. Collapsible Sidebar & Navigation Architecture (`src/components/AppSidebar.tsx` & `src/App.tsx`):
+     - Collapsible sidebar (`w-64` expanded -> `w-20` collapsed), with state persisted in `localStorage` key `evaldesk_sidebar_collapsed`.
+     - Brand header with Emerald emblem `#0F5132` + `⌘K` quick search input for instant paper filtering.
+     - 4 core navigation items: Dashboard (`#/dashboard`), Evaluate Sheets (`#/upload`), History (`#/history`), Reports (`#/reports`).
+     - Dynamic Recent Papers list fetched from `GET /api/papers` and live backend health indicator from `GET /api/health`.
+  3. 2-Sided Bento Student Marksheet Screen (`src/screens/StudentMarksheetScreen.tsx`):
+     - Full zero-bleed 3D page flip rotation (`Front · Bento Marksheet` <-> `Back · Grading & Strictness Key`, shortcut `F`): animates `rotateY(0deg -> 90deg)` in 220ms, swaps active side at edge-on 90deg, and animates `rotateY(-90deg -> 0deg)` in 260ms without visual bleeding.
+     - Front Bento Grid (`grid-cols-12 gap-4`): Institutional & Exam Header tile, Candidate Identity tile, Aggregate Score & Circular Emerald ring tile, OCR Legibility + Strictness mini-tiles, Marks Distribution bar chart, Topic Mastery horizontal bars, Itemized Question Evaluation ledger with Grand Total footer in `#E8F3EE`, and 3-column signature row.
+     - Back Bento Grid: 10-Point Institutional Grading Scale (`O` to `F`) dynamically highlighting the candidate's achieved grade in `#E8F3EE` + 1–5 Strictness Calibration Matrix dynamically highlighting the sheet's active strictness with an `Applied to This Sheet` badge.
+     - One-click PDF export via `GET /api/sheets/{sheet_id}/export/pdf` and `@media print` styling.
+  4. Screen Upgrades & Strict Zero-Hardcoding:
+     - `src/screens/HomeScreen.tsx`: Minimalist 4-item header (`Home`, `About Us`, `Login`, `Sign Up`), kinetic morph loading intro overlay with `Replay intro` button, scroll progress bar, device mockups, demo video player with clickable chapters, and all academic palette styling. Eliminated banned strings.
+     - `src/screens/DashboardScreen.tsx`: Dynamic greeting + current date, 3-card top metric bento (Average Score ring, Sheets Evaluated vertical capsule bars, Question Bank & OCR Legibility teal bars), Subject-wise performance bars, Score mastery breakdown, and Recent Evaluated Results table with live search.
+     - `src/screens/HistoryScreen.tsx`: Filter toolbar (Subject, Exam, Student Name, Roll No., Status pills), academic table, empty-state button (`+ Evaluate New Sheets` -> `#/upload`), and direct links to Evaluate and Marksheet.
+     - `src/screens/ReportsCenterScreen.tsx`: Whole-Class result download (.xlsx & .pdf) and individual student marksheet PDF downloads with live SQLite records.
+     - `src/screens/UploadScreen.tsx` & `src/screens/EvaluateScreen.tsx`: Updated to academic palette across all forms, question panels, strictness pickers, and toolbars.
+  5. Mandatory Verification Gates Passed:
+     - `npx tsc --noEmit` -> Clean 0 errors.
+     - `python scripts/check_all.py` -> `RESULT: ALL PASS` (banned strings, git secrets, 76 pytest tests, tsc, and live health).
+     - `python scripts/verify_all_routes.py` -> All routes (`#/`, `#/dashboard`, `#/upload`, `#/history`, `#/reports`, `#/evaluate/:id`, `#/report/:id`) verified with zero console errors. Proof screenshots saved to `docs/proof/ui/routes/`.
+     - `python scripts/verify_marksheet_flip.py` -> 3D flip card (F) verified with zero console errors. Proof screenshots saved to `docs/proof/ui/routes/marksheet_front_bento.png` and `marksheet_back_key.png`.
 - App Layout Shell, Consistent Hash Routing inside `<main>`, Inline ErrorBoundary & Screen Hardening (`src/App.tsx`, `src/state/useSheetStore.ts`, `src/screens/UploadScreen.tsx`, `src/screens/EvaluateScreen.tsx`, `src/components/PaperDetailsForm.tsx`, `src/components/QueueRow.tsx`, `scripts/verify_all_routes.py`, `docs/proof/ui/routes/`):
   1. Root Route Rendering & Viewport Shell (`src/App.tsx`):
      - Restructured `src/App.tsx` into the persistent outer layout shell `<div className="flex h-screen w-screen overflow-hidden bg-slate-50 font-sans select-none">`.

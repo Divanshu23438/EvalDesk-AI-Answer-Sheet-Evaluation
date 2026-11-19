@@ -91,7 +91,7 @@ const QUESTIONS_DATA: Record<number, QuestionItem> = {
     score: '4.0',
     maxScore: '4.0',
     rubrics: [
-      { mark: '+2.0 M', desc: 'chmod 755 bitmask logic' },
+      { mark: '+2.0 M', desc: 'Octal 755 bitmask logic' },
       { mark: '+2.0 M', desc: 'rwx binary octal translation' },
     ],
   },
@@ -559,14 +559,14 @@ export const HomeScreen: React.FC = () => {
   return (
     <div
       ref={containerRef}
-      className="w-full min-h-screen bg-[#F6F8FB] text-[#1E2430] font-sans antialiased selection:bg-[#2563EB]/15 selection:text-[#2563EB] flex flex-col relative"
+      className="w-full min-h-screen bg-[#F6F7F5] text-[#1E2430] font-sans antialiased selection:bg-[#0F5132]/15 selection:text-[#0F5132] flex flex-col relative"
     >
       {/* =========================================================
           STAGE 1 & 2: KINETIC MORPH LOADING INTRO OVERLAY
           ========================================================= */}
       {!introDismissed && (
         <div
-          className={`fixed inset-0 z-50 flex items-center justify-center bg-[#F6F8FB]/95 backdrop-blur-md transition-opacity duration-700 select-none ${
+          className={`fixed inset-0 z-50 flex items-center justify-center bg-[#F6F7F5]/95 backdrop-blur-md transition-opacity duration-700 select-none ${
             introStage === 'done' ? 'opacity-0 pointer-events-none' : 'opacity-100'
           }`}
           aria-hidden={introStage === 'done'}
@@ -599,7 +599,7 @@ export const HomeScreen: React.FC = () => {
                     key={idx}
                     className={`px-5 py-2.5 rounded-full text-xs sm:text-sm font-medium text-center shadow-md max-w-md transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
                       pill.isPrimary
-                        ? 'bg-[#2563EB] text-white shadow-blue-500/20 font-semibold'
+                        ? 'bg-[#0F5132] text-white shadow-emerald-900/20 font-semibold'
                         : 'bg-white text-slate-800 border border-slate-200/80'
                     } ${
                       isPopped
@@ -622,7 +622,7 @@ export const HomeScreen: React.FC = () => {
               }`}
             >
               <div className="flex flex-col items-center gap-[5px]">
-                <div className="w-16 h-4 rounded-full bg-[#2563EB] shadow-md transition-transform duration-500" />
+                <div className="w-16 h-4 rounded-full bg-[#0F5132] shadow-md transition-transform duration-500" />
                 <div className="w-10 h-4 rounded-full bg-[#93C5FD] shadow-sm transition-transform duration-500" />
               </div>
               <span className="text-xs uppercase font-bold tracking-widest text-[#1E2430] mt-1 font-mono">
@@ -640,25 +640,25 @@ export const HomeScreen: React.FC = () => {
         className="fixed top-20 right-6 z-40 bg-white/95 backdrop-blur-sm border border-slate-200/90 text-slate-700 hover:text-[#1E2430] hover:bg-white shadow-sm px-3.5 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer hover:shadow-md hover:scale-105"
         title="Replay kinetic morph intro"
       >
-        <RotateCcw className="w-3.5 h-3.5 text-[#2563EB]" />
+        <RotateCcw className="w-3.5 h-3.5 text-[#0F5132]" />
         <span>Replay intro</span>
       </button>
 
       {/* =========================================================
           1. MINIMALIST TOP NAVIGATION HEADER (STRICTLY 4 ITEMS)
-             + FIXED SCROLL PROGRESS BAR (2.5px #2563EB)
+             + FIXED SCROLL PROGRESS BAR (2.5px #0F5132)
           ========================================================= */}
-      <header className="sticky top-0 w-full z-40 bg-[#F6F8FB]/90 backdrop-blur-md border-b border-slate-200/70 transition-all relative">
+      <header className="sticky top-0 w-full z-40 bg-[#F6F7F5]/90 backdrop-blur-md border-b border-slate-200/70 transition-all relative">
         <div className="h-[72px] max-w-6xl mx-auto px-6 flex items-center justify-between">
-          {/* Left: Two-pill stacked #2563EB blue mark + EVALDESK wordmark */}
+          {/* Left: Two-pill stacked #0F5132 blue mark + EVALDESK wordmark */}
           <a
             href="#/home"
             className="flex items-center gap-2.5 focus:outline-none group"
             title="EvalDesk Academic Precision"
           >
             <div className="flex flex-col gap-[3px]">
-              <div className="w-5 h-2 rounded-full bg-[#2563EB] transition-transform group-hover:scale-105" />
-              <div className="w-3.5 h-2 rounded-full bg-[#93C5FD] transition-transform group-hover:scale-105" />
+              <div className="w-5 h-2 rounded-full bg-[#0F5132] transition-transform group-hover:scale-105" />
+              <div className="w-3.5 h-2 rounded-full bg-[#0D9488] transition-transform group-hover:scale-105" />
             </div>
             <span className="text-base font-bold tracking-tight text-[#1E2430] uppercase">
               EVALDESK
@@ -706,9 +706,9 @@ export const HomeScreen: React.FC = () => {
           </div>
         </div>
 
-        {/* Scroll Progress Bar (2.5px #2563EB, scales 0% to 100%) */}
+        {/* Scroll Progress Bar (2.5px #0F5132, scales 0% to 100%) */}
         <div
-          className="absolute bottom-0 left-0 h-[2.5px] bg-[#2563EB] transition-all duration-75 ease-out"
+          className="absolute bottom-0 left-0 h-[2.5px] bg-[#0F5132] transition-all duration-75 ease-out"
           style={{ width: `${Math.round(scrollProgress * 100)}%` }}
           aria-hidden="true"
         />
@@ -725,7 +725,7 @@ export const HomeScreen: React.FC = () => {
       >
         {/* Top Badge */}
         <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white border border-slate-200/90 shadow-xs mb-6">
-          <span className="px-2 py-0.5 rounded-full bg-[#2563EB] text-white text-[10px] font-bold uppercase tracking-wider">
+          <span className="px-2 py-0.5 rounded-full bg-[#0F5132] text-white text-[10px] font-bold uppercase tracking-wider">
             NEW
           </span>
           <span className="text-xs sm:text-sm text-slate-600 font-medium">
@@ -735,7 +735,7 @@ export const HomeScreen: React.FC = () => {
 
         {/* Centered Headline */}
         <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-[#1E2430] max-w-3xl mb-4 leading-[1.18]">
-          Grade answer sheets with <span className="text-[#2563EB]">precision</span> without manual fatigue
+          Grade answer sheets with <span className="text-[#0F5132]">precision</span> without manual fatigue
         </h1>
 
         {/* Subtitle */}
@@ -750,7 +750,7 @@ export const HomeScreen: React.FC = () => {
             onClick={() => {
               window.location.hash = '#/upload';
             }}
-            className="inline-flex items-center justify-center px-6 py-2.5 rounded-lg text-sm font-medium text-white bg-[#2563EB] hover:bg-blue-700 shadow-sm transition-all cursor-pointer hover:shadow-md"
+            className="inline-flex items-center justify-center px-6 py-2.5 rounded-lg text-sm font-medium text-white bg-[#0F5132] hover:bg-[#0B3D26] shadow-sm transition-all cursor-pointer hover:shadow-md"
           >
             Sign up for free
           </button>
@@ -784,7 +784,7 @@ export const HomeScreen: React.FC = () => {
 
               <div>
                 <h3 className="text-lg font-bold text-[#1E2430]">Linux Mid-Term</h3>
-                <p className="text-xs font-mono font-semibold text-[#2563EB] mt-0.5">
+                <p className="text-xs font-mono font-semibold text-[#0F5132] mt-0.5">
                   Roll No: SGSU250489
                 </p>
               </div>
@@ -800,13 +800,13 @@ export const HomeScreen: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2.5 p-2 rounded-lg bg-blue-50/60 border border-blue-100">
-                  <Sliders className="w-4 h-4 text-[#2563EB] shrink-0" />
+                <div className="flex items-center gap-2.5 p-2 rounded-lg bg-[#E8F3EE]/60 border border-[#0F5132]/10">
+                  <Sliders className="w-4 h-4 text-[#0F5132] shrink-0" />
                   <div className="flex flex-col min-w-0">
                     <span className="font-medium text-slate-800 leading-none">
                       Strictness Calibration
                     </span>
-                    <span className="text-[11px] text-[#2563EB] font-semibold mt-0.5">
+                    <span className="text-[11px] text-[#0F5132] font-semibold mt-0.5">
                       3 / 5 Balanced
                     </span>
                   </div>
@@ -826,7 +826,7 @@ export const HomeScreen: React.FC = () => {
 
             <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
               <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-[#2563EB] animate-pulse" />
+                <span className="w-2 h-2 rounded-full bg-[#0F5132] animate-pulse" />
                 <span className="font-medium text-slate-700">Batch OCR Pipeline</span>
               </div>
               <span className="font-mono text-[11px] font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
@@ -883,7 +883,7 @@ export const HomeScreen: React.FC = () => {
                       onClick={() => handleSelectQuestion(qNum)}
                       className={`h-8 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer flex items-center justify-center ${
                         isActive
-                          ? 'bg-[#2563EB] text-white shadow-xs scale-105 ring-2 ring-[#2563EB]/30'
+                          ? 'bg-[#0F5132] text-white shadow-xs scale-105 ring-2 ring-[#0F5132]/30'
                           : isPending
                           ? 'bg-slate-50 text-slate-400 border border-dashed border-slate-200 hover:bg-slate-100'
                           : 'bg-slate-100 text-slate-700 hover:bg-slate-200 hover:text-slate-900'
@@ -899,7 +899,7 @@ export const HomeScreen: React.FC = () => {
 
             <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 font-mono">
               <span>Allocated: 54 Marks</span>
-              <span className="text-[#2563EB] font-semibold">18 Completed • 1 Pending</span>
+              <span className="text-[#0F5132] font-semibold">18 Completed • 1 Pending</span>
             </div>
           </div>
 
@@ -934,7 +934,7 @@ export const HomeScreen: React.FC = () => {
                   >
                     <span
                       className={`font-mono text-xs font-bold ${
-                        r.isNegative ? 'text-rose-600' : 'text-[#2563EB]'
+                        r.isNegative ? 'text-rose-600' : 'text-[#0F5132]'
                       }`}
                     >
                       {r.mark}
@@ -966,7 +966,7 @@ export const HomeScreen: React.FC = () => {
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all shadow-xs flex items-center gap-1.5 cursor-pointer ${
                   isApproved
                     ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                    : 'bg-[#2563EB] text-white hover:bg-blue-700'
+                    : 'bg-[#0F5132] text-white hover:bg-[#0B3D26]'
                 }`}
               >
                 <span>{isApproved ? 'Approved' : 'Approve'}</span>
@@ -984,7 +984,7 @@ export const HomeScreen: React.FC = () => {
       <section id="device-suite" className="w-full max-w-6xl mx-auto px-6 py-16 scroll-mt-20">
         <ScrollReveal direction="up" delay={50}>
           <div className="flex flex-col items-center text-center mb-10">
-            <span className="text-xs font-bold uppercase tracking-wider text-[#2563EB] mb-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-[#0F5132] mb-2">
               Ecosystem Architecture
             </span>
             <h2 className="text-3xl sm:text-4xl font-bold text-[#1E2430] tracking-tight">
@@ -1013,7 +1013,7 @@ export const HomeScreen: React.FC = () => {
                     onClick={() => setDeviceFilter(filter.id)}
                     className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
                       isActive
-                        ? 'bg-[#2563EB] text-white shadow-xs'
+                        ? 'bg-[#0F5132] text-white shadow-xs'
                         : 'text-slate-600 hover:text-[#1E2430] hover:bg-slate-50'
                     }`}
                   >
@@ -1053,8 +1053,8 @@ export const HomeScreen: React.FC = () => {
                     </div>
 
                     {/* Batch OCR Feeder Tile */}
-                    <div className="p-3 rounded-lg bg-blue-50/70 border border-blue-100 flex flex-col items-center text-center mb-3">
-                      <div className="w-9 h-9 rounded-full bg-white text-[#2563EB] shadow-xs flex items-center justify-center mb-1.5">
+                    <div className="p-3 rounded-lg bg-[#E8F3EE]/70 border border-[#0F5132]/10 flex flex-col items-center text-center mb-3">
+                      <div className="w-9 h-9 rounded-full bg-white text-[#0F5132] shadow-xs flex items-center justify-center mb-1.5">
                         <Scan className="w-5 h-5" />
                       </div>
                       <span className="text-xs font-bold text-[#1E2430]">Batch OCR Feeder</span>
@@ -1069,7 +1069,7 @@ export const HomeScreen: React.FC = () => {
                       </div>
                       <div className="p-2 rounded bg-slate-50 border border-slate-100 flex justify-between items-center">
                         <span className="text-slate-500">Roll No:</span>
-                        <span className="font-mono font-semibold text-[#2563EB]">SGSU250489</span>
+                        <span className="font-mono font-semibold text-[#0F5132]">SGSU250489</span>
                       </div>
                       <div className="p-2 rounded bg-slate-50 border border-slate-100 flex justify-between items-center">
                         <span className="text-slate-500">Class:</span>
@@ -1082,10 +1082,10 @@ export const HomeScreen: React.FC = () => {
                   <div className="mt-4 pt-3 border-t border-slate-100">
                     <div className="flex items-center justify-between text-[11px] mb-1.5">
                       <span className="font-medium text-slate-700">Page 3 of 9 · Scanning...</span>
-                      <span className="font-mono text-[#2563EB] font-bold">300 DPI</span>
+                      <span className="font-mono text-[#0F5132] font-bold">300 DPI</span>
                     </div>
                     <div className="w-full h-1.5 rounded-full bg-slate-100 overflow-hidden">
-                      <div className="h-full bg-[#2563EB] rounded-full animate-pulse w-3/5" />
+                      <div className="h-full bg-[#0F5132] rounded-full animate-pulse w-3/5" />
                     </div>
                   </div>
                 </div>
@@ -1105,7 +1105,7 @@ export const HomeScreen: React.FC = () => {
               }`}
             >
               {/* Laptop Screen Frame */}
-              <div className="bg-[#1E2430] p-2.5 rounded-t-2xl shadow-2xl border border-slate-700/60 flex flex-col hover:shadow-indigo-500/10 transition-shadow">
+              <div className="bg-[#1E2430] p-2.5 rounded-t-2xl shadow-2xl border border-slate-700/60 flex flex-col hover:shadow-emerald-900/10 transition-shadow">
                 {/* Laptop Camera Dot */}
                 <div className="w-1.5 h-1.5 rounded-full bg-slate-700 mx-auto mb-1.5" />
 
@@ -1121,7 +1121,7 @@ export const HomeScreen: React.FC = () => {
                     <span className="font-mono text-slate-500 truncate max-w-[200px]">
                       evaldesk.workspace / exam / Q4_eval
                     </span>
-                    <span className="font-mono font-bold text-[#2563EB] bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
+                    <span className="font-mono font-bold text-[#0F5132] bg-[#E8F3EE] px-1.5 py-0.5 rounded border border-[#0F5132]/20">
                       100% OCR CONFIDENCE
                     </span>
                   </div>
@@ -1140,9 +1140,9 @@ export const HomeScreen: React.FC = () => {
                           </span>
                         </div>
 
-                        {/* Crop Box with Indigo Q.4 DETECTED CROP */}
-                        <div className="relative bg-white rounded p-2.5 border-2 border-indigo-400/80 shadow-xs mt-1">
-                          <div className="absolute -top-2 left-2 px-1 bg-[#2563EB] text-white font-mono text-[8px] font-bold rounded">
+                        {/* Crop Box with Emerald Q.4 DETECTED CROP */}
+                        <div className="relative bg-white rounded p-2.5 border-2 border-[#0F5132]/80 shadow-xs mt-1">
+                          <div className="absolute -top-2 left-2 px-1 bg-[#0F5132] text-white font-mono text-[8px] font-bold rounded">
                             Q.4 DETECTED CROP
                           </div>
                           <p className="text-[11px] font-serif italic text-slate-800 leading-snug">
@@ -1177,22 +1177,22 @@ export const HomeScreen: React.FC = () => {
                         <div className="space-y-1 text-[11px]">
                           <div className="flex justify-between text-slate-600">
                             <span>Theory Concept:</span>
-                            <span className="font-mono font-bold text-[#2563EB]">2.0 / 2.0</span>
+                            <span className="font-mono font-bold text-[#0F5132]">2.0 / 2.0</span>
                           </div>
                           <div className="flex justify-between text-slate-600">
                             <span>Syntax Verbatim:</span>
-                            <span className="font-mono font-bold text-[#2563EB]">2.0 / 2.0</span>
+                            <span className="font-mono font-bold text-[#0F5132]">2.0 / 2.0</span>
                           </div>
                           <div className="flex justify-between text-slate-600">
                             <span>Terminal Example:</span>
-                            <span className="font-mono font-bold text-[#2563EB]">1.5 / 2.0</span>
+                            <span className="font-mono font-bold text-[#0F5132]">1.5 / 2.0</span>
                           </div>
                         </div>
                       </div>
 
                       <div className="pt-2 border-t border-slate-200 flex items-center justify-between">
                         <span className="text-[11px] font-semibold text-slate-800">Total Awarded</span>
-                        <span className="font-mono text-xs font-bold text-[#2563EB]">
+                        <span className="font-mono text-xs font-bold text-[#0F5132]">
                           5.5 / 6.0 M
                         </span>
                       </div>
@@ -1228,7 +1228,7 @@ export const HomeScreen: React.FC = () => {
                       <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
                         Mobile Audit
                       </span>
-                      <span className="w-2 h-2 rounded-full bg-[#2563EB]" />
+                      <span className="w-2 h-2 rounded-full bg-[#0F5132]" />
                     </div>
 
                     {/* Score summary card */}
@@ -1239,7 +1239,7 @@ export const HomeScreen: React.FC = () => {
                       <div className="text-xl font-bold font-mono text-[#1E2430] mt-0.5">
                         44.5 <span className="text-xs font-normal text-slate-400">/ 54</span>
                       </div>
-                      <span className="inline-block text-[11px] font-bold text-[#2563EB] bg-blue-50 px-2 py-0.5 rounded-full mt-1 border border-blue-100">
+                      <span className="inline-block text-[11px] font-bold text-[#0F5132] bg-[#E8F3EE] px-2 py-0.5 rounded-full mt-1 border border-[#0F5132]/10">
                         82.4% • Grade A
                       </span>
                     </div>
@@ -1267,7 +1267,7 @@ export const HomeScreen: React.FC = () => {
                     onClick={() => {
                       window.location.hash = '#/dashboard';
                     }}
-                    className="w-full mt-3 py-2 rounded-lg bg-[#2563EB] hover:bg-blue-700 text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                    className="w-full mt-3 py-2 rounded-lg bg-[#0F5132] hover:bg-[#0B3D26] text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
                   >
                     <Download className="w-3.5 h-3.5" />
                     <span>Download PDF</span>
@@ -1286,7 +1286,7 @@ export const HomeScreen: React.FC = () => {
       <section id="demo-stage" className="w-full max-w-6xl mx-auto px-6 py-16 scroll-mt-20">
         <ScrollReveal direction="up" delay={50}>
           <div className="flex flex-col items-center text-center mb-10">
-            <span className="text-xs font-bold uppercase tracking-wider text-[#2563EB] mb-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-[#0F5132] mb-2">
               Live Execution Pipeline
             </span>
             <h2 className="text-3xl sm:text-4xl font-bold text-[#1E2430] tracking-tight">
@@ -1315,8 +1315,8 @@ export const HomeScreen: React.FC = () => {
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-50 border border-blue-200 text-[#2563EB] text-xs font-semibold">
-                  <span className="w-2 h-2 rounded-full bg-[#2563EB] animate-ping" />
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#E8F3EE] border border-[#0F5132]/20 text-[#0F5132] text-xs font-semibold">
+                  <span className="w-2 h-2 rounded-full bg-[#0F5132] animate-ping" />
                   <span>Live Product Walkthrough (0:10)</span>
                 </span>
               </div>
@@ -1352,7 +1352,7 @@ export const HomeScreen: React.FC = () => {
                     onClick={() => handleSeek(ch.time)}
                     className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between ${
                       isCurrent
-                        ? 'bg-[#2563EB]/10 border-[#2563EB] text-[#2563EB] shadow-xs'
+                        ? 'bg-[#0F5132]/10 border-[#0F5132] text-[#0F5132] shadow-xs'
                         : 'bg-slate-50 hover:bg-slate-100 border-slate-200/80 text-slate-700'
                     }`}
                   >
@@ -1362,7 +1362,7 @@ export const HomeScreen: React.FC = () => {
                         Seek to {ch.tag}
                       </span>
                     </div>
-                    <Play className={`w-3.5 h-3.5 ${isCurrent ? 'text-[#2563EB]' : 'text-slate-400'}`} />
+                    <Play className={`w-3.5 h-3.5 ${isCurrent ? 'text-[#0F5132]' : 'text-slate-400'}`} />
                   </button>
                 );
               })}
@@ -1376,7 +1376,7 @@ export const HomeScreen: React.FC = () => {
                 </span>
                 <span className="text-xs text-slate-500 mt-0.5">
                   Current Threshold:{' '}
-                  <strong className="text-[#2563EB] font-medium">
+                  <strong className="text-[#0F5132] font-medium">
                     {strictnessLabels[strictnessLevel]}
                   </strong>
                 </span>
@@ -1390,7 +1390,7 @@ export const HomeScreen: React.FC = () => {
                     onClick={() => setStrictnessLevel(lvl)}
                     className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
                       strictnessLevel === lvl
-                        ? 'bg-[#2563EB] text-white shadow-xs'
+                        ? 'bg-[#0F5132] text-white shadow-xs'
                         : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
                     }`}
                   >
@@ -1411,7 +1411,7 @@ export const HomeScreen: React.FC = () => {
         {/* Feature Row 1: Auto-Fill Student Identity & Exam Details */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
           <ScrollReveal direction="left" delay={50} className="space-y-3 text-left">
-            <span className="text-xs font-bold uppercase tracking-wider text-[#2563EB]">
+            <span className="text-xs font-bold uppercase tracking-wider text-[#0F5132]">
               01 / Metadata Ingestion
             </span>
             <h3 className="text-2xl sm:text-3xl font-bold text-[#1E2430] tracking-tight">
@@ -1422,11 +1422,11 @@ export const HomeScreen: React.FC = () => {
             </p>
             <div className="flex flex-wrap items-center gap-4 pt-2">
               <div className="flex items-center gap-1.5 text-xs font-medium text-slate-700">
-                <CheckCircle2 className="w-4 h-4 text-[#2563EB]" />
+                <CheckCircle2 className="w-4 h-4 text-[#0F5132]" />
                 <span>Sub-second Roll Resolution</span>
               </div>
               <div className="flex items-center gap-1.5 text-xs font-medium text-slate-700">
-                <CheckCircle2 className="w-4 h-4 text-[#2563EB]" />
+                <CheckCircle2 className="w-4 h-4 text-[#0F5132]" />
                 <span>Zero Roster Discrepancies</span>
               </div>
             </div>
@@ -1449,7 +1449,7 @@ export const HomeScreen: React.FC = () => {
                 </div>
                 <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-100 flex justify-between items-center">
                   <span className="text-slate-500">Enrolment ID:</span>
-                  <span className="font-mono font-semibold text-[#2563EB]">SGSU250489</span>
+                  <span className="font-mono font-semibold text-[#0F5132]">SGSU250489</span>
                 </div>
                 <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-100 flex justify-between items-center">
                   <span className="text-slate-500">Examination:</span>
@@ -1472,23 +1472,23 @@ export const HomeScreen: React.FC = () => {
                 <span className="text-xs font-bold uppercase tracking-wider text-[#1E2430]">
                   Live Feed Telemetry
                 </span>
-                <span className="font-mono text-xs font-bold text-[#2563EB] bg-blue-50 border border-blue-200 px-2 py-0.5 rounded flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#2563EB] animate-pulse" />
+                <span className="font-mono text-xs font-bold text-[#0F5132] bg-[#E8F3EE] border border-[#0F5132]/20 px-2 py-0.5 rounded flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#0F5132] animate-pulse" />
                   <span>STREAMING</span>
                 </span>
               </div>
               <div className="space-y-2 text-xs">
                 <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-between">
                   <span className="font-medium text-slate-800">Sheet 1: Cover Header</span>
-                  <span className="font-mono text-[#2563EB] font-bold">98.4% Confidence</span>
+                  <span className="font-mono text-[#0F5132] font-bold">98.4% Confidence</span>
                 </div>
                 <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-between">
                   <span className="font-medium text-slate-800">Sheet 2: Question 1 – 3</span>
-                  <span className="font-mono text-[#2563EB] font-bold">96.2% Confidence</span>
+                  <span className="font-mono text-[#0F5132] font-bold">96.2% Confidence</span>
                 </div>
                 <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-between">
                   <span className="font-medium text-slate-800">Sheet 3: Question 4 (Diagram)</span>
-                  <span className="font-mono text-[#2563EB] font-bold">99.1% Confidence</span>
+                  <span className="font-mono text-[#0F5132] font-bold">99.1% Confidence</span>
                 </div>
                 <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-between">
                   <span className="font-medium text-slate-800">Sheet 4: Question 5 – 6</span>
@@ -1499,7 +1499,7 @@ export const HomeScreen: React.FC = () => {
           </ScrollReveal>
 
           <ScrollReveal direction="right" delay={50} className="order-1 md:order-2 space-y-3 text-left">
-            <span className="text-xs font-bold uppercase tracking-wider text-[#2563EB]">
+            <span className="text-xs font-bold uppercase tracking-wider text-[#0F5132]">
               02 / Dual-Engine Vision
             </span>
             <h3 className="text-2xl sm:text-3xl font-bold text-[#1E2430] tracking-tight">
@@ -1510,11 +1510,11 @@ export const HomeScreen: React.FC = () => {
             </p>
             <div className="flex flex-wrap items-center gap-4 pt-2">
               <div className="flex items-center gap-1.5 text-xs font-medium text-slate-700">
-                <CheckCircle2 className="w-4 h-4 text-[#2563EB]" />
+                <CheckCircle2 className="w-4 h-4 text-[#0F5132]" />
                 <span>Cursive &amp; Print Adaptation</span>
               </div>
               <div className="flex items-center gap-1.5 text-xs font-medium text-slate-700">
-                <CheckCircle2 className="w-4 h-4 text-[#2563EB]" />
+                <CheckCircle2 className="w-4 h-4 text-[#0F5132]" />
                 <span>Instant Strikethrough Omission</span>
               </div>
             </div>
@@ -1524,7 +1524,7 @@ export const HomeScreen: React.FC = () => {
         {/* Feature Row 3: Split-Screen Evaluation & Collapsible Question Rail */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
           <ScrollReveal direction="left" delay={50} className="space-y-3 text-left">
-            <span className="text-xs font-bold uppercase tracking-wider text-[#2563EB]">
+            <span className="text-xs font-bold uppercase tracking-wider text-[#0F5132]">
               03 / Ergonomic Grading
             </span>
             <h3 className="text-2xl sm:text-3xl font-bold text-[#1E2430] tracking-tight">
@@ -1535,11 +1535,11 @@ export const HomeScreen: React.FC = () => {
             </p>
             <div className="flex flex-wrap items-center gap-4 pt-2">
               <div className="flex items-center gap-1.5 text-xs font-medium text-slate-700">
-                <CheckCircle2 className="w-4 h-4 text-[#2563EB]" />
+                <CheckCircle2 className="w-4 h-4 text-[#0F5132]" />
                 <span>Rapid Keyboard Navigation</span>
               </div>
               <div className="flex items-center gap-1.5 text-xs font-medium text-slate-700">
-                <CheckCircle2 className="w-4 h-4 text-[#2563EB]" />
+                <CheckCircle2 className="w-4 h-4 text-[#0F5132]" />
                 <span>Anchored Sticky Scoring</span>
               </div>
             </div>
@@ -1556,11 +1556,11 @@ export const HomeScreen: React.FC = () => {
               <div className="space-y-2 text-xs">
                 <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-100 flex justify-between items-center">
                   <span className="font-medium text-slate-800">1. Process Synchronization Logic</span>
-                  <span className="font-mono font-bold text-[#2563EB]">4.0 / 4.0</span>
+                  <span className="font-mono font-bold text-[#0F5132]">4.0 / 4.0</span>
                 </div>
                 <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-100 flex justify-between items-center">
                   <span className="font-medium text-slate-800">2. Mutex Semaphore Explanation</span>
-                  <span className="font-mono font-bold text-[#2563EB]">3.5 / 4.0</span>
+                  <span className="font-mono font-bold text-[#0F5132]">3.5 / 4.0</span>
                 </div>
                 <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-100 flex justify-between items-center">
                   <span className="font-medium text-slate-800">3. Race Condition Edge Case</span>
@@ -1583,25 +1583,25 @@ export const HomeScreen: React.FC = () => {
                 <span className="text-xs font-bold uppercase tracking-wider text-[#1E2430]">
                   Cohort Analytics Overview
                 </span>
-                <span className="font-mono text-xs font-bold text-[#2563EB]">N = 48 STUDENTS</span>
+                <span className="font-mono text-xs font-bold text-[#0F5132]">N = 48 STUDENTS</span>
               </div>
 
               {/* Minimal Cohort Distribution Chart with smooth expansion transitions */}
               <div className="w-full h-28 flex items-end justify-between gap-3 pt-2 px-3 bg-slate-50 border border-slate-100 rounded-xl">
                 <div className="flex flex-col items-center gap-1 w-full">
-                  <div className="w-full bg-[#2563EB]/25 rounded-t h-8 transition-all duration-700 hover:bg-[#2563EB]/40" />
+                  <div className="w-full bg-[#0F5132]/25 rounded-t h-8 transition-all duration-700 hover:bg-[#0F5132]/40" />
                   <span className="font-mono text-[10px] text-slate-500">0-40%</span>
                 </div>
                 <div className="flex flex-col items-center gap-1 w-full">
-                  <div className="w-full bg-[#2563EB]/45 rounded-t h-14 transition-all duration-700 hover:bg-[#2563EB]/60" />
+                  <div className="w-full bg-[#0F5132]/45 rounded-t h-14 transition-all duration-700 hover:bg-[#0F5132]/60" />
                   <span className="font-mono text-[10px] text-slate-500">41-60%</span>
                 </div>
                 <div className="flex flex-col items-center gap-1 w-full">
-                  <div className="w-full bg-[#2563EB] rounded-t h-20 shadow-xs transition-all duration-700 hover:scale-105" />
-                  <span className="font-mono text-[10px] text-[#2563EB] font-bold">61-80%</span>
+                  <div className="w-full bg-[#0F5132] rounded-t h-20 shadow-xs transition-all duration-700 hover:scale-105" />
+                  <span className="font-mono text-[10px] text-[#0F5132] font-bold">61-80%</span>
                 </div>
                 <div className="flex flex-col items-center gap-1 w-full">
-                  <div className="w-full bg-[#2563EB]/70 rounded-t h-12 transition-all duration-700 hover:bg-[#2563EB]/85" />
+                  <div className="w-full bg-[#0F5132]/70 rounded-t h-12 transition-all duration-700 hover:bg-[#0F5132]/85" />
                   <span className="font-mono text-[10px] text-slate-500">81-100%</span>
                 </div>
               </div>
@@ -1635,7 +1635,7 @@ export const HomeScreen: React.FC = () => {
           </ScrollReveal>
 
           <ScrollReveal direction="right" delay={50} className="order-1 md:order-2 space-y-3 text-left">
-            <span className="text-xs font-bold uppercase tracking-wider text-[#2563EB]">
+            <span className="text-xs font-bold uppercase tracking-wider text-[#0F5132]">
               04 / Institutional Governance
             </span>
             <h3 className="text-2xl sm:text-3xl font-bold text-[#1E2430] tracking-tight">
@@ -1646,11 +1646,11 @@ export const HomeScreen: React.FC = () => {
             </p>
             <div className="flex flex-wrap items-center gap-4 pt-2">
               <div className="flex items-center gap-1.5 text-xs font-medium text-slate-700">
-                <CheckCircle2 className="w-4 h-4 text-[#2563EB]" />
+                <CheckCircle2 className="w-4 h-4 text-[#0F5132]" />
                 <span>Full Historical Audit Trail</span>
               </div>
               <div className="flex items-center gap-1.5 text-xs font-medium text-slate-700">
-                <CheckCircle2 className="w-4 h-4 text-[#2563EB]" />
+                <CheckCircle2 className="w-4 h-4 text-[#0F5132]" />
                 <span>SIS / LMS Direct Integration</span>
               </div>
             </div>
@@ -1665,7 +1665,7 @@ export const HomeScreen: React.FC = () => {
       <section id="about-us" className="w-full max-w-6xl mx-auto px-6 py-16 scroll-mt-20">
         <ScrollReveal direction="up" delay={50}>
           <div className="flex flex-col items-center text-center mb-12">
-            <span className="text-xs font-bold uppercase tracking-wider text-[#2563EB] mb-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-[#0F5132] mb-2">
               Our Philosophy
             </span>
             <h2 className="text-3xl sm:text-4xl font-bold text-[#1E2430] tracking-tight">
@@ -1681,7 +1681,7 @@ export const HomeScreen: React.FC = () => {
           {/* Pillar 1 (delay 0ms) */}
           <ScrollReveal direction="up" delay={0}>
             <div className="bg-white rounded-2xl p-6 border border-slate-200/90 shadow-sm hover:shadow-md transition-shadow flex flex-col gap-3 h-full">
-              <div className="w-10 h-10 rounded-xl bg-blue-50 text-[#2563EB] flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl bg-[#E8F3EE] text-[#0F5132] flex items-center justify-center">
                 <Scale className="w-5 h-5" />
               </div>
               <h3 className="text-base font-bold text-[#1E2430]">Rubric-Anchored Precision</h3>
@@ -1694,7 +1694,7 @@ export const HomeScreen: React.FC = () => {
           {/* Pillar 2 (delay 120ms) */}
           <ScrollReveal direction="up" delay={120}>
             <div className="bg-white rounded-2xl p-6 border border-slate-200/90 shadow-sm hover:shadow-md transition-shadow flex flex-col gap-3 h-full">
-              <div className="w-10 h-10 rounded-xl bg-blue-50 text-[#2563EB] flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl bg-[#E8F3EE] text-[#0F5132] flex items-center justify-center">
                 <ShieldCheck className="w-5 h-5" />
               </div>
               <h3 className="text-base font-bold text-[#1E2430]">Human-in-the-Loop Sovereignty</h3>
@@ -1707,7 +1707,7 @@ export const HomeScreen: React.FC = () => {
           {/* Pillar 3 (delay 240ms) */}
           <ScrollReveal direction="up" delay={240}>
             <div className="bg-white rounded-2xl p-6 border border-slate-200/90 shadow-sm hover:shadow-md transition-shadow flex flex-col gap-3 h-full">
-              <div className="w-10 h-10 rounded-xl bg-blue-50 text-[#2563EB] flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl bg-[#E8F3EE] text-[#0F5132] flex items-center justify-center">
                 <GraduationCap className="w-5 h-5" />
               </div>
               <h3 className="text-base font-bold text-[#1E2430]">Audit-Ready Documentation</h3>
@@ -1735,7 +1735,7 @@ export const HomeScreen: React.FC = () => {
                 onClick={() => {
                   window.location.hash = '#/upload';
                 }}
-                className="px-6 py-2.5 rounded-lg text-sm font-medium text-white bg-[#2563EB] hover:bg-blue-700 shadow-sm transition-all cursor-pointer"
+                className="px-6 py-2.5 rounded-lg text-sm font-medium text-white bg-[#0F5132] hover:bg-[#0B3D26] shadow-sm transition-all cursor-pointer"
               >
                 Sign up for free
               </button>
@@ -1763,7 +1763,7 @@ export const HomeScreen: React.FC = () => {
             <div className="flex flex-col gap-3">
               <div className="flex items-center gap-2">
                 <div className="flex flex-col gap-[3px]">
-                  <div className="w-4 h-1.5 rounded-full bg-[#2563EB]" />
+                  <div className="w-4 h-1.5 rounded-full bg-[#0F5132]" />
                   <div className="w-2.5 h-1.5 rounded-full bg-[#93C5FD]" />
                 </div>
                 <span className="text-sm font-bold tracking-tight text-[#1E2430] uppercase">

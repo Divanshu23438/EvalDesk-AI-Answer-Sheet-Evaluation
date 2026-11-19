@@ -44,9 +44,9 @@ export const StatusChip: React.FC<StatusChipProps> = ({
         };
       case 'current':
         return {
-          bg: 'bg-[var(--accent-indigo-subtle)]',
-          border: 'border-[var(--accent-indigo-border)]',
-          text: 'text-[var(--accent-indigo)]',
+          bg: 'bg-[var(--brand-tint)]',
+          border: 'border-[var(--surface-card-border)]',
+          text: 'text-[var(--brand-primary)]',
           icon: <Dot className={size === 'sm' ? 'w-3.5 h-3.5' : 'w-4 h-4'} aria-hidden="true" />,
           defaultLabel: 'Current',
         };

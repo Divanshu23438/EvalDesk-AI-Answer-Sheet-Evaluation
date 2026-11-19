@@ -7,7 +7,7 @@ import { ActionBar } from './components/ActionBar';
 import { DashboardScreen } from './screens/DashboardScreen';
 import { UploadScreen } from './screens/UploadScreen';
 import { EvaluateScreen } from './screens/EvaluateScreen';
-import { ReportScreen } from './screens/ReportScreen';
+import { StudentMarksheetScreen } from './screens/StudentMarksheetScreen';
 import { HistoryScreen } from './screens/HistoryScreen';
 import { ReportsCenterScreen } from './screens/ReportsCenterScreen';
 import { HomeScreen } from './screens/HomeScreen';
@@ -72,7 +72,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   render() {
     if (this.state.hasError) {
       return (
-        <main className="flex-1 min-w-0 h-screen overflow-y-auto bg-slate-50 p-6 flex flex-col items-center justify-center select-text">
+        <main className="flex-1 min-w-0 h-screen overflow-y-auto bg-[#F6F7F5] p-6 flex flex-col items-center justify-center select-text">
           <div className="max-w-lg w-full bg-white border border-rose-200 rounded-2xl p-6 shadow-sm text-center space-y-4">
             <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto shadow-xs">
               <AlertTriangle className="w-6 h-6" />
@@ -92,7 +92,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
               <button
                 type="button"
                 onClick={this.handleReload}
-                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-xs transition cursor-pointer flex items-center gap-1.5"
+                className="px-4 py-2 rounded-xl bg-[#0F5132] hover:bg-[#0B3D26] text-white text-xs font-semibold shadow-xs transition cursor-pointer flex items-center gap-1.5"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
                 <span>Reload Evaluation Workspace</span>
@@ -265,7 +265,7 @@ export default function App() {
   if (currentRoute === 'home') {
     return (
       <ErrorBoundary>
-        <div className="w-full h-screen overflow-y-auto bg-[#F6F8FB]">
+        <div className="w-full h-screen overflow-y-auto bg-[#F6F7F5]">
           <HomeScreen />
         </div>
       </ErrorBoundary>
@@ -275,7 +275,7 @@ export default function App() {
   const isEvalWorkflow = currentRoute === 'upload' || currentRoute === 'evaluate' || currentRoute === 'report';
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-slate-50 font-sans select-none">
+    <div className="flex h-screen w-screen overflow-hidden bg-[#F6F7F5] font-sans select-none app-shell">
       {/* 1. Persistent Collapsible Left Navigation Sidebar */}
       <AppSidebar />
 
@@ -283,13 +283,13 @@ export default function App() {
       <ErrorBoundary>
         <main
           ref={mainRef}
-          className="flex-1 min-w-0 h-screen overflow-y-auto bg-slate-50 flex flex-col"
+          className="flex-1 min-w-0 h-screen overflow-y-auto bg-[#F6F7F5] flex flex-col app-main"
         >
           {/* Top evaluation workflow stepper header (for upload and evaluate) */}
           {isEvalWorkflow && currentRoute !== 'report' && (
             <header
               role="banner"
-              className="h-[48px] bg-white border-b border-slate-200 px-4 flex items-center justify-between select-none z-30 shrink-0 shadow-2xs"
+              className="h-[48px] bg-white border-b border-slate-200 px-4 flex items-center justify-between select-none z-30 shrink-0 shadow-2xs print:hidden"
             >
               {/* Left: Breadcrumbs or Section Context */}
               <div className="flex items-center gap-3 min-w-0">
@@ -325,7 +325,7 @@ export default function App() {
                     className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border border-slate-200 bg-slate-50 text-slate-700"
                     title="Target Assessment Paper"
                   >
-                    <FileText className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                    <FileText className="w-3.5 h-3.5 text-[#0F5132] shrink-0" />
                     <span className="truncate max-w-[240px] font-semibold text-slate-800">
                       {state.paperTitle || 'Assessment Paper'}
                     </span>
@@ -356,7 +356,7 @@ export default function App() {
                         onClick={() => handleStepClick(step.id)}
                         className={`px-3 py-1 rounded-full text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer ${
                           isActive
-                            ? 'bg-indigo-50 border border-indigo-200 text-indigo-700 shadow-2xs'
+                            ? 'bg-[#E8F3EE] border border-[#0F5132]/20 text-[#0F5132] shadow-2xs'
                             : isPast
                             ? 'text-slate-700 hover:bg-slate-100'
                             : 'text-slate-400 hover:text-slate-600'
@@ -365,7 +365,7 @@ export default function App() {
                         <span
                           className={`w-4 h-4 rounded-full text-[10px] font-bold flex items-center justify-center ${
                             isActive
-                              ? 'bg-indigo-600 text-white'
+                              ? 'bg-[#0F5132] text-white'
                               : isPast
                               ? 'bg-emerald-100 text-emerald-800'
                               : 'border border-slate-300 text-slate-400'
@@ -375,7 +375,7 @@ export default function App() {
                         </span>
                         <span>{step.label}</span>
                         {isActive && (
-                          <span className="text-[9px] uppercase tracking-wider bg-indigo-600 text-white px-1 rounded font-bold">
+                          <span className="text-[9px] uppercase tracking-wider bg-[#0F5132] text-white px-1 rounded font-bold">
                             Active
                           </span>
                         )}
@@ -418,15 +418,16 @@ export default function App() {
             {currentRoute === 'dashboard' && <DashboardScreen />}
             {currentRoute === 'upload' && <UploadScreen />}
             {currentRoute === 'evaluate' && <EvaluateScreen />}
-            {currentRoute === 'report' && <ReportScreen />}
+            {currentRoute === 'report' && <StudentMarksheetScreen />}
             {currentRoute === 'history' && <HistoryScreen />}
             {currentRoute === 'reports' && <ReportsCenterScreen />}
           </div>
 
           {/* 56px Bottom Action Bar (only on upload or evaluate) */}
           {(currentRoute === 'upload' || currentRoute === 'evaluate') && (
-            <ActionBar
-              leftContent={
+            <div className="print:hidden">
+              <ActionBar
+                leftContent={
                 currentRoute === 'evaluate' ? (
                   <div className="flex items-center gap-2">
                     <button
@@ -569,7 +570,7 @@ export default function App() {
                       }
                     }}
                     disabled={!state.sheetId}
-                    className="px-4 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center gap-1.5 shadow-sm"
+                    className="px-4 py-1.5 rounded-lg bg-[#0F5132] text-white text-xs font-semibold hover:bg-[#0B3D26] disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center gap-1.5 shadow-sm"
                   >
                     <span>Open Evaluation Workspace</span>
                     <ArrowRight className="w-3.5 h-3.5" />
@@ -596,7 +597,7 @@ export default function App() {
                       onClick={() => window.dispatchEvent(new CustomEvent('evaldesk:finish'))}
                       className={`px-3.5 py-1 rounded font-semibold text-xs transition flex items-center gap-1 shadow-sm text-white ${
                         state.reviewMetrics?.allResolved
-                          ? 'bg-indigo-600 hover:bg-indigo-700'
+                          ? 'bg-[#0F5132] hover:bg-[#0B3D26]'
                           : 'bg-amber-600 hover:bg-amber-700'
                       }`}
                     >
@@ -607,6 +608,7 @@ export default function App() {
                 )
               }
             />
+            </div>
           )}
         </main>
       </ErrorBoundary>

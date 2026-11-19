@@ -71,11 +71,11 @@ export const ReportBottomBar: React.FC<ReportBottomBarProps> = ({
         <button
           onClick={onDownloadPdf}
           disabled={isDownloadingPdf}
-          className="px-3 py-1.5 rounded-lg text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 font-medium flex items-center space-x-1.5 transition-colors cursor-pointer disabled:opacity-50"
+          className="px-3 py-1.5 rounded-lg text-[#0F5132] hover:text-[#0B3D26] bg-[#E8F3EE] hover:bg-[#E8F3EE] border border-[#0F5132]/20 font-medium flex items-center space-x-1.5 transition-colors cursor-pointer disabled:opacity-50"
           type="button"
           title="Download Student Report Card PDF"
         >
-          <svg className="w-3.5 h-3.5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-3.5 h-3.5 text-[#0F5132]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
               strokeLinecap="round"
@@ -91,7 +91,7 @@ export const ReportBottomBar: React.FC<ReportBottomBarProps> = ({
           onClick={onNextSheet}
           disabled={isLastSheet}
           title={isLastSheet ? 'Last sheet in assessment' : 'Navigate to next sheet'}
-          className="px-4 py-1.5 rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed font-semibold shadow-xs flex items-center space-x-1.5 transition-colors cursor-pointer"
+          className="px-4 py-1.5 rounded-lg text-white bg-[#0F5132] hover:bg-[#0B3D26] disabled:opacity-40 disabled:cursor-not-allowed font-semibold shadow-xs flex items-center space-x-1.5 transition-colors cursor-pointer"
           type="button"
         >
           <span>Next Sheet</span>

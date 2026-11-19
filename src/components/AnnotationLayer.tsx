@@ -497,7 +497,7 @@ export const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
               >
                 <div
                   className={`p-2 rounded-md shadow-md text-slate-800 text-[11px] leading-tight select-none transition-all ${
-                    isSelected ? 'ring-2 ring-indigo-500 ring-offset-1' : ''
+                    isSelected ? 'ring-2 ring-[#0F5132] ring-offset-1' : ''
                   } ${
                     isPrivate
                       ? 'bg-amber-50/95 border border-dashed border-amber-400 text-amber-900'
@@ -573,7 +573,7 @@ export const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
             }}
             placeholder="Type your comment or feedback..."
             rows={3}
-            className="w-full text-xs p-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+            className="w-full text-xs p-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0F5132] resize-none"
           />
 
           {/* Visibility Switch */}
@@ -607,7 +607,7 @@ export const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
               type="button"
               data-testid="btn-save-note"
               onClick={handleSaveTextNote}
-              className="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-xs flex items-center gap-1"
+              className="px-3 py-1 bg-[#0F5132] hover:bg-[#0B3D26] text-white text-xs font-semibold rounded-lg shadow-xs flex items-center gap-1"
             >
               <Check className="w-3.5 h-3.5" />
               <span>Save</span>

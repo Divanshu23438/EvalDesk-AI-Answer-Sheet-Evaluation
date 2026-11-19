@@ -26,8 +26,8 @@ export const ReportTopBar: React.FC<ReportTopBarProps> = ({
     >
       {/* Left: Logo & Breadcrumbs */}
       <div className="flex items-center space-x-3 text-xs">
-        <div className="flex items-center space-x-2 font-bold text-indigo-600 text-sm tracking-tight">
-          <svg className="w-5 h-5 text-indigo-600 shrink-0" fill="currentColor" viewBox="0 0 24 24">
+        <div className="flex items-center space-x-2 font-bold text-[#0F5132] text-sm tracking-tight">
+          <svg className="w-5 h-5 text-[#0F5132] shrink-0" fill="currentColor" viewBox="0 0 24 24">
             <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
           </svg>
           <span className="text-[#0F172A] font-bold text-base tracking-tight">EvalDesk</span>
@@ -91,7 +91,7 @@ export const ReportTopBar: React.FC<ReportTopBarProps> = ({
         </svg>
 
         {/* Step 3 (Active) */}
-        <div className="flex items-center space-x-1.5 px-3 py-1 rounded-full bg-indigo-600 text-white font-medium text-xs shadow-xs">
+        <div className="flex items-center space-x-1.5 px-3 py-1 rounded-full bg-[#0F5132] text-white font-medium text-xs shadow-xs">
           <span className="w-1.5 h-1.5 rounded-full bg-white" />
           <span>3. Report</span>
         </div>
@@ -103,7 +103,7 @@ export const ReportTopBar: React.FC<ReportTopBarProps> = ({
           <button
             className={`px-2 py-0.5 text-[11px] rounded transition-colors ${
               uiScale === 'A-'
-                ? 'font-semibold text-indigo-600 bg-white shadow-xs'
+                ? 'font-semibold text-[#0F5132] bg-white shadow-xs'
                 : 'font-medium text-slate-600 hover:text-slate-900'
             }`}
             onClick={() => onSetUiScale('A-')}
@@ -115,7 +115,7 @@ export const ReportTopBar: React.FC<ReportTopBarProps> = ({
           <button
             className={`px-2 py-0.5 text-[11px] rounded transition-colors ${
               uiScale === 'A'
-                ? 'font-semibold text-indigo-600 bg-white shadow-xs'
+                ? 'font-semibold text-[#0F5132] bg-white shadow-xs'
                 : 'font-medium text-slate-600 hover:text-slate-900'
             }`}
             onClick={() => onSetUiScale('A')}
@@ -127,7 +127,7 @@ export const ReportTopBar: React.FC<ReportTopBarProps> = ({
           <button
             className={`px-2 py-0.5 text-[11px] rounded transition-colors ${
               uiScale === 'A+'
-                ? 'font-semibold text-indigo-600 bg-white shadow-xs'
+                ? 'font-semibold text-[#0F5132] bg-white shadow-xs'
                 : 'font-medium text-slate-600 hover:text-slate-900'
             }`}
             onClick={() => onSetUiScale('A+')}

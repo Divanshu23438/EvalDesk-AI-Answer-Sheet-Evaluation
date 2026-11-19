@@ -79,7 +79,7 @@ export const ReferenceCard: React.FC<ReferenceCardProps> = ({
       {/* Header */}
       <div className="px-3 py-2 bg-[var(--surface-canvas)] border-b border-[var(--surface-border)] flex items-center justify-between gap-2 shrink-0">
         <div className="flex items-center gap-2">
-          <BookOpen className="w-3.5 h-3.5 text-[var(--accent-indigo)]" />
+          <BookOpen className="w-3.5 h-3.5 text-[var(--brand-primary)]" />
           <h4 className="text-xs font-semibold text-[var(--ink-primary)] uppercase tracking-wider">
             2. Reference
           </h4>
@@ -106,7 +106,7 @@ export const ReferenceCard: React.FC<ReferenceCardProps> = ({
           <button
             type="button"
             onClick={handleOpenDrawer}
-            className="p-1 rounded text-[var(--ink-muted)] hover:text-[var(--accent-indigo)] hover:bg-[var(--surface-subtle)] transition"
+            className="p-1 rounded text-[var(--ink-muted)] hover:text-[var(--brand-primary)] hover:bg-[var(--surface-subtle)] transition"
             title="Edit question reference"
           >
             <Edit2 className="w-3.5 h-3.5" />
@@ -183,7 +183,7 @@ export const ReferenceCard: React.FC<ReferenceCardProps> = ({
                     <span>
                       {idx + 1}. {kp.point}
                     </span>
-                    <span className="tabular-nums font-bold text-[var(--accent-indigo)] shrink-0">
+                    <span className="tabular-nums font-bold text-[var(--brand-primary)] shrink-0">
                       +{kp.marks}M
                     </span>
                   </div>
@@ -234,7 +234,7 @@ export const ReferenceCard: React.FC<ReferenceCardProps> = ({
                   type="text"
                   value={editCorrectOption}
                   onChange={(e) => setEditCorrectOption(e.target.value)}
-                  className="p-2 text-xs font-mono rounded border border-[var(--surface-border)] bg-[var(--surface-bg)] text-[var(--ink-primary)] focus:outline-none focus:border-[var(--accent-indigo)]"
+                  className="p-2 text-xs font-mono rounded border border-[var(--surface-border)] bg-[var(--surface-bg)] text-[var(--ink-primary)] focus:outline-none focus:border-[var(--brand-primary)]"
                   placeholder="e.g. Operating system / B / 1"
                 />
               </div>
@@ -245,7 +245,7 @@ export const ReferenceCard: React.FC<ReferenceCardProps> = ({
             <textarea
               value={editModelAnswer}
               onChange={(e) => setEditModelAnswer(e.target.value)}
-              className="flex-1 p-2 text-xs font-mono rounded border border-[var(--surface-border)] bg-[var(--surface-bg)] text-[var(--ink-primary)] resize-none focus:outline-none focus:border-[var(--accent-indigo)]"
+              className="flex-1 p-2 text-xs font-mono rounded border border-[var(--surface-border)] bg-[var(--surface-bg)] text-[var(--ink-primary)] resize-none focus:outline-none focus:border-[var(--brand-primary)]"
               placeholder="Enter model reference answer..."
             />
             <p className="text-[10px] text-[var(--status-flagged)]">
@@ -265,7 +265,7 @@ export const ReferenceCard: React.FC<ReferenceCardProps> = ({
               type="button"
               onClick={handleSaveReference}
               disabled={isSaving}
-              className="px-3 py-1.5 text-xs font-semibold rounded bg-[var(--accent-indigo)] text-white hover:bg-[var(--accent-indigo-hover)] disabled:opacity-50 transition flex items-center gap-1.5"
+              className="px-3 py-1.5 text-xs font-semibold rounded bg-[var(--brand-primary)] text-white hover:bg-[var(--brand-primary-hover)] disabled:opacity-50 transition flex items-center gap-1.5"
             >
               <Check className="w-3.5 h-3.5" />
               {isSaving ? 'Saving...' : 'Save Reference'}

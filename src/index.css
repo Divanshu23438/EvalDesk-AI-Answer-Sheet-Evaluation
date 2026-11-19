@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
 @import "tailwindcss";
 
 html,
@@ -15,7 +16,34 @@ body,
 }
 
 :root {
-  /* 4px spacing scale */
+  /* Academic Palette */
+  --bg-canvas: #F6F7F5;
+  --surface-card: #FFFFFF;
+  --surface-card-border: #E2E8E4;
+  --surface-muted: #F1F4F2;
+  --brand-primary: #0F5132;
+  --brand-primary-hover: #0B3D26;
+  --brand-tint: #E8F3EE;
+  --accent-teal: #0D9488;
+  --amber-status: #D97706;
+  --amber-status-bg: #FEF3C7;
+  --rose-status: #E11D48;
+  --rose-status-bg: #FFE4E6;
+  --ink-heading: #111827;
+  --ink-body: #4B5563;
+  --font-display: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --card-radius: 20px;
+  --card-shadow: 0 4px 16px rgba(17, 24, 39, 0.04);
+  --card-border: 1px solid #E2E8E4;
+
+  /* Legacy variable mappings to Academic Palette */
+  --accent-indigo: #0F5132;
+  --accent-indigo-hover: #0B3D26;
+  --accent-indigo-subtle: #E8F3EE;
+  --accent-indigo-border: #C8E3D5;
+  --surface-bg: #F6F7F5;
+  /* Keep spacing and motion vars */
   --space-0: 0px;
   --space-1: 4px;
   --space-2: 8px;
@@ -27,78 +55,15 @@ body,
   --space-8: 32px;
   --space-10: 40px;
   --space-12: 48px;
-
-  /* Typography */
-  --font-sans: 'Noto Sans', 'Noto Sans Devanagari', system-ui, -apple-system, sans-serif;
-  --font-display: 'Plus Jakarta Sans', var(--font-sans);
-  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
-
-  /* Palette: Light Slate Surfaces (Google Stitch Aesthetic) */
-  --surface-bg: #f8fafc;
-  --surface-canvas: #f8fafc;
-  --surface-card: #ffffff;
-  --surface-panel: #ffffff;
-  --surface-subtle: #f1f5f9;
-  --surface-hover: #f1f5f9;
-  --surface-active: #e2e8f0;
-  --surface-border: #e2e8f0;
-  --surface-border-subtle: #f1f5f9;
-
-  /* Typography colors */
-  --ink-primary: #0f172a;
-  --ink-secondary: #475569;
-  --ink-muted: #94a3b8;
-  --ink-faint: #cbd5e1;
-  --ink-inverse: #ffffff;
-
-  /* Accent: Indigo */
-  --accent-indigo: #4f46e5;
-  --accent-indigo-hover: #4338ca;
-  --accent-indigo-subtle: #eef2ff;
-  --accent-indigo-border: #c7d2fe;
-
-  /* Status Colors */
-  --status-approved: #047857;
-  --status-approved-bg: #ecfdf5;
-  --status-approved-border: #a7f3d0;
-  --status-approved-dot: #10b981;
-
-  --status-flagged: #b45309;
-  --status-flagged-bg: #fffbeb;
-  --status-flagged-border: #fde68a;
-  --status-flagged-dot: #f59e0b;
-
-  --status-failed: #b91c1c;
-  --status-failed-bg: #fef2f2;
-  --status-failed-border: #fecdd3;
-  --status-failed-dot: #ef4444;
-
-  --status-pending: #475569;
-  --status-pending-bg: #f1f5f9;
-  --status-pending-border: #cbd5e1;
-  --status-pending-dot: #64748b;
-
-  /* Elevation & Shape */
-  --radius-xs: 4px;
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
-  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
-  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
-
-  /* Motion */
   --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-normal: 200ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-slow: 250ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 body {
-  font-family: var(--font-sans);
-  background-color: var(--surface-bg);
-  color: var(--ink-primary);
+  font-family: var(--font-display);
+  background-color: var(--bg-canvas);
+  color: var(--ink-heading);
   line-height: 1.45;
   font-size: 14px;
 }
@@ -111,7 +76,7 @@ body {
   width: 100vw;
   overflow: hidden;
   position: relative;
-  background-color: var(--surface-bg);
+  background-color: var(--bg-canvas);
 }
 
 /* Inner Panels: Only inner containers may scroll */
@@ -127,7 +92,7 @@ body {
 
 /* Focus outline accessibility */
 :focus-visible {
-  outline: 2px solid var(--accent-indigo);
+  outline: 2px solid var(--brand-primary);
   outline-offset: 1px;
 }
 
@@ -167,8 +132,8 @@ body {
   left: 0;
   right: 0;
   height: 3px;
-  background: linear-gradient(90deg, transparent 0%, var(--accent-indigo) 50%, transparent 100%);
-  box-shadow: 0 0 10px var(--accent-indigo);
+  background: linear-gradient(90deg, transparent 0%, var(--brand-primary) 50%, transparent 100%);
+  box-shadow: 0 0 10px var(--brand-primary);
   animation: scanline 1.6s ease-in-out infinite;
 }
 
@@ -185,3 +150,40 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
+  }
+  html, body, #root {
+    height: auto !important;
+    overflow: visible !important;
+    background: #FFFFFF !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  .app-shell, .app-main {
+    display: block !important;
+    height: auto !important;
+    width: 100% !important;
+    overflow: visible !important;
+  }
+  aside,
+  header,
+  .print\:hidden {
+    display: none !important;
+  }
+  .print-front-sheet {
+    break-after: page;
+    page-break-after: always;
+  }
+  .print-back-sheet {
+    display: block !important;
+    break-inside: avoid;
+  }
+  [style*="rotateY"] {
+    transform: none !important;
+  }
+}
+

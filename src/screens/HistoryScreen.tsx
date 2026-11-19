@@ -96,18 +96,18 @@ export const HistoryScreen: React.FC = () => {
     selectedStatus !== 'all';
 
   return (
-    <div className="h-full flex flex-col bg-slate-50 overflow-y-auto p-4 md:p-6 space-y-5">
+    <div className="h-full flex flex-col bg-[#F6F7F5] overflow-y-auto p-4 md:p-6 space-y-5">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white border border-[#E2E8E4] rounded-[20px] p-5 shadow-[0_4px_16px_rgba(17,24,39,0.04)]">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-            <History className="w-5 h-5 text-indigo-600" />
+          <h1 className="text-xl font-bold text-[#111827] tracking-tight flex items-center gap-2">
+            <History className="w-5 h-5 text-[#0F5132]" />
             <span>Evaluation History</span>
             <span className="text-[11px] font-semibold uppercase px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 font-mono">
               {data.sheets.length} Records
             </span>
           </h1>
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="text-xs text-[#4B5563] mt-1">
             Search, filter, and inspect past answer sheets across subjects, exams, and classes.
           </p>
         </div>
@@ -115,7 +115,7 @@ export const HistoryScreen: React.FC = () => {
         <button
           type="button"
           onClick={() => store.setStep('upload')}
-          className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-xs transition-all cursor-pointer self-start sm:self-auto"
+          className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#0F5132] hover:bg-[#0B3D26] text-white text-xs font-semibold shadow-xs transition-all cursor-pointer self-start sm:self-auto"
         >
           <FileCheck2 className="w-4 h-4" />
           <span>New Evaluation</span>
@@ -123,10 +123,10 @@ export const HistoryScreen: React.FC = () => {
       </div>
 
       {/* Teacher Filter Toolbar */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-3.5">
+      <div className="bg-white border border-[#E2E8E4] rounded-[20px] p-4 shadow-2xs space-y-3.5">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
-            <Filter className="w-3.5 h-3.5 text-indigo-600" />
+          <div className="flex items-center gap-1.5 text-xs font-bold text-[#111827]">
+            <Filter className="w-3.5 h-3.5 text-[#0F5132]" />
             <span>Teacher Filters</span>
           </div>
 
@@ -151,7 +151,7 @@ export const HistoryScreen: React.FC = () => {
             <select
               value={selectedSubject}
               onChange={(e) => setSelectedSubject(e.target.value)}
-              className="w-full h-9 text-xs bg-slate-50 border border-slate-200 rounded-xl px-2.5 text-slate-800 font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-none cursor-pointer"
+              className="w-full h-9 text-xs bg-slate-50 border border-slate-200 rounded-xl px-2.5 text-slate-800 font-medium focus:ring-2 focus:ring-[#0F5132] focus:outline-none cursor-pointer"
             >
               <option value="all">All Subjects</option>
               {data.subjects.map((sub) => (
@@ -170,7 +170,7 @@ export const HistoryScreen: React.FC = () => {
             <select
               value={selectedExam}
               onChange={(e) => setSelectedExam(e.target.value)}
-              className="w-full h-9 text-xs bg-slate-50 border border-slate-200 rounded-xl px-2.5 text-slate-800 font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-none cursor-pointer"
+              className="w-full h-9 text-xs bg-slate-50 border border-slate-200 rounded-xl px-2.5 text-slate-800 font-medium focus:ring-2 focus:ring-[#0F5132] focus:outline-none cursor-pointer"
             >
               <option value="all">All Exams</option>
               {data.exams.map((ex) => (
@@ -193,7 +193,7 @@ export const HistoryScreen: React.FC = () => {
                 value={studentSearch}
                 onChange={(e) => setStudentSearch(e.target.value)}
                 onBlur={fetchHistory}
-                className="w-full h-9 text-xs bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-7 text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                className="w-full h-9 text-xs bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-7 text-slate-800 focus:ring-2 focus:ring-[#0F5132] focus:outline-none"
               />
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
               {studentSearch && (
@@ -223,7 +223,7 @@ export const HistoryScreen: React.FC = () => {
                 value={rollSearch}
                 onChange={(e) => setRollSearch(e.target.value)}
                 onBlur={fetchHistory}
-                className="w-full h-9 text-xs font-mono bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-7 text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                className="w-full h-9 text-xs font-mono bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-7 text-slate-800 focus:ring-2 focus:ring-[#0F5132] focus:outline-none"
               />
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
               {rollSearch && (
@@ -252,7 +252,7 @@ export const HistoryScreen: React.FC = () => {
               onClick={() => setSelectedStatus(st)}
               className={`px-3 py-1 rounded-full text-xs font-semibold transition cursor-pointer ${
                 selectedStatus === st
-                  ? 'bg-indigo-600 text-white shadow-2xs'
+                  ? 'bg-[#E8F3EE] text-[#0F5132] border border-[#0F5132]/20 shadow-2xs'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
@@ -263,10 +263,10 @@ export const HistoryScreen: React.FC = () => {
       </div>
 
       {/* Evaluated Sheets Table */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs">
+      <div className="bg-white border border-[#E2E8E4] rounded-[20px] p-5 shadow-2xs">
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-16 space-y-3">
-            <div className="w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+            <div className="w-6 h-6 border-2 border-[#0F5132] border-t-transparent rounded-full animate-spin" />
             <span className="text-xs font-mono text-slate-500">Loading sheets history...</span>
           </div>
         ) : error ? (
@@ -274,14 +274,21 @@ export const HistoryScreen: React.FC = () => {
             {error}
           </div>
         ) : data.sheets.length === 0 ? (
-          <div className="py-16 text-center text-slate-400 text-xs">
-            No answer sheets match the selected filters.
+          <div className="py-16 text-center space-y-4">
+            <p className="text-slate-400 text-xs">No answer sheets match the selected filters.</p>
+            <a
+              href="#/upload"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#0F5132] hover:bg-[#0B3D26] text-white text-xs font-semibold shadow-xs transition-all"
+            >
+              <FileCheck2 className="w-4 h-4" />
+              <span>+ Evaluate New Sheets</span>
+            </a>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead>
-                <tr className="border-b border-slate-200 text-slate-500 font-semibold uppercase text-[10px] tracking-wider">
+                <tr className="border-b border-[#E2E8E4] bg-[#F1F4F2] text-slate-500 font-semibold uppercase text-[10px] tracking-wider">
                   <th className="py-2.5 px-3">Roll No.</th>
                   <th className="py-2.5 px-3">Student Name</th>
                   <th className="py-2.5 px-3">Class</th>
@@ -313,7 +320,7 @@ export const HistoryScreen: React.FC = () => {
                     <td className="py-3 px-3 text-center font-mono font-semibold text-slate-800">
                       {sh.score} / {sh.max_marks}
                     </td>
-                    <td className="py-3 px-3 text-center font-mono font-bold text-indigo-600">
+                    <td className="py-3 px-3 text-center font-mono font-bold text-[#0F5132] tabular-nums">
                       {sh.percentage}%
                     </td>
                     <td className="py-3 px-3 text-center font-mono font-bold text-slate-700">
@@ -355,9 +362,10 @@ export const HistoryScreen: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => store.setStep('report', sh.id)}
-                          className="px-2.5 py-1 rounded bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold border border-indigo-200 transition cursor-pointer flex items-center gap-1"
+                          className="px-2.5 py-1 rounded bg-[#E8F3EE] hover:bg-[#E8F3EE]/80 text-[#0F5132] text-xs font-semibold border border-[#0F5132]/20 transition cursor-pointer flex items-center gap-1"
+                          title="View Student Marksheet"
                         >
-                          <span>Report</span>
+                          <span>Marksheet</span>
                           <ExternalLink className="w-2.5 h-2.5" />
                         </button>
                       </div>

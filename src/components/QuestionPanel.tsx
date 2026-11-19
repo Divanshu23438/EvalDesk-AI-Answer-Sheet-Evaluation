@@ -83,7 +83,7 @@ export const QuestionPanel: React.FC<QuestionPanelProps> = ({
             type="button"
             data-testid="expand-question-panel"
             onClick={onToggleCollapse}
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer"
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:text-[#0F5132] hover:bg-[#E8F3EE] transition-colors cursor-pointer"
             title="Expand question panel"
             aria-label="Expand question panel"
           >
@@ -102,7 +102,7 @@ export const QuestionPanel: React.FC<QuestionPanelProps> = ({
                 : status === 'flagged' || status === 'failed'
                 ? 'bg-amber-500 text-white'
                 : 'bg-slate-100 text-slate-700 hover:bg-slate-200';
-            const activeRing = isActive ? 'ring-2 ring-indigo-600 ring-offset-1' : '';
+            const activeRing = isActive ? 'ring-2 ring-[#0F5132] ring-offset-1' : '';
             const marksText = `${q.final_marks !== undefined ? q.final_marks : q.ai_marks} / ${q.max_marks}`;
 
             return (
@@ -158,7 +158,7 @@ export const QuestionPanel: React.FC<QuestionPanelProps> = ({
           onClick={() => setFilter('all')}
           className={`flex-1 py-1 px-1.5 text-[11px] font-semibold rounded-md transition text-center ${
             filter === 'all'
-              ? 'bg-white text-indigo-700 shadow-xs border border-indigo-100'
+              ? 'bg-white text-[#0B3D26] shadow-xs border border-[#E8F3EE]'
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
           }`}
         >
@@ -213,7 +213,7 @@ export const QuestionPanel: React.FC<QuestionPanelProps> = ({
                 onClick={() => onSelectQuestion(key)}
                 className={`w-full p-2.5 rounded-lg border text-left transition flex items-center justify-between gap-2 ${
                   isActive
-                    ? 'border-indigo-500 bg-indigo-50/40 ring-1 ring-indigo-300'
+                    ? 'border-[#0F5132] bg-[#E8F3EE]/40 ring-1 ring-[#0F5132]/30'
                     : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60'
                 }`}
               >
@@ -238,7 +238,7 @@ export const QuestionPanel: React.FC<QuestionPanelProps> = ({
                       </span>
                       {hasOverride && (
                         <span
-                          className="px-1 py-0.2 rounded text-[9px] font-mono font-bold bg-purple-100 text-purple-700"
+                          className="px-1 py-0.2 rounded text-[9px] font-mono font-bold bg-[#E8F3EE] text-[#0B3D26]"
                           title={`Strictness Override: Level ${overrideLevel}/5`}
                         >
                           S.{overrideLevel}
