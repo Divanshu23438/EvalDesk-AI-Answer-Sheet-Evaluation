@@ -116,7 +116,7 @@ export default function App() {
     const first = cleanHash.split('/').filter(Boolean)[0] || '';
     if (first === 'dashboard' || first === 'login') return 'dashboard';
     if (first === 'history') return 'history';
-    if (first === 'reports') return 'reports';
+    if (first === 'reports' || first === 'report-card') return 'reports';
     if (first === 'evaluate') return 'evaluate';
     if (first === 'report') return 'report';
     if (first === 'guide') return 'guide';
@@ -143,7 +143,7 @@ export default function App() {
       targetStep = 'dashboard';
     } else if (stepPart === 'history') {
       targetStep = 'history';
-    } else if (stepPart === 'reports') {
+    } else if (stepPart === 'reports' || stepPart === 'report-card') {
       targetStep = 'reports';
     } else if (stepPart === 'evaluate') {
       targetStep = 'evaluate';

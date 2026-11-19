@@ -8,7 +8,7 @@ function getInitialStep(): AppStep {
   const stepPart = rawHash.split('/').filter(Boolean)[0] || '';
   if (stepPart === 'dashboard' || stepPart === 'login') return 'dashboard';
   if (stepPart === 'history') return 'history';
-  if (stepPart === 'reports') return 'reports';
+  if (stepPart === 'reports' || stepPart === 'report-card') return 'reports';
   if (stepPart === 'evaluate') return 'evaluate';
   if (stepPart === 'report') return 'report';
   if (stepPart === 'guide') return 'guide';
@@ -201,7 +201,7 @@ export const sheetStore = {
       resolvedStep = 'dashboard';
     } else if (stepPart === 'history') {
       resolvedStep = 'history';
-    } else if (stepPart === 'reports') {
+    } else if (stepPart === 'reports' || stepPart === 'report-card') {
       resolvedStep = 'reports';
     } else if (stepPart === 'evaluate') {
       resolvedStep = 'evaluate';

@@ -1,7 +1,32 @@
 # STATUS (update at the end of every session)
 Date / author (agent or model name): 2026-11-19 / Antigravity (Gemini 3.8 Flash)
-Current phase and task: Restored Previous Student Report Layout Across Both Report Routes (#/report/:sheetId and #/reports).
+Current phase and task: Report Card Section Renaming, Live Student Search, and Theme Toggle System Complete & Verified 100%.
 Done (task id, commit, proof file):
+- Report Card Renaming, Live Student Search & Global Dark/Light Mode Toggle Integration (`src/components/AppSidebar.tsx`, `src/App.tsx`, `src/state/useSheetStore.ts`, `src/screens/ReportsCenterScreen.tsx`, `src/components/StudentReportView.tsx`, `src/screens/HomeScreen.tsx`, `src/index.css`):
+  1. Navigation Renamed to "Report Card":
+     - In `src/components/AppSidebar.tsx`, renamed navigation item to `"Report Card"` (linking to `#/reports`).
+     - Added URL route aliasing in `src/App.tsx` and `src/state/useSheetStore.ts`: `#/report-card` automatically maps to the Report Card section (`reports` step).
+     - Strict sidebar active state separation:
+       - **Evaluate Sheets** (`#/upload`) is active on `#/upload`, `#/evaluate/:sheetId`, and `#/report/:sheetId` (Step 3 of evaluation).
+       - **Report Card** (`#/reports`) highlights exclusively on `#/reports` and `#/report-card`.
+  2. Student Search + View & Download Report Card (`src/screens/ReportsCenterScreen.tsx`):
+     - Pure single-student report view with zero duplicate stepper bars or stacked report sections.
+     - Compact top search and filter bar:
+       - Live search input (`placeholder="Search student by name or roll number..."`) with instant clear (`✕`) button, filtering candidate records from `GET /api/sheets/history`.
+       - `Exam / Subject` filter dropdown populated dynamically from `GET /api/papers` with `"All Exams"`.
+       - Clickable student dropdown selector + horizontally scrollable quick-select student result pills (`{student_name} · {roll_number} · {score}/{max_marks} ({grade})`).
+       - Primary action CTAs: **`Download Report Card PDF`** (`GET /api/sheets/{selectedSheetId}/export/pdf`), **`Print Report Card`** (`window.print()`), and optional **`Export Class Excel (.xlsx)`** (`GET /api/papers/{paperId}/export/excel`).
+     - Directly embeds `<StudentReportView sheetId={selectedSheetId} />` below the filter bar for immediate preview and interaction.
+     - Clean empty state with `"+ Evaluate Answer Sheets"` when SQLite contains 0 evaluated sheets.
+  3. Dark Mode Toggle in Sidebar and Navbar:
+     - **Sidebar (`src/components/AppSidebar.tsx`):** Added a crisp `Sun` / `Moon` toggle button with `"Dark Mode"` / `"Light Mode"` label in `w-64` mode, collapsing cleanly to an icon button in `w-20` mode.
+     - **Home Navbar (`src/screens/HomeScreen.tsx`):** Added matching `Sun` / `Moon` icon toggle button next to Login and Sign Up.
+     - Class-based theme toggle adds/removes `.dark` on `document.documentElement`, persisted in `localStorage` (`evaldesk_theme`), with smooth cross-tab sync.
+     - Consistent matte graphite palette across all screens (`#F6F7F5` / `#111312`, `#181B19`, `#202422`, `#0F5132` / `#1F6E4A`), with `@media print` white paper override (`#FFFFFF` background, `#111827` ink, `#E2E8E4` borders).
+  4. Verification:
+     - `npx tsc --noEmit`: 0 errors.
+     - `python scripts/check_all.py`: `RESULT: ALL PASS`.
+     - Automated Playwright browser verification: verified sidebar label "Report Card", route navigation, `#/report-card` alias, student live search, report card download button, and navbar/sidebar theme toggle switching and persistence across page reloads.
 - Restored Previous Student Report Layout Across Both Report Sections (`src/components/StudentReportView.tsx`, `src/screens/ReportScreen.tsx`, `src/screens/ReportsCenterScreen.tsx`, `src/App.tsx`, `src/components/AppSidebar.tsx`, `src/components/report/ReportAnalyticsTab.tsx`, `src/components/report/ReportBookletPreview.tsx`, `src/components/report/ReportBottomBar.tsx`, `src/components/report/ReportOverviewTab.tsx`, `src/components/report/ReportQuestionTab.tsx`, `src/components/report/ReportTopBar.tsx`):
   1. Shared Student Report Component (`src/components/StudentReportView.tsx`):
      - Restored the full two-pane resizable report view from git history: Answer Booklet preview on left (`ReportBookletPreview`), draggable col-resize divider (persisted split ratio in `evaldesk_report_split_ratio`), and tabbed panel on right.

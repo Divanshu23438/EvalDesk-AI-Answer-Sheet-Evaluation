@@ -111,7 +111,7 @@ export const AppSidebar: React.FC = () => {
     },
     {
       id: 'reports',
-      label: 'Reports',
+      label: 'Report Card',
       icon: FileSpreadsheet,
       path: '#/reports',
       isActive: state.step === 'reports',
@@ -283,7 +283,8 @@ export const AppSidebar: React.FC = () => {
             type="button"
             onClick={toggleTheme}
             className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-medium text-[#4B5563] dark:text-[#969E9A] hover:bg-[#F1F4F2] dark:hover:bg-[#202422] hover:text-[#111827] dark:hover:text-[#ECEEED] transition-colors cursor-pointer border border-transparent hover:border-[#E2E8E4] dark:hover:border-[#2F3532]"
-            title={theme === 'dark' ? 'Switch to Light appearance' : 'Switch to Dark appearance'}
+            title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            aria-label="Toggle theme appearance"
           >
             <div className="flex items-center gap-2">
               {theme === 'dark' ? (
@@ -291,7 +292,7 @@ export const AppSidebar: React.FC = () => {
               ) : (
                 <Moon className="w-3.5 h-3.5 text-[#4B5563]" />
               )}
-              <span>{theme === 'dark' ? 'Light appearance' : 'Dark appearance'}</span>
+              <span>{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
             </div>
             <span className="text-[10px] font-mono uppercase tracking-wider text-[#6B7280] dark:text-[#68706C]">
               {theme === 'dark' ? 'Dark' : 'Light'}
@@ -304,7 +305,7 @@ export const AppSidebar: React.FC = () => {
             type="button"
             onClick={toggleTheme}
             className="w-10 h-8 flex items-center justify-center rounded-xl text-[#4B5563] dark:text-[#969E9A] hover:bg-[#F1F4F2] dark:hover:bg-[#202422] hover:text-[#111827] dark:hover:text-[#ECEEED] transition-colors cursor-pointer border border-transparent hover:border-[#E2E8E4] dark:hover:border-[#2F3532]"
-            title={theme === 'dark' ? 'Light appearance' : 'Dark appearance'}
+            title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
             aria-label="Toggle theme appearance"
           >
             {theme === 'dark' ? (

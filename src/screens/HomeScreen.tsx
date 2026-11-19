@@ -691,7 +691,7 @@ export const HomeScreen: React.FC = () => {
               type="button"
               onClick={toggleTheme}
               className="w-9 h-9 rounded-lg flex items-center justify-center text-[#4B5563] dark:text-[#969E9A] hover:bg-[#EAEEF5] dark:hover:bg-[#202422] hover:text-[#111827] dark:hover:text-[#ECEEED] transition cursor-pointer border border-transparent hover:border-[#E2E8E4] dark:hover:border-[#2F3532]"
-              title={theme === 'dark' ? 'Switch to Light appearance' : 'Switch to Dark appearance'}
+              title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
               aria-label="Toggle theme appearance"
             >
               {theme === 'dark' ? (
