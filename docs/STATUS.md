@@ -1,7 +1,40 @@
 # STATUS (update at the end of every session)
-Date / author (agent or model name): 2026-11-18 / Antigravity (Gemini 3.8 Flash)
-Current phase and task: App Layout Shell, Hash Routing inside <main>, Inline ErrorBoundary, Undefined Property Hardening, and Multi-Route Visual Verification complete and verified.
+Date / author (agent or model name): 2026-11-19 / Antigravity (Gemini 3.8 Flash)
+Current phase and task: Dedicated Teacher Guide & FAQ Screen (#/guide), Emerald & Porcelain Aesthetic, Interactive User Manual, FAQ Accordion with Chapter Cross-Linking, and Sidebar Integration complete and verified.
 Done (task id, commit, proof file):
+- Dedicated Teacher Guide & FAQ Screen & AppSidebar Integration (`src/screens/GuideScreen.tsx`, `src/components/AppSidebar.tsx`, `src/App.tsx`, `src/state/useSheetStore.ts`, `scripts/verify_guide_screen.py`, `scripts/verify_all_routes.py`, `docs/proof/ui/guide/`):
+  1. Emerald & Porcelain Layout Architecture & Tokens (`src/screens/GuideScreen.tsx`):
+     - Created `GuideScreen.tsx` at route `#/guide` conforming to the unified Emerald & Porcelain theme tokens.
+     - Canvas background `#F6F7F5`, bento cards with `#FFFFFF` background, `1px solid #E2E8E4` border, `rounded-[20px]`, and subtle elevation `shadow-[0_4px_16px_rgba(17,24,39,0.04)]`.
+     - Deep Forest Emerald `#0F5132` (hover `#0B3D26`) and soft mint `#E8F3EE` for badges, active states, and callout blocks.
+     - Typography pairing: `Plus Jakarta Sans` for titles and body, with `JetBrains Mono` for keyboard shortcuts, confidence badges, and score criteria.
+  2. Top Header & Unified Search Bento Bar (`GuideScreen.tsx`):
+     - Left: Title `"Teacher User Manual & FAQ Guide"` with documentation pill badge and subtitle explaining end-to-end exam lifecycle.
+     - Right: Unified live search input (`placeholder="Search manual chapters or FAQs..."`) dynamically filtering chapters and FAQs in real time, plus a reading progress badge (`"{completedCount} of 5 Chapters Read"`) persisted in `localStorage` key `evaldesk_guide_read`.
+  3. Interactive 8-Column Center User Manual (`GuideScreen.tsx`):
+     - Horizontal scrollable pill strip for 5 structured chapters:
+       1. `01. Exam Setup & Auto-Fetch`
+       2. `02. Booklet Upload & Identity`
+       3. `03. 1–5 Strictness Levels`
+       4. `04. Split-Screen Evaluation`
+       5. `05. Bento Marksheets & Exports`
+     - Active Manual Reader Card with chapter badge, read time estimate, `"Mark as Learned ✓"` toggle button, and numbered step-by-step instructions (`1, 2, 3...`) with practical teacher tips in soft `#E8F3EE` mint callouts.
+     - Chapter 03 includes a full Level 1 to 5 (`Lenient`, `Mild`, `Balanced`, `Rigorous`, `Exact`) strictness comparison matrix explaining partial credit scoring rules and recommended assessment contexts.
+     - Chapter 04 includes an OCR Confidence Calibration bento (`>=85%` Verified vs `<85%` Needs Review) and a Speed Keyboard Shortcuts card (`A`, `F`, `R`, `← / →`, `[`, `?`).
+     - Bottom chapter navigation footer with `"← Previous Chapter"`, `"Next Chapter →"`, and contextual direct action CTA (`#/upload`, `#/history`, `#/reports`).
+  4. 4-Column Sticky Common FAQs Panel (`GuideScreen.tsx`):
+     - Sticky right sidebar with category filter pills (`All`, `OCR & Scans`, `Scoring`, `Reports`) and 10 realistic teacher FAQs.
+     - Smooth accordion toggling with rotating chevron icons.
+     - Includes direct cross-link buttons inside expanded answers (`"Learn more in Chapter XX →"`) that automatically switch the active center manual chapter and smoothly scroll it into view.
+  5. Persistent Navigation Sidebar Integration (`src/components/AppSidebar.tsx` & `src/App.tsx`):
+     - Added `Guide` navigation item (`#/guide`, `BookOpen` icon) below `Reports` in `AppSidebar.tsx`.
+     - Works across expanded `w-64` and collapsed `w-20` sidebar states, highlighting with `bg-[#E8F3EE] text-[#0F5132] font-semibold`.
+     - Registered `guide` route in `AppStep` (`src/state/useSheetStore.ts`) and hash dispatcher in `src/App.tsx`.
+  6. Comprehensive Verification:
+     - Automated Playwright verification (`scripts/verify_guide_screen.py`) validated all 9 interaction flows (sidebar active item, chapter switching, strictness comparison matrix, keyboard shortcuts bento, mark as learned toggle, FAQ category filtering and expansion, cross-link jumping to Chapter 02, real-time search, and sidebar collapse/expand).
+     - Captured 7 proof screenshots in `docs/proof/ui/guide/`.
+     - Multi-route verification (`scripts/verify_all_routes.py`) verified all primary application routes with zero runtime console errors.
+     - `npx tsc --noEmit` and `python scripts/check_all.py` pass with `RESULT: ALL PASS`. | docs/proof/ui/guide/
 - App Layout Shell, Consistent Hash Routing inside `<main>`, Inline ErrorBoundary & Screen Hardening (`src/App.tsx`, `src/state/useSheetStore.ts`, `src/screens/UploadScreen.tsx`, `src/screens/EvaluateScreen.tsx`, `src/components/PaperDetailsForm.tsx`, `src/components/QueueRow.tsx`, `scripts/verify_all_routes.py`, `docs/proof/ui/routes/`):
   1. Root Route Rendering & Viewport Shell (`src/App.tsx`):
      - Restructured `src/App.tsx` into the persistent outer layout shell `<div className="flex h-screen w-screen overflow-hidden bg-slate-50 font-sans select-none">`.

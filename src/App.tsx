@@ -10,6 +10,7 @@ import { EvaluateScreen } from './screens/EvaluateScreen';
 import { ReportScreen } from './screens/ReportScreen';
 import { HistoryScreen } from './screens/HistoryScreen';
 import { ReportsCenterScreen } from './screens/ReportsCenterScreen';
+import { GuideScreen } from './screens/GuideScreen';
 import { HomeScreen } from './screens/HomeScreen';
 import {
   FileText,
@@ -116,6 +117,7 @@ export default function App() {
     if (first === 'dashboard' || first === 'login') return 'dashboard';
     if (first === 'history') return 'history';
     if (first === 'reports') return 'reports';
+    if (first === 'guide') return 'guide';
     if (first === 'evaluate') return 'evaluate';
     if (first === 'report') return 'report';
     if (first === 'upload' || first === 'setup' || first === 'processing') return 'upload';
@@ -143,6 +145,8 @@ export default function App() {
       targetStep = 'history';
     } else if (stepPart === 'reports') {
       targetStep = 'reports';
+    } else if (stepPart === 'guide') {
+      targetStep = 'guide';
     } else if (stepPart === 'evaluate') {
       targetStep = 'evaluate';
     } else if (stepPart === 'report') {
@@ -275,7 +279,7 @@ export default function App() {
   const isEvalWorkflow = currentRoute === 'upload' || currentRoute === 'evaluate' || currentRoute === 'report';
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-slate-50 font-sans select-none">
+    <div className="flex h-screen w-screen overflow-hidden bg-[#F6F7F5] font-sans select-none">
       {/* 1. Persistent Collapsible Left Navigation Sidebar */}
       <AppSidebar />
 
@@ -283,7 +287,7 @@ export default function App() {
       <ErrorBoundary>
         <main
           ref={mainRef}
-          className="flex-1 min-w-0 h-screen overflow-y-auto bg-slate-50 flex flex-col"
+          className="flex-1 min-w-0 h-screen overflow-y-auto bg-[#F6F7F5] flex flex-col"
         >
           {/* Top evaluation workflow stepper header (for upload and evaluate) */}
           {isEvalWorkflow && currentRoute !== 'report' && (
@@ -421,6 +425,7 @@ export default function App() {
             {currentRoute === 'report' && <ReportScreen />}
             {currentRoute === 'history' && <HistoryScreen />}
             {currentRoute === 'reports' && <ReportsCenterScreen />}
+            {currentRoute === 'guide' && <GuideScreen />}
           </div>
 
           {/* 56px Bottom Action Bar (only on upload or evaluate) */}

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-export type AppStep = 'home' | 'dashboard' | 'upload' | 'evaluate' | 'report' | 'history' | 'reports';
+export type AppStep = 'home' | 'dashboard' | 'upload' | 'evaluate' | 'report' | 'history' | 'reports' | 'guide';
 
 function getInitialStep(): AppStep {
   if (typeof window === 'undefined') return 'home';
@@ -9,6 +9,7 @@ function getInitialStep(): AppStep {
   if (stepPart === 'dashboard' || stepPart === 'login') return 'dashboard';
   if (stepPart === 'history') return 'history';
   if (stepPart === 'reports') return 'reports';
+  if (stepPart === 'guide') return 'guide';
   if (stepPart === 'evaluate') return 'evaluate';
   if (stepPart === 'report') return 'report';
   if (stepPart === 'upload' || stepPart === 'setup' || stepPart === 'processing') return 'upload';
@@ -202,6 +203,8 @@ export const sheetStore = {
       resolvedStep = 'history';
     } else if (stepPart === 'reports') {
       resolvedStep = 'reports';
+    } else if (stepPart === 'guide') {
+      resolvedStep = 'guide';
     } else if (stepPart === 'evaluate') {
       resolvedStep = 'evaluate';
     } else if (stepPart === 'report') {

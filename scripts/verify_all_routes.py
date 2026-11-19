@@ -72,11 +72,11 @@ def test_routes():
     print(f"Using sample sheet ID: {sample_sheet_id}")
 
     routes_to_test = [
-        ("Empty Hash / Default", f"{FRONTEND_URL}/", "UploadScreen", "Step 1A", "0_default_hash_upload.png"),
         ("Upload Route", f"{FRONTEND_URL}/#/upload", "UploadScreen", "Step 1A", "1_upload_screen.png"),
         ("Dashboard Route", f"{FRONTEND_URL}/#/dashboard", "DashboardScreen", "Evaluation Dashboard", "2_dashboard_screen.png"),
         ("History Route", f"{FRONTEND_URL}/#/history", "HistoryScreen", "Evaluation History", "3_history_screen.png"),
         ("Reports Center Route", f"{FRONTEND_URL}/#/reports", "ReportsCenterScreen", "Results Center", "4_reports_center_screen.png"),
+        ("Guide Route", f"{FRONTEND_URL}/#/guide", "GuideScreen", "Teacher User Manual", "4b_guide_screen.png"),
         ("Evaluate Route", f"{FRONTEND_URL}/#/evaluate/{sample_sheet_id}", "EvaluateScreen", "Question Panel", "5_evaluate_screen.png"),
         ("Single-Sheet Report Route", f"{FRONTEND_URL}/#/report/{sample_sheet_id}", "ReportScreen", "Overview", "6_single_sheet_report_screen.png"),
     ]

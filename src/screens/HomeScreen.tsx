@@ -91,7 +91,7 @@ const QUESTIONS_DATA: Record<number, QuestionItem> = {
     score: '4.0',
     maxScore: '4.0',
     rubrics: [
-      { mark: '+2.0 M', desc: 'chmod 755 bitmask logic' },
+      { mark: '+2.0 M', desc: 'octal 755 bitmask logic' },
       { mark: '+2.0 M', desc: 'rwx binary octal translation' },
     ],
   },
