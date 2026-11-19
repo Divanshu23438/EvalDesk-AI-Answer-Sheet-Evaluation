@@ -58,35 +58,25 @@ export const ReportBookletPreview: React.FC<ReportBookletPreviewProps> = ({
         return {
           top: Math.max(0, Math.min(1, ymin)) * 100,
           left: Math.max(0, Math.min(1, xmin)) * 100,
-          width: Math.max(0.01, Math.min(1, xmax - xmin)) * 100,
-          height: Math.max(0.01, Math.min(1, ymax - ymin)) * 100,
+          width: Math.max(0, Math.min(1, xmax - xmin)) * 100,
+          height: Math.max(0, Math.min(1, ymax - ymin)) * 100,
         };
       }
     }
     return null;
   })();
 
-  const handleZoomIn = () => {
-    onZoomChange(Math.min(250, zoom + 15));
-  };
-
-  const handleZoomOut = () => {
-    onZoomChange(Math.max(40, zoom - 15));
-  };
-
+  const handleZoomIn = () => onZoomChange(Math.min(200, zoom + 15));
+  const handleZoomOut = () => onZoomChange(Math.max(50, zoom - 15));
   const handlePrevPage = () => {
-    if (currentPage > 1) {
-      onPageChange(currentPage - 1);
-    }
+    if (currentPage > 1) onPageChange(currentPage - 1);
   };
-
   const handleNextPage = () => {
-    if (currentPage < totalPages) {
-      onPageChange(currentPage + 1);
-    }
+    if (currentPage < totalPages) onPageChange(currentPage + 1);
   };
 
-  const imageUrl = sheetId ? `/api/sheets/${sheetId}/pages/${currentPage}/image?w=1200` : '';
+  // Image URL from FastAPI endpoint
+  const imageUrl = sheetId ? `/api/sheets/${sheetId}/pages/${currentPage}/image` : null;
 
   const matchPct = activeQuestion?.legibility
     ? Math.round(activeQuestion.legibility > 1 ? activeQuestion.legibility : activeQuestion.legibility * 100)
@@ -94,15 +84,15 @@ export const ReportBookletPreview: React.FC<ReportBookletPreviewProps> = ({
 
   return (
     <div
-      className="h-full bg-white rounded-xl border border-slate-200 shadow-xs flex flex-col overflow-hidden select-none"
+      className="h-full bg-white dark:bg-[#181B19] rounded-xl border border-[#E2E8E4] dark:border-[#2A2F2C] shadow-none flex flex-col overflow-hidden select-none"
       style={{ height: '100%', maxHeight: '100%', display: 'flex', flexDirection: 'column' }}
     >
       {/* Single-row Header (h-12) */}
-      <div className="h-12 border-b border-slate-200 px-4 flex items-center justify-between shrink-0 bg-white">
+      <div className="h-12 border-b border-[#E2E8E4] dark:border-[#2A2F2C] px-4 flex items-center justify-between shrink-0 bg-white dark:bg-[#181B19]">
         <div className="flex items-center space-x-2 min-w-0">
-          <h2 className="font-semibold text-slate-900 text-sm shrink-0">Answer Booklet Preview</h2>
+          <h2 className="font-semibold text-[#111827] dark:text-[#ECEEED] text-sm shrink-0">Answer Booklet Preview</h2>
           <span
-            className="text-xs font-mono text-slate-500 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded truncate max-w-[170px]"
+            className="text-xs font-mono text-[#6B7280] dark:text-[#68706C] bg-[#F1F4F2] dark:bg-[#202422] border border-[#E2E8E4] dark:border-[#2F3532] px-2 py-0.5 rounded truncate max-w-[170px]"
             title={filename || 'sheet.pdf'}
           >
             {filename || 'sheet.pdf'}
@@ -111,10 +101,10 @@ export const ReportBookletPreview: React.FC<ReportBookletPreviewProps> = ({
 
         {/* Minimal inline controls */}
         <div className="flex items-center space-x-2 text-xs shrink-0">
-          <div className="flex items-center space-x-1 bg-slate-50 border border-slate-200 rounded-md px-1.5 py-0.5">
+          <div className="flex items-center space-x-1 bg-[#F1F4F2] dark:bg-[#202422] border border-[#E2E8E4] dark:border-[#2F3532] rounded-md px-1.5 py-0.5">
             <button
               onClick={handleZoomOut}
-              className="p-1 hover:text-[#0F5132] text-slate-500 transition-colors cursor-pointer"
+              className="p-1 hover:text-[#0F5132] dark:hover:text-[#7CC9A3] text-[#6B7280] dark:text-[#68706C] transition-colors cursor-pointer"
               title="Zoom Out"
               type="button"
             >
@@ -122,12 +112,12 @@ export const ReportBookletPreview: React.FC<ReportBookletPreviewProps> = ({
                 <path d="M20 12H4" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
               </svg>
             </button>
-            <span className="font-mono text-[11px] font-semibold text-slate-700 px-1 tabular-nums">
+            <span className="font-mono text-[11px] font-semibold text-[#111827] dark:text-[#ECEEED] px-1 tabular-nums">
               {zoom}%
             </span>
             <button
               onClick={handleZoomIn}
-              className="p-1 hover:text-[#0F5132] text-slate-500 transition-colors cursor-pointer"
+              className="p-1 hover:text-[#0F5132] dark:hover:text-[#7CC9A3] text-[#6B7280] dark:text-[#68706C] transition-colors cursor-pointer"
               title="Zoom In"
               type="button"
             >
@@ -139,29 +129,29 @@ export const ReportBookletPreview: React.FC<ReportBookletPreviewProps> = ({
 
           <button
             onClick={onFitZoom}
-            className="px-2 py-1 rounded-md text-xs font-medium bg-slate-50 text-slate-600 hover:text-slate-900 border border-slate-200 transition-colors cursor-pointer"
+            className="px-2 py-1 rounded-md text-xs font-medium bg-[#F1F4F2] dark:bg-[#202422] text-[#4B5563] dark:text-[#969E9A] hover:text-[#111827] dark:hover:text-[#ECEEED] border border-[#E2E8E4] dark:border-[#2F3532] transition-colors cursor-pointer"
             type="button"
             title="Reset Zoom to Fit"
           >
             Fit
           </button>
 
-          <div className="flex items-center space-x-1 text-slate-600 border border-slate-200 bg-slate-50 rounded-md px-2 py-0.5 font-mono text-xs">
+          <div className="flex items-center space-x-1 text-[#4B5563] dark:text-[#969E9A] border border-[#E2E8E4] dark:border-[#2F3532] bg-[#F1F4F2] dark:bg-[#202422] rounded-md px-2 py-0.5 font-mono text-xs">
             <button
               onClick={handlePrevPage}
               disabled={currentPage <= 1}
-              className="hover:text-slate-900 p-0.5 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+              className="hover:text-[#111827] dark:hover:text-[#ECEEED] p-0.5 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
               type="button"
               title="Previous Page"
             >
               ‹
             </button>
-            <span className="font-semibold text-slate-900">Page {currentPage}</span>
-            <span className="text-slate-400">of {Math.max(1, totalPages)}</span>
+            <span className="font-semibold text-[#111827] dark:text-[#ECEEED]">Page {currentPage}</span>
+            <span className="text-slate-400 dark:text-[#68706C]">of {Math.max(1, totalPages)}</span>
             <button
               onClick={handleNextPage}
               disabled={currentPage >= totalPages}
-              className="hover:text-slate-900 p-0.5 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+              className="hover:text-[#111827] dark:hover:text-[#ECEEED] p-0.5 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
               type="button"
               title="Next Page"
             >
@@ -174,10 +164,10 @@ export const ReportBookletPreview: React.FC<ReportBookletPreviewProps> = ({
       {/* Scanned Canvas Viewport */}
       <div
         ref={containerRef}
-        className="flex-1 overflow-auto bg-[#F1F5F9] p-4 flex items-start justify-center relative min-h-0"
+        className="flex-1 overflow-auto bg-[#F6F7F5] dark:bg-[#111312] p-4 flex items-start justify-center relative min-h-0"
       >
         <div
-          className="relative transition-transform duration-150 origin-top flex flex-col items-center shadow-md bg-white rounded-sm border border-slate-300"
+          className="relative transition-transform duration-150 origin-top flex flex-col items-center shadow-none bg-white dark:bg-[#181B19] rounded-sm border border-[#E2E8E4] dark:border-[#2A2F2C]"
           style={{
             transform: `scale(${zoom / 100})`,
             width: 'fit-content',
@@ -206,7 +196,7 @@ export const ReportBookletPreview: React.FC<ReportBookletPreviewProps> = ({
                     height: `${activeBbox.height}%`,
                   }}
                 >
-                  <div className="absolute -top-3.5 right-0 bg-[#0F5132] text-white text-[9px] font-mono font-bold px-1.5 py-0.5 rounded shadow-xs tracking-wider whitespace-nowrap">
+                  <div className="absolute -top-3.5 right-0 bg-[#0F5132] text-white text-[9px] font-mono font-bold px-1.5 py-0.5 rounded shadow-none tracking-wider whitespace-nowrap">
                     ANS Q{activeQuestion?.q_no || ''} · {matchPct}% MATCH
                   </div>
                 </div>
@@ -215,7 +205,7 @@ export const ReportBookletPreview: React.FC<ReportBookletPreviewProps> = ({
           ) : (
             /* Fallback Exam Sheet Representation */
             <div
-              className="w-[500px] max-w-full bg-white shadow-xs relative rounded-sm p-6 border border-slate-300 select-text font-sans text-xs"
+              className="w-[500px] max-w-full bg-white dark:bg-[#181B19] shadow-none relative rounded-sm p-6 border border-[#E2E8E4] dark:border-[#2A2F2C] select-text font-sans text-xs"
               style={{
                 backgroundImage: 'linear-gradient(#e2e8f0 1px, transparent 1px)',
                 backgroundSize: '100% 28px',
@@ -227,22 +217,22 @@ export const ReportBookletPreview: React.FC<ReportBookletPreviewProps> = ({
               />
 
               <div className="pl-8 space-y-2">
-                <div className="flex items-center justify-between text-slate-400 font-mono text-[10px] pb-1 border-b border-slate-100">
+                <div className="flex items-center justify-between text-[#6B7280] dark:text-[#68706C] font-mono text-[10px] pb-1 border-b border-[#E2E8E4] dark:border-[#2F3532]">
                   <span>Page {currentPage} of {totalPages}</span>
                   <span>{activeQuestion ? `Question Q${activeQuestion.q_no}` : 'Answer Booklet'}</span>
                 </div>
 
                 {activeQuestion ? (
-                  <div className="p-3 bg-amber-50/60 border border-amber-200 rounded-md relative z-10">
-                    <div className="text-[10px] font-mono font-bold text-[#0B3D26] uppercase tracking-wider mb-1">
+                  <div className="p-3 bg-amber-50/60 dark:bg-[#2B2416]/60 border border-amber-200 dark:border-[#42361F] rounded-md relative z-10">
+                    <div className="text-[10px] font-mono font-bold text-[#0F5132] dark:text-[#7CC9A3] uppercase tracking-wider mb-1">
                       ANS Q{activeQuestion.q_no} · {matchPct}% OCR MATCH
                     </div>
-                    <div className="text-slate-800 text-xs font-mono whitespace-pre-wrap leading-relaxed">
+                    <div className="text-[#111827] dark:text-[#ECEEED] text-xs font-mono whitespace-pre-wrap leading-relaxed">
                       {activeQuestion.ocr_text || '(No OCR text extracted for this question)'}
                     </div>
                   </div>
                 ) : (
-                  <div className="text-slate-400 italic py-8 text-center font-mono text-xs">
+                  <div className="text-[#6B7280] dark:text-[#68706C] italic py-8 text-center font-mono text-xs">
                     Select a question from Overview or Question-wise Marks to highlight on page
                   </div>
                 )}

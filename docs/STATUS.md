@@ -1,7 +1,25 @@
 # STATUS (update at the end of every session)
 Date / author (agent or model name): 2026-11-19 / Antigravity (Gemini 3.8 Flash)
-Current phase and task: Editorial Non-Flashy Dark Mode Implementation Complete & Verified 100%.
+Current phase and task: Restored Previous Student Report Layout Across Both Report Routes (#/report/:sheetId and #/reports).
 Done (task id, commit, proof file):
+- Restored Previous Student Report Layout Across Both Report Sections (`src/components/StudentReportView.tsx`, `src/screens/ReportScreen.tsx`, `src/screens/ReportsCenterScreen.tsx`, `src/App.tsx`, `src/components/AppSidebar.tsx`, `src/components/report/ReportAnalyticsTab.tsx`, `src/components/report/ReportBookletPreview.tsx`, `src/components/report/ReportBottomBar.tsx`, `src/components/report/ReportOverviewTab.tsx`, `src/components/report/ReportQuestionTab.tsx`, `src/components/report/ReportTopBar.tsx`):
+  1. Shared Student Report Component (`src/components/StudentReportView.tsx`):
+     - Restored the full two-pane resizable report view from git history: Answer Booklet preview on left (`ReportBookletPreview`), draggable col-resize divider (persisted split ratio in `evaldesk_report_split_ratio`), and tabbed panel on right.
+     - 3 interactive tabs: Overview (`ReportOverviewTab` with KPIs, diagnostic feedback, score distribution chart, and section table), Question-wise Marks (`ReportQuestionTab` with answer comparison and rubric details), and Analytics (`ReportAnalyticsTab` with Pareto analysis, error breakdown, and mastery donut charts).
+     - Full live SQLite integration via `GET /api/sheets/{sheetId}/report`, `GET /api/sheets/{sheetId}/review`, `GET /api/papers/{paperId}/sheets`, and `GET /api/papers/{paperId}/reports`.
+     - Standardized with matte graphite dark mode tokens (`bg-[#F6F7F5] dark:bg-[#111312]`, cards `bg-white dark:bg-[#181B19] border border-[#E2E8E4] dark:border-[#2A2F2C]`, muted tiles `bg-[#F1F4F2] dark:bg-[#202422]`, active pills `bg-[#E8F3EE] dark:bg-[#1A2B23] text-[#0F5132] dark:text-[#7CC9A3]`).
+  2. Integration in Both Report Routes:
+     - Evaluation Workflow Step 3 (`#/report/:sheetId` -> `src/screens/ReportScreen.tsx`): Top workflow bar with `← Back to Evaluation`, paper/student breadcrumbs, and active `1. Upload → 2. Evaluate → 3. Report (ACTIVE)` stepper, rendering `<StudentReportView sheetId={sheetId} />` directly below.
+     - Sidebar Reports Section (`#/reports` -> `src/screens/ReportsCenterScreen.tsx`): Top control bar with Exam/Paper filter (`GET /api/papers`), Select Student dropdown (`GET /api/sheets/history`, defaulting to latest evaluated student), `Download Student Marksheet PDF` (`GET /api/sheets/{selectedSheetId}/export/pdf`), and `Export Class Excel (.xlsx)` (`GET /api/papers/{paperId}/export/excel`). Directly renders `<StudentReportView sheetId={selectedSheetId} />` below. If 0 evaluated sheets exist, shows clean empty-state card with `+ Evaluate Answer Sheets` linking to `#/upload`.
+  3. Sidebar Active State (`src/components/AppSidebar.tsx`):
+     - Highlight `Evaluate Sheets` (`#/upload`) on `#/upload`, `#/evaluate/:sheetId`, and `#/report/:sheetId`.
+     - Highlight `Reports` (`#/reports`) on `#/reports`.
+  4. Cleanup:
+     - Removed `src/components/BentoMarksheetView.tsx` and `src/screens/StudentMarksheetScreen.tsx`.
+  5. Verification:
+     - `npx tsc --noEmit`: 0 errors.
+     - `python scripts/check_all.py`: `RESULT: ALL PASS`.
+     - Playwright browser test verifying `#/report/:sheetId` and `#/reports` in light and dark mode with full tab navigation.
 - Editorial Non-Flashy Dark Mode Across EvalDesk (`src/context/ThemeContext.tsx`, `index.html`, `src/index.css`, `src/components/AppSidebar.tsx`, `src/screens/HomeScreen.tsx`, `src/screens/GuideScreen.tsx`, `src/screens/DashboardScreen.tsx`, `src/screens/UploadScreen.tsx`, `src/screens/EvaluateScreen.tsx`, `src/screens/HistoryScreen.tsx`, `src/screens/ReportsCenterScreen.tsx`, `src/screens/StudentMarksheetScreen.tsx`, `src/components/BentoMarksheetView.tsx`, `src/components/QuestionPanel.tsx`, `src/components/MarksCard.tsx`, `src/components/OcrCard.tsx`, `src/components/ReferenceCard.tsx`, `src/components/SheetImageViewer.tsx`, `src/components/StrictnessChip.tsx`, `src/components/StrictnessPicker.tsx`, `src/components/PaperDetailsForm.tsx`, `src/components/QueueRow.tsx`, `src/components/AnnotationToolbar.tsx`):
   1. Anti-AI-Slop & Editorial Matte Graphite Tokens:
      - 100% adherence to zero-AI-slop visual rules: NO glowing box-shadows, neon borders, radial gradient meshes, aurora backgrounds, or floating blurs. All workspace cards and panels are solid, opaque, and matte (`shadow-none dark:shadow-none`).

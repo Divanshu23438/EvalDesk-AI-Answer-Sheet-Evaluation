@@ -7,7 +7,7 @@ import { ActionBar } from './components/ActionBar';
 import { DashboardScreen } from './screens/DashboardScreen';
 import { UploadScreen } from './screens/UploadScreen';
 import { EvaluateScreen } from './screens/EvaluateScreen';
-import { StudentMarksheetScreen } from './screens/StudentMarksheetScreen';
+import { ReportScreen } from './screens/ReportScreen';
 import { HistoryScreen } from './screens/HistoryScreen';
 import { ReportsCenterScreen } from './screens/ReportsCenterScreen';
 import { HomeScreen } from './screens/HomeScreen';
@@ -422,7 +422,7 @@ export default function App() {
             {currentRoute === 'dashboard' && <DashboardScreen />}
             {currentRoute === 'upload' && <UploadScreen />}
             {currentRoute === 'evaluate' && <EvaluateScreen />}
-            {currentRoute === 'report' && <StudentMarksheetScreen />}
+            {currentRoute === 'report' && <ReportScreen />}
             {currentRoute === 'history' && <HistoryScreen />}
             {currentRoute === 'reports' && <ReportsCenterScreen />}
             {currentRoute === 'guide' && <GuideScreen />}
