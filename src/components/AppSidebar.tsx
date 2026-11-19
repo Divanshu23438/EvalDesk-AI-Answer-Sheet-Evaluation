@@ -59,8 +59,13 @@ export const AppSidebar: React.FC = () => {
       <div className="h-12 border-b border-slate-200 flex items-center justify-between px-3 shrink-0">
         {!isCollapsed ? (
           <>
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="w-7 h-7 rounded-lg bg-indigo-600 text-white font-bold flex items-center justify-center text-xs shadow-xs shrink-0">
+            <a
+              href="#/home"
+              onClick={() => store.setStep('home')}
+              className="flex items-center gap-2 min-w-0 hover:opacity-80 transition-opacity"
+              title="Return to Home Landing"
+            >
+              <div className="w-7 h-7 rounded-lg bg-[#2563EB] text-white font-bold flex items-center justify-center text-xs shadow-xs shrink-0">
                 ED
               </div>
               <span className="font-bold text-sm tracking-tight text-slate-900 truncate">
@@ -69,7 +74,7 @@ export const AppSidebar: React.FC = () => {
               <span className="text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-600 border border-slate-300 px-1 py-0.2 rounded leading-none">
                 PRO
               </span>
-            </div>
+            </a>
             <button
               type="button"
               onClick={() => store.toggleSidebar()}

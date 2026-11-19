@@ -1,6 +1,19 @@
 import { useState, useEffect } from 'react';
 
-export type AppStep = 'dashboard' | 'upload' | 'evaluate' | 'report' | 'history' | 'reports';
+export type AppStep = 'home' | 'dashboard' | 'upload' | 'evaluate' | 'report' | 'history' | 'reports';
+
+function getInitialStep(): AppStep {
+  if (typeof window === 'undefined') return 'home';
+  const rawHash = window.location.hash.replace(/^#\/?/, '');
+  const stepPart = rawHash.split('/').filter(Boolean)[0] || '';
+  if (stepPart === 'dashboard' || stepPart === 'login') return 'dashboard';
+  if (stepPart === 'history') return 'history';
+  if (stepPart === 'reports') return 'reports';
+  if (stepPart === 'evaluate') return 'evaluate';
+  if (stepPart === 'report') return 'report';
+  if (stepPart === 'upload' || stepPart === 'setup' || stepPart === 'processing') return 'upload';
+  return 'home';
+}
 
 export interface ProviderHealthState {
   isHealthy: boolean;
@@ -43,7 +56,7 @@ export interface SheetStoreState {
 
 // Initial state is strictly empty - server is sole source of truth
 const initialStoreState: SheetStoreState = {
-  step: 'upload',
+  step: getInitialStep(),
   paperId: null,
   paperTitle: '',
   paperTotalMarks: 0,
@@ -163,11 +176,13 @@ export const sheetStore = {
   updateHashFromState() {
     if (typeof window === 'undefined') return;
     const { step, sheetId } = globalState;
-    let targetHash = `#/${step}`;
+    let targetHash = step === 'home' ? '#/' : `#/${step}`;
     if ((step === 'evaluate' || step === 'report') && sheetId) {
       targetHash = `#/${step}/${sheetId}`;
     }
-    if (window.location.hash !== targetHash) {
+    const currentHash = window.location.hash;
+    const isAlreadyHome = step === 'home' && (currentHash === '#/' || currentHash === '#/home' || currentHash === '' || currentHash === '#');
+    if (currentHash !== targetHash && !isAlreadyHome) {
       window.location.hash = targetHash;
     }
   },
@@ -177,11 +192,11 @@ export const sheetStore = {
     const rawHash = typeof window !== 'undefined' ? window.location.hash : '';
     const hash = rawHash.replace(/^#\/?/, '');
     const parts = hash.split('/').filter(Boolean);
-    const stepPart = parts[0] || 'upload';
+    const stepPart = parts[0] || '';
     const sheetIdPart = parts[1] || null;
 
-    let resolvedStep: AppStep = 'upload';
-    if (stepPart === 'dashboard') {
+    let resolvedStep: AppStep = 'home';
+    if (stepPart === 'dashboard' || stepPart === 'login') {
       resolvedStep = 'dashboard';
     } else if (stepPart === 'history') {
       resolvedStep = 'history';
@@ -191,10 +206,12 @@ export const sheetStore = {
       resolvedStep = 'evaluate';
     } else if (stepPart === 'report') {
       resolvedStep = 'report';
-    } else if (stepPart === 'upload' || stepPart === 'setup' || stepPart === 'processing') {
+    } else if (stepPart === 'upload' || stepPart === 'setup' || stepPart === 'processing' || stepPart === 'signup' || stepPart === 'sign-up') {
       resolvedStep = 'upload';
+    } else if (stepPart === 'home' || !stepPart || stepPart === '') {
+      resolvedStep = 'home';
     } else {
-      resolvedStep = 'upload';
+      resolvedStep = 'home';
     }
 
     globalState = {
