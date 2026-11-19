@@ -10,6 +10,7 @@ import { EvaluateScreen } from './screens/EvaluateScreen';
 import { ReportScreen } from './screens/ReportScreen';
 import { HistoryScreen } from './screens/HistoryScreen';
 import { ReportsCenterScreen } from './screens/ReportsCenterScreen';
+import { HomeScreen } from './screens/HomeScreen';
 import {
   FileText,
   FileSpreadsheet,
@@ -108,7 +109,18 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
 
 export default function App() {
   const [state, store] = useSheetStore();
-  const [currentRoute, setCurrentRoute] = useState<AppStep>('upload');
+  const [currentRoute, setCurrentRoute] = useState<AppStep>(() => {
+    if (typeof window === 'undefined') return 'home';
+    const cleanHash = window.location.hash.replace(/^#\/?/, '');
+    const first = cleanHash.split('/').filter(Boolean)[0] || '';
+    if (first === 'dashboard' || first === 'login') return 'dashboard';
+    if (first === 'history') return 'history';
+    if (first === 'reports') return 'reports';
+    if (first === 'evaluate') return 'evaluate';
+    if (first === 'report') return 'report';
+    if (first === 'upload' || first === 'setup' || first === 'processing') return 'upload';
+    return 'home';
+  });
   const [routeSheetId, setRouteSheetId] = useState<string | null>(null);
 
   const [providerStatus, setProviderStatus] = useState<'online' | 'degraded' | 'offline'>('online');
@@ -121,11 +133,11 @@ export default function App() {
     const rawHash = typeof window !== 'undefined' ? window.location.hash : '';
     const cleanHash = rawHash.replace(/^#\/?/, '');
     const parts = cleanHash.split('/').filter(Boolean);
-    const stepPart = parts[0] || 'upload';
+    const stepPart = parts[0] || '';
     const sheetIdPart = parts[1] || null;
 
-    let targetStep: AppStep = 'upload';
-    if (stepPart === 'dashboard') {
+    let targetStep: AppStep = 'home';
+    if (stepPart === 'dashboard' || stepPart === 'login') {
       targetStep = 'dashboard';
     } else if (stepPart === 'history') {
       targetStep = 'history';
@@ -135,10 +147,12 @@ export default function App() {
       targetStep = 'evaluate';
     } else if (stepPart === 'report') {
       targetStep = 'report';
-    } else if (stepPart === 'upload' || stepPart === 'setup' || stepPart === 'processing') {
+    } else if (stepPart === 'upload' || stepPart === 'setup' || stepPart === 'processing' || stepPart === 'signup' || stepPart === 'sign-up') {
       targetStep = 'upload';
+    } else if (stepPart === 'home' || !stepPart || stepPart === '') {
+      targetStep = 'home';
     } else {
-      targetStep = 'upload';
+      targetStep = 'home';
     }
 
     setCurrentRoute(targetStep);
@@ -247,6 +261,16 @@ export default function App() {
     store.setStep(step);
     window.location.hash = `#/${step}`;
   };
+
+  if (currentRoute === 'home') {
+    return (
+      <ErrorBoundary>
+        <div className="w-full h-screen overflow-y-auto bg-[#F6F8FB]">
+          <HomeScreen />
+        </div>
+      </ErrorBoundary>
+    );
+  }
 
   const isEvalWorkflow = currentRoute === 'upload' || currentRoute === 'evaluate' || currentRoute === 'report';
 

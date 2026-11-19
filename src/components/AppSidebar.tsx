@@ -151,15 +151,13 @@ export const AppSidebar: React.FC = () => {
       <div className="flex-1 flex flex-col min-h-0">
         {/* Sidebar Brand Header */}
         <div className="flex items-center justify-between pb-5 px-1 shrink-0">
-          <div className="flex items-center gap-3 overflow-hidden">
-            <div
-              onClick={() => {
-                store.setStep('dashboard');
-                window.location.hash = '#/dashboard';
-              }}
-              className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-400 flex items-center justify-center text-white shadow-md shadow-indigo-500/25 flex-shrink-0 cursor-pointer"
-              title="EvalDesk Dashboard"
-            >
+          <a
+            href="#/home"
+            onClick={() => store.setStep('home')}
+            className="flex items-center gap-3 overflow-hidden hover:opacity-85 transition-opacity cursor-pointer"
+            title="EvalDesk Home"
+          >
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-400 flex items-center justify-center text-white shadow-md shadow-indigo-500/25 flex-shrink-0">
               {/* Academic Logo Icon */}
               <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M12 2L1 7l11 5 9-4.09V17h2V7L12 2zM4.27 10.37L12 13.88l7.73-3.51V16c0 3.31-3.69 6-8.73 6s-8.73-2.69-8.73-6v-5.63z" />
@@ -170,7 +168,7 @@ export const AppSidebar: React.FC = () => {
                 EvalDesk
               </span>
             )}
-          </div>
+          </a>
           {/* Toggle Collapse Button */}
           <button
             id="sidebarCollapseBtn"
