@@ -1,7 +1,42 @@
 # STATUS (update at the end of every session)
-Date / author (agent or model name): 2026-11-18 / Antigravity (Gemini 3.8 Flash)
-Current phase and task: App Layout Shell, Hash Routing inside <main>, Inline ErrorBoundary, Undefined Property Hardening, and Multi-Route Visual Verification complete and verified.
+Date / author (agent or model name): 2026-11-19 / Antigravity (Gemini 3.8 Flash)
+Current phase and task: Stitch Dashboard Integration & Dynamic Backend SQLite Wiring complete and verified.
 Done (task id, commit, proof file):
+- Stitch Workspace Dashboard & Collapsible Sidebar Integration (`src/components/AppSidebar.tsx`, `src/screens/DashboardScreen.tsx`, `src/App.tsx`, `src/index.css`, `backend/main.py`):
+  1. Strict Zero-Hardcoding & Dynamic SQLite Endpoints (`backend/main.py` — `GET /api/dashboard/summary`):
+     - Completely eliminated all dummy references ("Tahsan Khan", "Anwar Hussen", "Hasan Khan", "Mathematic", "English 1", "Science 2", "Economics", "yearly student exam test online system", "Invite Evaluators", "Send certificates", "Dr. Arvind Sharma").
+     - Endpoint dynamically aggregates live SQLite data (`papers`, `sheets`, `evaluations`, `questions`, `sheet_pages`):
+       - `kpis`: `{ avg_score_pct, total_evaluated, total_sheets, needs_review_count, total_questions, avg_ocr_confidence, total_papers }`
+       - `batch_bars`: recent papers `[{ paper_id, title, subject, evaluated_count, total_count }]`
+       - `paper_question_bars`: recent papers `[{ paper_id, title, question_count, avg_ocr_confidence }]`
+       - `evaluation_timeline`: grouped by date from evaluated sheets `[{ date, label, evaluated_count, avg_score_pct }]`
+       - `subject_mastery`: grouped by real `papers.subject` across 4 score mastery tiers (`full_marks_pct` ≥85%, `good_pct` 65–84%, `partial_pct` 40–64%, `low_pct` <40%)
+       - `recent_results`: latest evaluated sheets joined with papers, including 4-tier score breakdown counts, real OCR confidence, and sheet status.
+     - When SQLite has 0 sheets or papers, all metrics return 0 / 0% with empty lists and clean empty-state actions (`+ Evaluate New Sheets` -> `#/upload`).
+  2. App Shell & Collapsible Sidebar (`src/App.tsx` & `src/components/AppSidebar.tsx`):
+     - Integrated full-screen layout `<div className="flex h-screen w-screen overflow-hidden bg-[#F5F6FA]">` with `<AppSidebar />` on left and `<main className="flex-1 min-w-0 h-screen overflow-y-auto">` on right.
+     - Ported `w-64` <-> `w-20` collapsible sidebar styling from Stitch reference design:
+       - Indigo gradient rounded-xl graduation/academic icon + `"EvalDesk"` brand + double-chevron toggle button (`#collapseArrow`).
+       - Quick search input (`⌘K`) with keyboard shortcut listener and Enter navigation to `#/history?q=...`.
+       - `MAIN` navigation mapped to real routes (`Dashboard` `#/dashboard`, `Evaluate Sheets` `#/upload`, `History` `#/history`, `Reports` `#/reports`).
+       - `RECENT PAPERS` dynamically populated via `GET /api/papers` with paper quick-select action.
+       - Live backend health status card querying `GET /api/health` displaying `"AI Engine Online"` with pulsing emerald indicator.
+  3. Dashboard Screen (`src/screens/DashboardScreen.tsx` & `src/index.css`):
+     - Sticky top header with dynamic greeting (`Good Morning / Afternoon / Evening`), today's formatted date, and quick action buttons (`Export Class Results` and `+ Evaluate Sheets`).
+     - Top 3-Card Bento layout:
+       1. Average Score Card with dynamic SVG circular progress ring calculated from `kpis.avg_score_pct`, score percentage, and graded counter.
+       2. Sheets Evaluated Card with vertical capsule-segment columns rendered dynamically from `batch_bars`.
+       3. Question Bank & OCR Card with staggered Teal vertical capsule bars rendered dynamically from `paper_question_bars`.
+     - Middle 2-Column Analytics Row:
+       1. Left (6 cols): "Evaluations Over Time" smooth Indigo cubic-bezier spline area chart plotted from `evaluation_timeline` with SVG drop-shadow glow and interactive hover tooltip.
+       2. Right (6 cols): "Average Results by Subject" segmented horizontal rounded pill bars from `subject_mastery` with 10–100 incremental pass mark scale.
+     - Bottom Table: "Recent Evaluated Results" with live search filter, student initials avatar, total score badges, 4-bar OCR confidence indicators, 4-tier score breakdown micro-badges, and working action buttons (`Evaluate`, `Report`, and `PDF Download`).
+  4. Cleanup & Gate Verification:
+     - Deleted temporary `.stitch_ref/` directory.
+     - Verified TypeScript compilation: `npx tsc --noEmit` exits with code 0.
+     - Verified quality gate: `python scripts/check_all.py` reports `RESULT: ALL PASS` (banned strings, no .env/data tracked, pytest, tsc --noEmit, and live provider health).
+     - Verified interactive browser UI via Browser subagent at `http://localhost:3000/#/dashboard` with 0 console errors, 0 failed requests, and captured screenshots.
+
 - App Layout Shell, Consistent Hash Routing inside `<main>`, Inline ErrorBoundary & Screen Hardening (`src/App.tsx`, `src/state/useSheetStore.ts`, `src/screens/UploadScreen.tsx`, `src/screens/EvaluateScreen.tsx`, `src/components/PaperDetailsForm.tsx`, `src/components/QueueRow.tsx`, `scripts/verify_all_routes.py`, `docs/proof/ui/routes/`):
   1. Root Route Rendering & Viewport Shell (`src/App.tsx`):
      - Restructured `src/App.tsx` into the persistent outer layout shell `<div className="flex h-screen w-screen overflow-hidden bg-slate-50 font-sans select-none">`.

@@ -185,3 +185,12 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+.spline-glow {
+  filter: drop-shadow(0 4px 10px rgba(99, 102, 241, 0.35));
+}
+
+.grid-dash {
+  stroke-dasharray: 4 6;
+}
+
