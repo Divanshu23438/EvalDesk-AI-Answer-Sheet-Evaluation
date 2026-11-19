@@ -1,7 +1,41 @@
 # STATUS (update at the end of every session)
 Date / author (agent or model name): 2026-11-19 / Antigravity (Gemini 3.8 Flash)
-Current phase and task: Browser Print Layout Optimization & Backend Porcelain/Emerald Bento PDF Generator Redesign Complete & Verified 100%.
+Current phase and task: Bento Marksheet & Reports Center Integration Complete & Verified 100%.
 Done (task id, commit, proof file):
+- Bento Marksheet & Reports Center Integration (`src/components/BentoMarksheetView.tsx`, `src/screens/ReportsCenterScreen.tsx`, `src/screens/StudentMarksheetScreen.tsx`, `src/components/AppSidebar.tsx`, `src/index.css`, `scripts/verify_bento_reports.py`):
+  1. Bento Student Marksheet Component (`src/components/BentoMarksheetView.tsx`):
+     - Ported the 12-column Bento Marksheet design from `.stitch_ref/code.html` into a fully dynamic React + TypeScript component.
+     - Strict Zero-Hardcoding Contract: 100% of candidate details, exam metadata, question scores, rubric remarks, bar chart bars, section mastery, letter grades, and strictness levels fetched from SQLite (`GET /api/sheets/{sheet_id}/report`).
+     - Front Side (12-Column Bento Layout):
+       - Hero Header Tile: Institution/Exam title, `OFFICIAL STATEMENT OF MARKS & RUBRIC AUDIT`, Subject & Code, `VERIFIED DIGITAL CREDENTIAL` mint pill badge, Sheet ID, and evaluation timestamp.
+       - 3-Tile Candidate & Score Strip: Candidate Identity (`student_name`, `roll_number` in JetBrains Mono, `class_name`), Aggregate Score (`#0F5132` SVG circular progress ring, score / max marks, percentage, Grade Point, Letter Grade, `PASS`/`FAIL` pill), and Stacked Micro-KPIs (`OCR Legibility: {ocr_confidence}%` + `Strictness Applied: Level {strictness} / 5`).
+       - Visual Analytics Row: Question-Wise Marks Bar Chart (vertical rounded bars with 40% threshold line) + Curriculum Competency Mastery bars.
+       - Itemized Statement of Marks & Rubric Audit Table: Q.No, Question text, Subtotal marks, Rubric evaluation remarks, and Status pill (`Full Marks`, `Partial Marks`, `Zero Marks`), concluding with an `#E8F3EE` Grand Total summary bar.
+       - 3-Tile Official Sign-Off Row: AI Rubric Audit hash, Course Instructor sign-off, Controller of Examinations seal, and `Flip to Back: Grading & Strictness ↻` button.
+     - Back Side (12-Column Bento Layout):
+       - Header Tile: `Institutional Grading Scale & Strictness Calibration` with `Return to Front Marksheet ↺` button.
+       - 10-Point Academic Grading System Table (Grades `O` down to `F`), dynamically highlighting the candidate's achieved letter grade with `Candidate's Achieved Grade` badge.
+       - 1–5 Strictness Calibration Matrix (Levels 1–5), dynamically highlighting `sheet.strictness` with `Applied to This Sheet` badge.
+     - Two-Phase 3D Card Flip:
+       - Smooth, jitter-free two-phase animation (`flipPhase: 'idle' | 'out' | 'in'`). Phase 1 rotates 0° -> 90° (`animate-flip-out`, 200ms ease-in), switches side, Phase 2 rotates -90° -> 0° (`animate-flip-in`, 240ms ease-out). Zero text mirroring or layer bleed-through.
+     - Print Optimization: In `@media print`, both Front Sheet (`print-front-sheet`) and Back Sheet (`print-back-sheet`) render sequentially on separate pages with zero sidebar interference.
+  2. Reports Center Screen (`src/screens/ReportsCenterScreen.tsx` at `#/reports`):
+     - Top Student & Class Control Bar (`bg-white border border-[#E2E8E4] rounded-[20px] p-4 md:p-5 shadow-xs`):
+       - Paper / Exam Filter dropdown (All Exams or specific paper).
+       - Candidate search input (filter by student name or roll number).
+       - Specific Student Selector dropdown + horizontally scrollable Quick-Select Student Pills (`{student_name} · {roll_number} · {score}/{max_marks} · {grade}`) with active `#0F5132` / `#E8F3EE` styling. Default to the most recently evaluated student (or `?sheetId=...` query param).
+       - Action & Download buttons: `Download Student Marksheet PDF` (primary `#0F5132` Emerald button -> `GET /api/sheets/{selectedSheetId}/export/pdf` with filename `Marksheet_{roll_number}_{subject}.pdf`), `Export Class Excel (.xlsx)` (`GET /api/papers/{paperId}/export/excel`), and `Export Class PDF (.pdf)` (`GET /api/papers/{paperId}/export/pdf`).
+     - Embedded Bento Marksheet View: Renders `<BentoMarksheetView sheetId={selectedSheetId} />` directly below the control bar for instant inspection and interaction.
+     - Clean Empty State: When SQLite has 0 evaluated sheets, renders a clean empty-state card with a `+ Evaluate Answer Sheets` button linking to `#/upload`.
+  3. Student Marksheet Screen (`src/screens/StudentMarksheetScreen.tsx` at `#/report/:sheetId`):
+     - Refactored into a concise wrapper that passes `sheetId` from URL route/store and provides an `onBack` handler to return to evaluation workspace or history.
+  4. App Sidebar Active Link (`src/components/AppSidebar.tsx`):
+     - Configured `Reports` navigation item to highlight with Emerald/Mint pill (`bg-[#E8F3EE] text-[#0F5132] font-semibold`) whenever the route is `#/reports` OR `#/report/:sheetId`.
+  5. Cleanup & Verification:
+     - Deleted temporary `.stitch_ref/` reference folder.
+     - Ran `cmd /c "npx tsc --noEmit"`: 0 errors.
+     - Ran `python scripts/check_all.py`: `RESULT: ALL PASS` (banned strings, git secrets, pytest, tsc, and live provider health).
+     - Ran `python scripts/verify_bento_reports.py`: verified control bar, candidate pills, hero title, score percentage, 3D flip to back side, achieved grade badge, strictness badge, flip back to front, direct `#/report/:sheetId` rendering, and `@media print` layout styles.
 - Browser Print Layout Optimization & Backend Bento Report Card PDF Generator (`src/components/AppSidebar.tsx`, `src/App.tsx`, `src/index.css`, `src/screens/StudentMarksheetScreen.tsx`, `backend/reports_generator.py`, `backend/main.py`, `scripts/verify_print_and_pdf.py`):
   1. Browser Print Layout Fixes & Multi-Page Sheet Unlocking:
      - `src/components/AppSidebar.tsx`: Added `print:hidden` to `<aside>` element so application navigation never appears on printed marksheets.

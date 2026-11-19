@@ -94,7 +94,7 @@ export const AppSidebar: React.FC = () => {
       label: 'Evaluate Sheets',
       icon: FileCheck2,
       path: '#/upload',
-      isActive: state.step === 'upload' || state.step === 'evaluate' || state.step === 'report',
+      isActive: state.step === 'upload' || state.step === 'evaluate',
       onClick: () => store.setStep('upload'),
     },
     {
@@ -110,7 +110,7 @@ export const AppSidebar: React.FC = () => {
       label: 'Reports',
       icon: FileSpreadsheet,
       path: '#/reports',
-      isActive: state.step === 'reports',
+      isActive: state.step === 'reports' || state.step === 'report',
       onClick: () => store.setStep('reports'),
     },
   ];
