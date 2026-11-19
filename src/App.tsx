@@ -73,7 +73,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   render() {
     if (this.state.hasError) {
       return (
-        <main className="flex-1 min-w-0 h-screen overflow-y-auto bg-slate-50 p-6 flex flex-col items-center justify-center select-text">
+        <main className="flex-1 min-w-0 h-screen overflow-y-auto bg-[#F5F6FA] p-6 flex flex-col items-center justify-center select-text">
           <div className="max-w-lg w-full bg-white border border-rose-200 rounded-2xl p-6 shadow-sm text-center space-y-4">
             <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto shadow-xs">
               <AlertTriangle className="w-6 h-6" />

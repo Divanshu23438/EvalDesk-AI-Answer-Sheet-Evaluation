@@ -4965,7 +4965,8 @@ async def auto_fetch_paper_details(request: Request):
 def get_dashboard_summary():
     """
     Computes real summary metrics across all papers and evaluated sheets:
-    KPIs, subject performance breakdown, score distribution, trend and recent sheets.
+    KPIs, batch bars, paper question bars, evaluation timeline, subject mastery,
+    and recent results with complete zero-hardcoding.
     """
     with get_db() as conn:
         cursor = conn.cursor()
@@ -4973,7 +4974,13 @@ def get_dashboard_summary():
         cursor.execute("SELECT COUNT(*) as cnt FROM papers")
         total_papers = cursor.fetchone()["cnt"] or 0
 
-        cursor.execute("SELECT COUNT(*) as cnt FROM sheets WHERE total_score IS NOT NULL OR status IN ('evaluated', 'ready', 'graded')")
+        cursor.execute("SELECT COUNT(*) as cnt FROM sheets")
+        total_sheets = cursor.fetchone()["cnt"] or 0
+
+        cursor.execute("""
+            SELECT COUNT(*) as cnt FROM sheets 
+            WHERE total_score IS NOT NULL OR status IN ('evaluated', 'ready', 'graded', 'needs_review')
+        """)
         total_evaluated = cursor.fetchone()["cnt"] or 0
 
         cursor.execute("""
@@ -4983,6 +4990,9 @@ def get_dashboard_summary():
             WHERE s.status IN ('needs_review', 'needs_identity', 'flagged') OR e.id IS NOT NULL
         """)
         needs_review_count = cursor.fetchone()["cnt"] or 0
+
+        cursor.execute("SELECT COUNT(*) as cnt FROM questions")
+        total_questions = cursor.fetchone()["cnt"] or 0
 
         cursor.execute("""
             SELECT AVG(percentage) as avg_p
@@ -4998,9 +5008,210 @@ def get_dashboard_summary():
             WHERE ocr_status = 'done' AND ocr_legibility IS NOT NULL
         """)
         leg_row = cursor.fetchone()
-        raw_leg = float(leg_row["avg_leg"] or 0.95)
-        avg_ocr_confidence = round(raw_leg * 100.0, 1) if raw_leg <= 1.0 else round(raw_leg, 1)
+        if leg_row and leg_row["avg_leg"] is not None:
+            raw_leg = float(leg_row["avg_leg"])
+            avg_ocr_confidence = round(raw_leg * 100.0, 1) if raw_leg <= 1.0 else round(raw_leg, 1)
+        else:
+            avg_ocr_confidence = 0.0
 
+        # batch_bars: up to 10 recent papers [{ paper_id, title, subject, evaluated_count, total_count }]
+        cursor.execute("""
+            SELECT 
+                p.id as paper_id,
+                p.title as title,
+                COALESCE(p.subject, '') as subject,
+                COUNT(s.id) as total_count,
+                SUM(CASE WHEN s.total_score IS NOT NULL OR s.status IN ('evaluated', 'ready', 'graded', 'needs_review') THEN 1 ELSE 0 END) as evaluated_count
+            FROM papers p
+            LEFT JOIN sheets s ON s.paper_id = p.id
+            GROUP BY p.id
+            ORDER BY p.rowid DESC
+            LIMIT 10
+        """)
+        batch_bars = [
+            {
+                "paper_id": r["paper_id"],
+                "title": r["title"] or "Untitled Paper",
+                "subject": r["subject"] or "General",
+                "evaluated_count": int(r["evaluated_count"] or 0),
+                "total_count": int(r["total_count"] or 0),
+            }
+            for r in cursor.fetchall()
+        ]
+
+        # paper_question_bars: up to 10 recent papers [{ paper_id, title, question_count, avg_ocr_confidence }]
+        cursor.execute("""
+            SELECT 
+                p.id as paper_id,
+                p.title as title,
+                (SELECT COUNT(*) FROM questions q WHERE q.paper_id = p.id) as question_count,
+                (
+                    SELECT AVG(sp.ocr_legibility)
+                    FROM sheet_pages sp
+                    JOIN sheets s2 ON sp.sheet_id = s2.id
+                    WHERE s2.paper_id = p.id AND sp.ocr_status = 'done' AND sp.ocr_legibility IS NOT NULL
+                ) as raw_ocr
+            FROM papers p
+            ORDER BY p.rowid DESC
+            LIMIT 10
+        """)
+        paper_question_bars = []
+        for r in cursor.fetchall():
+            raw_ocr = r["raw_ocr"]
+            if raw_ocr is not None:
+                ocr_val = round(float(raw_ocr) * 100.0, 1) if float(raw_ocr) <= 1.0 else round(float(raw_ocr), 1)
+            else:
+                ocr_val = 0.0
+            paper_question_bars.append({
+                "paper_id": r["paper_id"],
+                "title": r["title"] or "Untitled Paper",
+                "question_count": int(r["question_count"] or 0),
+                "avg_ocr_confidence": ocr_val,
+            })
+
+        # evaluation_timeline: grouped by date from sheets where status IN ('ready', 'needs_review')
+        cursor.execute("""
+            SELECT
+                SUBSTR(COALESCE(s.updated_at, s.created_at), 1, 10) as date_str,
+                COUNT(s.id) as evaluated_count,
+                ROUND(AVG(COALESCE(s.percentage, 0.0)), 1) as avg_score_pct
+            FROM sheets s
+            WHERE s.status IN ('ready', 'needs_review') OR (s.total_score IS NOT NULL AND s.status IN ('evaluated', 'graded'))
+            GROUP BY date_str
+            ORDER BY date_str ASC
+            LIMIT 14
+        """)
+        evaluation_timeline = []
+        for r in cursor.fetchall():
+            d_str = r["date_str"] or ""
+            label = d_str
+            try:
+                dt = datetime.strptime(d_str, "%Y-%m-%d")
+                label = dt.strftime("%b %d")
+            except Exception:
+                pass
+            evaluation_timeline.append({
+                "date": d_str,
+                "label": label,
+                "evaluated_count": int(r["evaluated_count"] or 0),
+                "avg_score_pct": float(r["avg_score_pct"] or 0.0),
+            })
+
+        # subject_mastery: grouped by real papers.subject (fallback papers.title) across evaluated question scores
+        cursor.execute("""
+            SELECT
+                COALESCE(NULLIF(TRIM(p.subject), ''), p.title, 'General') as subject,
+                COUNT(e.id) as total_items,
+                SUM(CASE WHEN q.max_marks > 0 AND (e.final_marks * 1.0 / q.max_marks) >= 0.85 THEN 1 ELSE 0 END) as full_cnt,
+                SUM(CASE WHEN q.max_marks > 0 AND (e.final_marks * 1.0 / q.max_marks) >= 0.65 AND (e.final_marks * 1.0 / q.max_marks) < 0.85 THEN 1 ELSE 0 END) as good_cnt,
+                SUM(CASE WHEN q.max_marks > 0 AND (e.final_marks * 1.0 / q.max_marks) >= 0.40 AND (e.final_marks * 1.0 / q.max_marks) < 0.65 THEN 1 ELSE 0 END) as partial_cnt,
+                SUM(CASE WHEN q.max_marks > 0 AND (e.final_marks * 1.0 / q.max_marks) < 0.40 THEN 1 ELSE 0 END) as low_cnt
+            FROM evaluations e
+            JOIN questions q ON e.question_id = q.id
+            JOIN sheets s ON e.sheet_id = s.id
+            JOIN papers p ON s.paper_id = p.id
+            WHERE e.is_counted = 1
+            GROUP BY subject
+            ORDER BY total_items DESC
+            LIMIT 8
+        """)
+        subject_mastery = []
+        for r in cursor.fetchall():
+            tot = int(r["total_items"] or 0)
+            if tot > 0:
+                f_pct = round((int(r["full_cnt"] or 0) / tot) * 100.0, 1)
+                g_pct = round((int(r["good_cnt"] or 0) / tot) * 100.0, 1)
+                p_pct = round((int(r["partial_cnt"] or 0) / tot) * 100.0, 1)
+                l_pct = round((int(r["low_cnt"] or 0) / tot) * 100.0, 1)
+            else:
+                f_pct = g_pct = p_pct = l_pct = 0.0
+            subject_mastery.append({
+                "subject": r["subject"],
+                "total_items": tot,
+                "full_marks_pct": f_pct,
+                "good_pct": g_pct,
+                "partial_pct": p_pct,
+                "low_pct": l_pct,
+            })
+
+        # recent_results: latest 15 evaluated sheets joined with papers
+        cursor.execute("""
+            SELECT
+                s.id as sheet_id,
+                p.id as paper_id,
+                COALESCE(NULLIF(TRIM(s.student_name), ''), 'Student') as student_name,
+                COALESCE(s.roll_number, '') as roll_number,
+                COALESCE(s.class_name, '') as class_name,
+                COALESCE(NULLIF(TRIM(p.subject), ''), p.title, 'General') as subject,
+                COALESCE(p.title, 'Assessment') as exam_title,
+                COALESCE(s.total_score, 0.0) as score,
+                COALESCE(s.max_marks, p.total_marks, 0.0) as max_marks,
+                COALESCE(s.percentage, 0.0) as percentage,
+                COALESCE(s.status, 'pending') as status,
+                COALESCE(s.updated_at, s.created_at) as evaluated_at,
+                (
+                    SELECT AVG(sp.ocr_legibility)
+                    FROM sheet_pages sp
+                    WHERE sp.sheet_id = s.id AND sp.ocr_status = 'done' AND sp.ocr_legibility IS NOT NULL
+                ) as raw_ocr,
+                (
+                    SELECT COUNT(e.id)
+                    FROM evaluations e
+                    JOIN questions q ON e.question_id = q.id
+                    WHERE e.sheet_id = s.id AND e.is_counted = 1 AND q.max_marks > 0 AND (e.final_marks * 1.0 / q.max_marks) >= 0.85
+                ) as full_q_count,
+                (
+                    SELECT COUNT(e.id)
+                    FROM evaluations e
+                    JOIN questions q ON e.question_id = q.id
+                    WHERE e.sheet_id = s.id AND e.is_counted = 1 AND q.max_marks > 0 AND (e.final_marks * 1.0 / q.max_marks) >= 0.65 AND (e.final_marks * 1.0 / q.max_marks) < 0.85
+                ) as good_q_count,
+                (
+                    SELECT COUNT(e.id)
+                    FROM evaluations e
+                    JOIN questions q ON e.question_id = q.id
+                    WHERE e.sheet_id = s.id AND e.is_counted = 1 AND q.max_marks > 0 AND (e.final_marks * 1.0 / q.max_marks) >= 0.40 AND (e.final_marks * 1.0 / q.max_marks) < 0.65
+                ) as partial_q_count,
+                (
+                    SELECT COUNT(e.id)
+                    FROM evaluations e
+                    JOIN questions q ON e.question_id = q.id
+                    WHERE e.sheet_id = s.id AND e.is_counted = 1 AND q.max_marks > 0 AND (e.final_marks * 1.0 / q.max_marks) < 0.40
+                ) as low_q_count
+            FROM sheets s
+            JOIN papers p ON s.paper_id = p.id
+            WHERE s.total_score IS NOT NULL OR s.status IN ('evaluated', 'ready', 'graded', 'needs_review')
+            ORDER BY s.updated_at DESC, s.created_at DESC
+            LIMIT 15
+        """)
+        recent_results = []
+        for r in cursor.fetchall():
+            raw_ocr = r["raw_ocr"]
+            if raw_ocr is not None:
+                ocr_val = round(float(raw_ocr) * 100.0, 1) if float(raw_ocr) <= 1.0 else round(float(raw_ocr), 1)
+            else:
+                ocr_val = 0.0
+            recent_results.append({
+                "sheet_id": r["sheet_id"],
+                "paper_id": r["paper_id"],
+                "student_name": r["student_name"],
+                "roll_number": r["roll_number"],
+                "class_name": r["class_name"],
+                "subject": r["subject"],
+                "exam_title": r["exam_title"],
+                "score": round(float(r["score"] or 0.0), 1),
+                "max_marks": round(float(r["max_marks"] or 0.0), 1),
+                "percentage": round(float(r["percentage"] or 0.0), 1),
+                "ocr_confidence": ocr_val,
+                "full_q_count": int(r["full_q_count"] or 0),
+                "good_q_count": int(r["good_q_count"] or 0),
+                "partial_q_count": int(r["partial_q_count"] or 0),
+                "low_q_count": int(r["low_q_count"] or 0),
+                "status": r["status"],
+                "evaluated_at": r["evaluated_at"],
+            })
+
+        # Legacy subject performance breakdown for backwards compatibility
         cursor.execute("""
             SELECT
                 COALESCE(NULLIF(p.subject, ''), 'General') as subject_name,
@@ -5039,59 +5250,35 @@ def get_dashboard_summary():
             "needs_attention": dist_row["low_cnt"] or 0,
         }
 
-        cursor.execute("""
-            SELECT
-                SUBSTR(COALESCE(s.updated_at, s.created_at), 1, 10) as day_str,
-                COUNT(s.id) as cnt,
-                ROUND(AVG(COALESCE(s.percentage, 0.0)), 1) as day_avg
-            FROM sheets s
-            WHERE s.total_score IS NOT NULL
-            GROUP BY day_str
-            ORDER BY day_str DESC
-            LIMIT 7
-        """)
-        trend_rows = cursor.fetchall()
-        trend_list = [
-            {
-                "date": r["day_str"],
-                "count": r["cnt"],
-                "avg_pct": float(r["day_avg"] or 0.0),
-            }
-            for r in reversed(trend_rows)
-        ]
-
-        cursor.execute("""
-            SELECT
-                s.id as sheet_id,
-                COALESCE(s.student_name, 'Student') as student_name,
-                COALESCE(s.roll_number, '') as roll_number,
-                COALESCE(s.class_name, '') as class_name,
-                COALESCE(p.subject, 'General') as subject,
-                COALESCE(p.title, 'Assessment Paper') as exam_title,
-                COALESCE(s.total_score, 0.0) as score,
-                COALESCE(s.max_marks, p.total_marks, 0.0) as max_marks,
-                COALESCE(s.percentage, 0.0) as percentage,
-                COALESCE(s.grade, '—') as grade,
-                COALESCE(s.status, 'pending') as status,
-                COALESCE(s.updated_at, s.created_at) as updated_at
-            FROM sheets s
-            JOIN papers p ON s.paper_id = p.id
-            ORDER BY s.updated_at DESC, s.created_at DESC
-            LIMIT 8
-        """)
-        recent_rows = cursor.fetchall()
-        recent_sheets = [dict(r) for r in recent_rows]
+        kpis = {
+            "avg_score_pct": avg_score_pct,
+            "total_evaluated": total_evaluated,
+            "total_sheets": total_sheets,
+            "needs_review_count": needs_review_count,
+            "total_questions": total_questions,
+            "avg_ocr_confidence": avg_ocr_confidence,
+            "total_papers": total_papers,
+        }
 
         return {
+            "kpis": kpis,
+            "batch_bars": batch_bars,
+            "paper_question_bars": paper_question_bars,
+            "evaluation_timeline": evaluation_timeline,
+            "subject_mastery": subject_mastery,
+            "recent_results": recent_results,
+            # Backwards compatibility keys
             "total_evaluated": total_evaluated,
+            "total_sheets": total_sheets,
             "needs_review_count": needs_review_count,
             "avg_score_pct": avg_score_pct,
             "avg_ocr_confidence": avg_ocr_confidence,
             "total_papers": total_papers,
+            "total_questions": total_questions,
             "subject_performance": subject_performance,
             "score_distribution": score_distribution,
-            "evaluation_history_trend": trend_list,
-            "recent_sheets": recent_sheets,
+            "evaluation_history_trend": evaluation_timeline,
+            "recent_sheets": recent_results,
         }
 
 @app.get("/api/papers/{paper_id}/export/class-pdf")

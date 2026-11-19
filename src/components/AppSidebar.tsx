@@ -1,163 +1,364 @@
-import React from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useSheetStore } from '../state/useSheetStore';
+import { apiClient } from '../api/client';
 import {
   LayoutDashboard,
   FileCheck2,
   History,
   FileSpreadsheet,
   BookOpen,
-  PanelLeftClose,
-  PanelLeftOpen,
 } from 'lucide-react';
+
+interface PaperSummary {
+  id: string;
+  title: string;
+  subject?: string;
+  total_marks?: number;
+  created_at?: string;
+}
 
 export const AppSidebar: React.FC = () => {
   const [state, store] = useSheetStore();
   const isCollapsed = state.isSidebarCollapsed;
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [papers, setPapers] = useState<PaperSummary[]>([]);
+  const [healthStatus, setHealthStatus] = useState<'healthy' | 'offline'>('healthy');
+
+  // Load live papers and backend health
+  useEffect(() => {
+    let isMounted = true;
+    const fetchData = async () => {
+      try {
+        const res = await apiClient.get<{ papers: PaperSummary[] }>('/api/papers');
+        if (isMounted && res?.papers) {
+          setPapers(res.papers);
+        }
+      } catch {
+        // graceful empty fallback
+      }
+
+      try {
+        const health = await apiClient.get<{ status: string }>('/api/health');
+        if (isMounted) {
+          setHealthStatus(health?.status === 'healthy' ? 'healthy' : 'offline');
+        }
+      } catch {
+        if (isMounted) {
+          setHealthStatus('offline');
+        }
+      }
+    };
+
+    fetchData();
+    const interval = setInterval(fetchData, 30000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, []);
+
+  // ⌘K shortcut handler
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        const input = document.getElementById('sidebar-quick-search') as HTMLInputElement | null;
+        if (input) {
+          if (isCollapsed) {
+            store.toggleSidebar();
+            setTimeout(() => input.focus(), 150);
+          } else {
+            input.focus();
+          }
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isCollapsed, store]);
+
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      const q = searchQuery.trim();
+      if (q) {
+        store.setStep('history');
+        window.location.hash = `#/history?q=${encodeURIComponent(q)}`;
+      }
+    }
+  };
+
+  const filteredPapers = useMemo(() => {
+    if (!searchQuery.trim()) return papers;
+    const q = searchQuery.toLowerCase();
+    return papers.filter(
+      (p) =>
+        p.title.toLowerCase().includes(q) ||
+        (p.subject && p.subject.toLowerCase().includes(q))
+    );
+  }, [papers, searchQuery]);
 
   const navItems = [
     {
       id: 'dashboard',
       label: 'Dashboard',
       icon: LayoutDashboard,
-      path: '#/dashboard',
       isActive: state.step === 'dashboard',
-      onClick: () => store.setStep('dashboard'),
+      onClick: () => {
+        store.setStep('dashboard');
+        window.location.hash = '#/dashboard';
+      },
     },
     {
       id: 'evaluate-sheets',
       label: 'Evaluate Sheets',
       icon: FileCheck2,
-      path: '#/upload',
       isActive: state.step === 'upload' || state.step === 'evaluate' || state.step === 'report',
-      onClick: () => store.setStep('upload'),
+      onClick: () => {
+        store.setStep('upload');
+        window.location.hash = '#/upload';
+      },
     },
     {
       id: 'history',
       label: 'History',
       icon: History,
-      path: '#/history',
       isActive: state.step === 'history',
-      onClick: () => store.setStep('history'),
+      onClick: () => {
+        store.setStep('history');
+        window.location.hash = '#/history';
+      },
     },
     {
       id: 'reports',
       label: 'Reports',
       icon: FileSpreadsheet,
-      path: '#/reports',
       isActive: state.step === 'reports',
-      onClick: () => store.setStep('reports'),
+      onClick: () => {
+        store.setStep('reports');
+        window.location.hash = '#/reports';
+      },
     },
     {
       id: 'guide',
       label: 'Guide',
       icon: BookOpen,
-      path: '#/guide',
       isActive: state.step === 'guide',
-      onClick: () => store.setStep('guide'),
+      onClick: () => {
+        store.setStep('guide');
+        window.location.hash = '#/guide';
+      },
     },
   ];
 
   return (
     <aside
-      className={`h-full bg-white border-r border-[#E2E8E4] transition-all duration-200 flex flex-col shrink-0 select-none ${
-        isCollapsed ? 'w-20' : 'w-64'
-      }`}
+      id="mainSidebar"
       aria-label="Application Navigation Sidebar"
+      className={`${
+        isCollapsed ? 'w-20' : 'w-64'
+      } flex-shrink-0 bg-white border-r border-slate-100 flex flex-col justify-between p-4 transition-all duration-300 ease-in-out select-none`}
     >
-      {/* Sidebar Header */}
-      <div className="h-12 border-b border-[#E2E8E4] flex items-center justify-between px-3 shrink-0">
-        {!isCollapsed ? (
-          <>
-            <a
-              href="#/home"
-              onClick={() => store.setStep('home')}
-              className="flex items-center gap-2 min-w-0 hover:opacity-80 transition-opacity"
-              title="Return to Home Landing"
-            >
-              <div className="w-7 h-7 rounded-lg bg-[#0F5132] text-white font-bold flex items-center justify-center text-xs shadow-xs shrink-0">
-                ED
-              </div>
-              <span className="font-bold text-sm tracking-tight text-[#111827] truncate">
+      <div className="flex-1 flex flex-col min-h-0">
+        {/* Sidebar Brand Header */}
+        <div className="flex items-center justify-between pb-5 px-1 shrink-0">
+          <a
+            href="#/home"
+            onClick={() => store.setStep('home')}
+            className="flex items-center gap-3 overflow-hidden hover:opacity-85 transition-opacity cursor-pointer"
+            title="EvalDesk Home"
+          >
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#0F5132] to-[#15803D] flex items-center justify-center text-white shadow-md shadow-[#0F5132]/25 flex-shrink-0 font-bold text-xs">
+              ED
+            </div>
+            {!isCollapsed && (
+              <span className="font-bold text-lg text-slate-900 tracking-tight whitespace-nowrap">
                 EvalDesk
               </span>
-              <span className="text-[10px] font-bold uppercase tracking-wider bg-[#E8F3EE] text-[#0F5132] border border-[#0F5132]/20 px-1 py-0.2 rounded leading-none">
-                PRO
-              </span>
-            </a>
-            <button
-              type="button"
-              onClick={() => store.toggleSidebar()}
-              className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-[#0F5132] hover:bg-[#E8F3EE] transition-colors"
-              title="Collapse sidebar ([)"
-              aria-label="Collapse sidebar"
-            >
-              <PanelLeftClose className="w-4 h-4" />
-            </button>
-          </>
-        ) : (
-          <div className="w-full flex items-center justify-center">
-            <button
-              type="button"
-              onClick={() => store.toggleSidebar()}
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:text-[#0F5132] hover:bg-[#E8F3EE] transition-colors"
-              title="Expand sidebar ([)"
-              aria-label="Expand sidebar"
-            >
-              <PanelLeftOpen className="w-4 h-4" />
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Navigation Menu */}
-      <nav className="flex-1 py-3 px-2 space-y-1.5 overflow-y-auto overflow-x-hidden">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          return (
-            <button
-              key={item.id}
-              type="button"
-              onClick={item.onClick}
-              title={isCollapsed ? item.label : undefined}
-              className={`w-full flex items-center rounded-xl transition-all duration-150 ${
-                isCollapsed
-                  ? `h-10 justify-center ${
-                      item.isActive
-                        ? 'bg-[#E8F3EE] text-[#0F5132] font-semibold shadow-2xs ring-1 ring-[#0F5132]/30'
-                        : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
-                    }`
-                  : `h-9 px-3 gap-3 ${
-                      item.isActive
-                        ? 'bg-[#E8F3EE] text-[#0F5132] font-semibold border border-[#0F5132]/20 shadow-2xs'
-                        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-medium'
-                    }`
+            )}
+          </a>
+          {/* Toggle Collapse Button */}
+          <button
+            id="sidebarCollapseBtn"
+            type="button"
+            onClick={() => store.toggleSidebar()}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+            title={isCollapsed ? 'Expand sidebar ([)' : 'Collapse sidebar ([)'}
+            aria-label={isCollapsed ? 'Expand sidebar ([)' : 'Collapse sidebar ([)'}
+          >
+            <svg
+              id="collapseArrow"
+              className={`w-5 h-5 transition-transform duration-300 ${
+                isCollapsed ? 'rotate-180' : ''
               }`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
             >
-              <Icon
-                className={`w-4 h-4 shrink-0 transition-colors ${
-                  item.isActive ? 'text-[#0F5132]' : 'text-slate-400 group-hover:text-slate-600'
-                }`}
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M11 19l-7-7 7-7m8 14l-7-7 7-7"
               />
-              {!isCollapsed && (
-                <span className="text-xs truncate flex-1 text-left">{item.label}</span>
-              )}
-            </button>
-          );
-        })}
-      </nav>
+            </svg>
+          </button>
+        </div>
 
-      {/* Sidebar Footer */}
-      <div className="p-2 border-t border-[#E2E8E4] text-center shrink-0">
-        {!isCollapsed ? (
-          <div className="px-2 py-1.5 rounded-lg bg-slate-50 border border-[#E2E8E4] text-[10px] text-slate-500 flex items-center justify-between">
-            <span className="font-medium">EvalDesk v2.4</span>
-            <kbd className="px-1 py-0.2 rounded bg-white border border-slate-300 font-mono text-[9px]">
-              [
+        {/* Quick Search Input */}
+        {!isCollapsed && (
+          <div className="mb-4 relative">
+            <input
+              id="sidebar-quick-search"
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={handleSearchKeyDown}
+              placeholder="Search papers..."
+              className="w-full pl-8 pr-8 py-2 bg-slate-50 border border-slate-200/80 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0F5132]/20 focus:border-[#0F5132] transition-all"
+            />
+            <svg
+              className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
+            </svg>
+            <kbd className="absolute right-2.5 top-1/2 -translate-y-1/2 font-mono text-[9px] text-slate-400 bg-white border border-slate-200 px-1 py-0.5 rounded shadow-2xs pointer-events-none">
+              ⌘K
             </kbd>
           </div>
+        )}
+
+        {/* Navigation Links */}
+        <nav className="flex-1 space-y-6 overflow-y-auto no-scrollbar">
+          <div>
+            <div className="space-y-1">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={item.onClick}
+                    title={isCollapsed ? item.label : undefined}
+                    className={`w-full flex items-center rounded-xl transition-all duration-150 cursor-pointer ${
+                      isCollapsed
+                        ? `h-10 justify-center ${
+                            item.isActive
+                              ? 'bg-[#E8F3EE] text-[#0F5132] font-semibold'
+                              : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
+                          }`
+                        : `gap-3 px-3 py-2 text-xs ${
+                            item.isActive
+                              ? 'bg-[#E8F3EE] text-[#0F5132] font-semibold border border-[#0F5132]/20 shadow-2xs'
+                              : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50 font-medium'
+                          }`
+                    }`}
+                  >
+                    <Icon
+                      className={`w-4 h-4 flex-shrink-0 ${
+                        item.isActive
+                          ? 'text-[#0F5132]'
+                          : 'text-slate-400 group-hover:text-slate-600'
+                      }`}
+                    />
+                    {!isCollapsed && <span className="truncate">{item.label}</span>}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* RECENT PAPERS Section */}
+          {!isCollapsed && (
+            <div className="pt-2">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-2">
+                RECENT PAPERS
+              </span>
+              <div className="mt-2 space-y-1">
+                {filteredPapers.length === 0 ? (
+                  <p className="px-2 py-3 text-xs text-slate-400 italic">
+                    No papers uploaded yet
+                  </p>
+                ) : (
+                  filteredPapers.slice(0, 5).map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => {
+                        store.setPaper({
+                          id: p.id,
+                          title: p.title,
+                          totalMarks: p.total_marks || 0,
+                          isLocked: true,
+                        });
+                        store.setStep('upload');
+                        window.location.hash = '#/upload';
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left text-slate-600 hover:text-[#0F5132] hover:bg-[#E8F3EE]/50 transition-colors group cursor-pointer"
+                      title={`${p.title} (${p.subject || 'General'})`}
+                    >
+                      <BookOpen className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#0F5132] flex-shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-medium text-slate-700 group-hover:text-[#0F5132] truncate">
+                          {p.title}
+                        </p>
+                        <p className="text-[10px] text-slate-400 truncate">
+                          {p.subject || 'General'}
+                        </p>
+                      </div>
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+        </nav>
+      </div>
+
+      {/* Bottom Status Card: Live Backend Health */}
+      <div className="pt-4 border-t border-slate-100 shrink-0">
+        {!isCollapsed ? (
+          <div className="flex items-center gap-2.5 p-2 rounded-xl bg-slate-50 border border-slate-200/80">
+            <span className="relative flex h-2.5 w-2.5 flex-shrink-0">
+              <span
+                className={`animate-ping absolute inline-flex h-full w-full rounded-full ${
+                  healthStatus === 'healthy' ? 'bg-emerald-400' : 'bg-rose-400'
+                } opacity-75`}
+              />
+              <span
+                className={`relative inline-flex rounded-full h-2.5 w-2.5 ${
+                  healthStatus === 'healthy' ? 'bg-emerald-500' : 'bg-rose-500'
+                }`}
+              />
+            </span>
+            <div className="overflow-hidden text-left flex-1">
+              <h4 className="text-xs font-semibold text-slate-800 truncate">
+                {healthStatus === 'healthy' ? 'AI Engine Online' : 'AI Engine Offline'}
+              </h4>
+              <p className="text-[10px] text-slate-400 truncate">
+                {healthStatus === 'healthy' ? 'Evaluation services active' : 'Backend unavailable'}
+              </p>
+            </div>
+          </div>
         ) : (
-          <div className="w-8 h-8 mx-auto rounded-lg bg-[#E8F3EE] border border-[#0F5132]/20 flex items-center justify-center font-bold text-[10px] text-[#0F5132]">
-            ED
+          <div
+            className="w-10 h-10 mx-auto rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center cursor-pointer"
+            title={healthStatus === 'healthy' ? 'AI Engine Online' : 'AI Engine Offline'}
+            onClick={() => store.toggleSidebar()}
+          >
+            <span
+              className={`w-2.5 h-2.5 rounded-full ${
+                healthStatus === 'healthy' ? 'bg-emerald-500' : 'bg-rose-500'
+              }`}
+            />
           </div>
         )}
       </div>
