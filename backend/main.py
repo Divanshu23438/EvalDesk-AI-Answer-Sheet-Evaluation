@@ -4375,6 +4375,31 @@ def get_sheet_report_endpoint(sheet_id: str, regenerate: bool = False):
 
         pdf_url = f"/storage/reports/{paper_id}/{card_name}"
 
+        total_val = float(sheet["total_score"] or 0.0)
+        max_val = float(sheet["max_marks"] or (paper["total_marks"] if paper and "total_marks" in paper.keys() and paper["total_marks"] else 100.0))
+        pct_val = float(sheet["percentage"] or 0.0)
+        if pct_val <= 0.0 and max_val > 0 and total_val > 0:
+            pct_val = round((total_val / max_val) * 100.0, 1)
+
+        grd_val = sheet["grade"] or ""
+        if not grd_val or grd_val == "Needs Support":
+            if pct_val >= 90:
+                grd_val = "O"
+            elif pct_val >= 80:
+                grd_val = "A+"
+            elif pct_val >= 70:
+                grd_val = "A"
+            elif pct_val >= 60:
+                grd_val = "B+"
+            elif pct_val >= 50:
+                grd_val = "B"
+            elif pct_val >= 40:
+                grd_val = "C"
+            elif pct_val >= 35:
+                grd_val = "D"
+            else:
+                grd_val = "F"
+
         return {
             "sheet_id": sheet_id,
             "paper_id": paper_id,
@@ -4386,10 +4411,10 @@ def get_sheet_report_endpoint(sheet_id: str, regenerate: bool = False):
             "exam_name": paper["exam_name"] if (paper and "exam_name" in paper.keys()) else "Term Examination",
             "subject_code": paper["subject_code"] if (paper and "subject_code" in paper.keys()) else "",
             "paper_strictness": paper["strictness_level"] if (paper and "strictness_level" in paper.keys()) else (paper["strictness"] if paper and "strictness" in paper.keys() else 3),
-            "total_score": sheet["total_score"] or 0.0,
-            "max_marks": sheet["max_marks"] or 100.0,
-            "percentage": sheet["percentage"] or 0.0,
-            "grade": sheet["grade"] or "Needs Support",
+            "total_score": total_val,
+            "max_marks": max_val,
+            "percentage": pct_val,
+            "grade": grd_val,
             "strengths": strengths_list,
             "improvements": improvements_list,
             "flagged_count": flagged_count,

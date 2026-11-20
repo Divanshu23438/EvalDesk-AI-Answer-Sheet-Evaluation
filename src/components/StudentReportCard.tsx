@@ -205,8 +205,23 @@ export const StudentReportCard: React.FC<StudentReportCardProps> = ({ sheetId })
     );
   }
 
-  const isPass = data.percentage >= 35;
+  const totalScore = Number(data.total_score || 0);
+  const maxMarks = Number(data.max_marks || (data.questions ? data.questions.reduce((a, c) => a + Number(c.max_marks || 0), 0) : 100)) || 100;
+  const computedPct = maxMarks > 0 ? Number(((totalScore / maxMarks) * 100).toFixed(1)) : 0;
+  const effectivePct = (data.percentage && data.percentage > 0) ? Number(data.percentage.toFixed(1)) : computedPct;
+  const isPass = effectivePct >= 35;
   const statusLabel = isPass ? 'PASS' : 'RE-APPEAR';
+  const getGrade = (pct: number) => {
+    if (pct >= 90) return 'O (Outstanding)';
+    if (pct >= 80) return 'A+ (Excellent)';
+    if (pct >= 70) return 'A (Very Good)';
+    if (pct >= 60) return 'B+ (Good)';
+    if (pct >= 50) return 'B (Above Average)';
+    if (pct >= 40) return 'C (Average)';
+    if (pct >= 35) return 'D (Pass)';
+    return 'F (Needs Support)';
+  };
+  const effectiveGrade = (data.grade && data.grade !== 'Needs Support' && data.grade !== 'N/A') ? data.grade : getGrade(effectivePct);
   const shortSheetId = (data.sheet_id || '').slice(0, 8).toUpperCase();
 
   // Print helper
@@ -358,7 +373,7 @@ export const StudentReportCard: React.FC<StudentReportCardProps> = ({ sheetId })
               Percentage
             </span>
             <div className="font-mono font-bold text-base sm:text-lg text-[#0F5132] dark:text-[#7CC9A3] mt-0.5">
-              {data.percentage.toFixed(1)}%
+              {effectivePct.toFixed(1)}%
             </div>
           </div>
 
@@ -367,8 +382,8 @@ export const StudentReportCard: React.FC<StudentReportCardProps> = ({ sheetId })
             <span className="text-[10px] font-bold uppercase tracking-wider text-[#6B7280] dark:text-[#969E9A] block">
               Awarded Grade
             </span>
-            <div className="font-mono font-bold text-base sm:text-lg text-[#111827] dark:text-[#ECEEED] mt-0.5">
-              {data.grade || '—'}
+            <div className="font-mono font-bold text-base sm:text-lg text-[#111827] dark:text-[#ECEEED] mt-0.5 truncate" title={effectiveGrade}>
+              {effectiveGrade}
             </div>
           </div>
 
