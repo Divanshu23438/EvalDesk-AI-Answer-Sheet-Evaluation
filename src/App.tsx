@@ -119,7 +119,7 @@ export default function App() {
     if (first === 'reports' || first === 'report-card') return 'reports';
     if (first === 'evaluate') return 'evaluate';
     if (first === 'report') return 'report';
-    if (first === 'guide') return 'guide';
+    if (first === 'guide' || first === 'help' || first === 'faq') return 'guide';
     if (first === 'upload' || first === 'setup' || first === 'processing') return 'upload';
     return 'home';
   });
@@ -149,7 +149,7 @@ export default function App() {
       targetStep = 'evaluate';
     } else if (stepPart === 'report') {
       targetStep = 'report';
-    } else if (stepPart === 'guide') {
+    } else if (stepPart === 'guide' || stepPart === 'help' || stepPart === 'faq') {
       targetStep = 'guide';
     } else if (stepPart === 'upload' || stepPart === 'setup' || stepPart === 'processing' || stepPart === 'signup' || stepPart === 'sign-up') {
       targetStep = 'upload';

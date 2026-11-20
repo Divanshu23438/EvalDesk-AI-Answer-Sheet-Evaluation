@@ -667,7 +667,7 @@ export const HomeScreen: React.FC = () => {
             </span>
           </a>
 
-          {/* Center: ONLY two links — Home (active) and About Us */}
+          {/* Center: Links — Home (active), About Us, and Guide & FAQ */}
           <nav className="flex items-center gap-8" aria-label="Main Navigation">
             <a
               href="#/home"
@@ -683,6 +683,12 @@ export const HomeScreen: React.FC = () => {
             >
               About Us
             </button>
+            <a
+              href="#/guide"
+              className="text-sm font-medium text-slate-500 dark:text-[#969E9A] hover:text-[#1E2430] dark:hover:text-[#ECEEED] transition-colors cursor-pointer"
+            >
+              Guide &amp; FAQ
+            </a>
           </nav>
 
           {/* Right: Login, Sign Up & Compact Theme Switcher Button */}

@@ -11,7 +11,7 @@ function getInitialStep(): AppStep {
   if (stepPart === 'reports' || stepPart === 'report-card') return 'reports';
   if (stepPart === 'evaluate') return 'evaluate';
   if (stepPart === 'report') return 'report';
-  if (stepPart === 'guide') return 'guide';
+  if (stepPart === 'guide' || stepPart === 'help' || stepPart === 'faq') return 'guide';
   if (stepPart === 'upload' || stepPart === 'setup' || stepPart === 'processing') return 'upload';
   return 'home';
 }
@@ -207,7 +207,7 @@ export const sheetStore = {
       resolvedStep = 'evaluate';
     } else if (stepPart === 'report') {
       resolvedStep = 'report';
-    } else if (stepPart === 'guide') {
+    } else if (stepPart === 'guide' || stepPart === 'help' || stepPart === 'faq') {
       resolvedStep = 'guide';
     } else if (stepPart === 'upload' || stepPart === 'setup' || stepPart === 'processing' || stepPart === 'signup' || stepPart === 'sign-up') {
       resolvedStep = 'upload';

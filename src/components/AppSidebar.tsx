@@ -11,6 +11,8 @@ import {
   Search,
   Sun,
   Moon,
+  BookOpen,
+  HelpCircle,
 } from 'lucide-react';
 
 interface Paper {
@@ -275,6 +277,43 @@ export const AppSidebar: React.FC = () => {
           )}
         </div>
       )}
+
+      {/* Help & FAQ Navigation Item (Right above Theme Appearance Toggle) */}
+      <div className="px-2 pb-2 shrink-0">
+        <button
+          type="button"
+          onClick={() => {
+            store.setStep('guide');
+            window.location.hash = '#/guide';
+          }}
+          title={isCollapsed ? 'Help & FAQ' : undefined}
+          aria-label="Help & FAQ"
+          className={`w-full flex items-center rounded-xl transition-all duration-150 cursor-pointer ${
+            isCollapsed
+              ? `h-10 justify-center ${
+                  state.step === 'guide'
+                    ? 'bg-[#E8F3EE] text-[#0F5132] dark:bg-[#1A2B23] dark:text-[#7CC9A3] dark:border dark:border-[#294236]'
+                    : 'text-[#4B5563] dark:text-[#969E9A] hover:bg-[#F1F4F2] dark:hover:bg-[#202422] hover:text-[#111827] dark:hover:text-[#ECEEED]'
+                }`
+              : `h-9 px-3 gap-3 ${
+                  state.step === 'guide'
+                    ? 'bg-[#E8F3EE] text-[#0F5132] dark:bg-[#1A2B23] dark:text-[#7CC9A3] dark:border dark:border-[#294236] font-semibold'
+                    : 'text-[#4B5563] dark:text-[#969E9A] hover:bg-[#F1F4F2] dark:hover:bg-[#202422] hover:text-[#111827] dark:hover:text-[#ECEEED] font-medium'
+                }`
+          }`}
+        >
+          <BookOpen
+            className={`w-4 h-4 shrink-0 transition-colors ${
+              state.step === 'guide'
+                ? 'text-[#0F5132] dark:text-[#7CC9A3]'
+                : 'text-[#6B7280] dark:text-[#68706C]'
+            }`}
+          />
+          {!isCollapsed && (
+            <span className="text-xs truncate flex-1 text-left">Help &amp; FAQ</span>
+          )}
+        </button>
+      </div>
 
       {/* Theme Appearance Toggle Row (Above Backend Status Indicator) */}
       {!isCollapsed ? (

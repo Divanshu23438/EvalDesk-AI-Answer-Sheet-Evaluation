@@ -1,7 +1,47 @@
 # STATUS (update at the end of every session)
 Date / author (agent or model name): 2026-11-20 / Antigravity (Gemini 3.8 Flash)
-Current phase and task: Decoupled 1-Page Bento Report Card (`StudentReportCard.tsx` & `/api/sheets/{sheetId}/export/report-card-pdf`) Complete 100%.
+Current phase and task: Restored & Enhanced Teacher Guide & FAQ Screen (`#/guide`, `#/help`, `#/faq`) with Dark Mode & Progress Tracking Complete 100%.
 Done (task id, commit, proof file):
+- Restored & Enhanced Dedicated Teacher User Manual & FAQ Screen (`src/screens/GuideScreen.tsx`, `src/components/AppSidebar.tsx`, `src/App.tsx`, `src/screens/HomeScreen.tsx`, `src/state/useSheetStore.ts`, `scripts/verify_guide_screen.py`):
+  1. Route & Alias Navigation:
+     - Registered `#/guide` and aliased `#/help` and `#/faq` in both `src/App.tsx` and `src/state/useSheetStore.ts` to seamlessly render `<GuideScreen />`.
+     - Restored "Help & FAQ" navigation button with `BookOpen` icon in `src/components/AppSidebar.tsx` directly above the Dark Mode toggle row, with responsive collapsed (`w-20`) and expanded (`w-64`) layouts and active highlight (`bg-[#E8F3EE] text-[#0F5132]` in light, `dark:bg-[#1A2B23] dark:text-[#7CC9A3]` in dark mode).
+     - Added "Guide & FAQ" direct link in `src/screens/HomeScreen.tsx` top navbar.
+  2. 5-Chapter Interactive Teacher User Manual (`src/screens/GuideScreen.tsx`):
+     - Chapter 01: Exam Setup & Reference Key (exam scheme definition, vision-based Auto-Fetch reference key and rubrics, and scheme locking).
+     - Chapter 02: Batch Upload & Student Booklet Parsing (300 DPI scan guidelines, automated student header/roll parsing, cover page legibility validation).
+     - Chapter 03: 1–5 AI Strictness Calibration & Partial Credit Mechanics (detailed comparative matrix for Lenient, Mild, Balanced [Default], Rigorous, and Exact tiers).
+     - Chapter 04: Split-Screen Workspace, Keyboard Navigation & Re-Evaluation (interactive keyboard shortcuts cheatsheet, and OCR confidence threshold rules: >=85% Verified, <85% Needs Review).
+     - Chapter 05: Bento Marksheets & Institutional Reports (Report Card center, whole-class Excel export, 1-page bento report cards, two-sided PDF marksheets with grading scales).
+     - Chapter progress tracking with "Mark as Learned ✓" toggle and real-time read counter persisted in `localStorage` (`evaldesk_guide_read`).
+  3. Interactive FAQ Panel & Smart Cross-Linking:
+     - 10 real-world teacher FAQs addressing scan resolution, roll number editing, strictness selection, question-level overrides, grading scales, and exports.
+     - Real-time category filtering (`All`, `OCR & Scans`, `Scoring`, `Reports`).
+     - Animated expand/collapse accordions with rotating chevrons.
+     - Deep cross-link action buttons `"Learn more in Chapter 0X →"` inside expanded FAQ cards that instantaneously switch the active manual reader to the referenced chapter.
+  4. Real-Time Live Search Filter:
+     - Unified search input filtering both manual chapter pills and FAQ cards simultaneously with clear buttons.
+  5. Dark Mode & Academic Palette Alignment:
+     - 100% theme consistency with Porcelain & Deep Forest Emerald (`#F6F7F5` / `#FFFFFF` / `#0F5132`) in light mode and Matte Graphite (`#111312` / `#181B19` / `#1F6E4A`) in dark mode.
+     - Strict adherence to academic clean design: zero neon glows, glassmorphism, or gradients.
+  6. Verification & Gate Checks:
+     - `npx tsc --noEmit`: 0 errors.
+     - `python scripts/check_all.py`: `RESULT: ALL PASS` (banned strings, no sensitive files, pytest, tsc, and live AI provider health).
+     - Playwright browser test (`scripts/verify_guide_screen.py`): `ALL VERIFICATION CHECKS PASSED PERFECTLY!`
+       - Verified HomeScreen top header link navigates to `#/guide`.
+       - Verified `#/help` and `#/faq` alias routes render GuideScreen.
+       - Verified AppSidebar "Help & FAQ" active highlighting and click handling.
+       - Verified Chapter 01 to 05 tab switching, 1–5 strictness comparison matrix, keyboard shortcuts, and confidence threshold cards.
+       - Verified FAQ category filtering, accordion expansion, and "Learn more in Chapter 03" cross-link activation.
+       - Verified live search filtering for chapters and FAQs.
+       - Verified dark mode toggle and styling.
+       - Regression-checked core routes (`#/upload`, `#/dashboard`, `#/history`, `#/reports`, `#/report/:sheetId`) with zero errors.
+     - Captured evidence screenshots:
+       - `docs/proof/ui/guide/1_guide_light_overview.png`
+       - `docs/proof/ui/guide/2_guide_chapter3_strictness.png`
+       - `docs/proof/ui/guide/3_guide_chapter4_shortcuts.png`
+       - `docs/proof/ui/guide/4_guide_dark_overview.png`
+       - `docs/proof/ui/guide/5_guide_dark_chapter3.png`
 - Decoupled Dedicated 1-Page Bento Report Card & PDF Generation (`src/components/StudentReportCard.tsx`, `src/screens/ReportsCenterScreen.tsx`, `backend/reports_generator.py`, `backend/main.py`, `scripts/verify_bento_report.py`):
   1. Complete Decoupling from Post-Evaluation Route:
      - Post-evaluation workflow route (`#/report/:sheetId` in `src/screens/ReportScreen.tsx` / `src/components/StudentReportView.tsx`) remains 100% untouched with its active 3-step workflow stepper, scanned answer booklet viewer, OCR overlays, and 3 full tabs (`Overview`, `Question-wise Marks`, `Analytics & Charts`).
