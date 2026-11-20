@@ -16,11 +16,13 @@ import {
 export interface StudentReportViewProps {
   sheetId: number | string;
   onBack?: () => void;
+  hideAnswerSheet?: boolean;
 }
 
 export const StudentReportView: React.FC<StudentReportViewProps> = ({
   sheetId,
   onBack,
+  hideAnswerSheet = false,
 }) => {
   const [state, store] = useSheetStore();
 
@@ -486,49 +488,53 @@ export const StudentReportView: React.FC<StudentReportViewProps> = ({
         className="flex-1 flex min-h-0 overflow-hidden bg-[#F6F7F5] dark:bg-[#111312] relative p-3 gap-2.5"
       >
         {/* ==================== LEFT PANE (Answer Booklet Preview) ==================== */}
-        <section
-          style={{
-            width: `calc(${splitRatio}% - 6px)`,
-            height: '100%',
-            maxHeight: '100%',
-            display: 'flex',
-            flexDirection: 'column',
-            overflow: 'hidden',
-          }}
-        >
-          <ReportBookletPreview
-            sheetId={activeSheetId}
-            filename={dynamicFilename}
-            totalPages={totalPages}
-            currentPage={currentPage}
-            onPageChange={setCurrentPage}
-            activeQuestion={activeQuestion}
-            zoom={zoom}
-            onZoomChange={setZoom}
-            onFitZoom={() => setZoom(100)}
-          />
-        </section>
+        {!hideAnswerSheet && (
+          <section
+            style={{
+              width: `calc(${splitRatio}% - 6px)`,
+              height: '100%',
+              maxHeight: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+            }}
+          >
+            <ReportBookletPreview
+              sheetId={activeSheetId}
+              filename={dynamicFilename}
+              totalPages={totalPages}
+              currentPage={currentPage}
+              onPageChange={setCurrentPage}
+              activeQuestion={activeQuestion}
+              zoom={zoom}
+              onZoomChange={setZoom}
+              onFitZoom={() => setZoom(100)}
+            />
+          </section>
+        )}
 
         {/* Draggable Vertical Divider Handle */}
-        <div
-          onMouseDown={handleMouseDown}
-          className="w-2 hover:w-2.5 -mx-1 flex items-center justify-center cursor-col-resize z-20 group transition-all shrink-0 self-stretch"
-          title="Drag to resize panes"
-        >
-          <div className="w-1 group-hover:w-1.5 h-16 bg-[#E2E8E4] dark:bg-[#2A2F2C] group-hover:bg-[#0F5132] dark:group-hover:bg-[#1F6E4A] rounded-full transition-all" />
-        </div>
+        {!hideAnswerSheet && (
+          <div
+            onMouseDown={handleMouseDown}
+            className="w-2 hover:w-2.5 -mx-1 flex items-center justify-center cursor-col-resize z-20 group transition-all shrink-0 self-stretch"
+            title="Drag to resize panes"
+          >
+            <div className="w-1 group-hover:w-1.5 h-16 bg-[#E2E8E4] dark:bg-[#2A2F2C] group-hover:bg-[#0F5132] dark:group-hover:bg-[#1F6E4A] rounded-full transition-all" />
+          </div>
+        )}
 
         {/* ==================== RIGHT PANE (Overview, Questions, Analytics) ==================== */}
         <section
           style={{
-            width: `calc(${100 - splitRatio}% - 6px)`,
+            width: hideAnswerSheet ? '100%' : `calc(${100 - splitRatio}% - 6px)`,
             height: '100%',
             maxHeight: '100%',
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
           }}
-          className="bg-white dark:bg-[#181B19] rounded-xl border border-[#E2E8E4] dark:border-[#2A2F2C]"
+          className="bg-white dark:bg-[#181B19] rounded-xl border border-[#E2E8E4] dark:border-[#2A2F2C] flex-1 min-w-0"
         >
           {/* Single-row Header Bar (h-12) */}
           <div className="h-12 border-b border-[#E2E8E4] dark:border-[#2A2F2C] px-4 flex items-center justify-between shrink-0 bg-white dark:bg-[#181B19] select-none">

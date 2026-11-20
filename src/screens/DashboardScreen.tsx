@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useSheetStore } from '../state/useSheetStore';
 import { apiClient } from '../api/client';
 import {
@@ -14,7 +14,24 @@ import {
   Clock,
   CheckCircle,
   ExternalLink,
+  Trophy,
+  Filter,
 } from 'lucide-react';
+
+interface LeaderboardItem {
+  sheet_id: string;
+  paper_id: string;
+  student_name: string;
+  roll_number: string;
+  class_name: string;
+  subject: string;
+  paper_title: string;
+  total_score: number;
+  max_marks: number;
+  percentage: number;
+  grade: string;
+  rank: number;
+}
 
 interface DashboardSummary {
   total_evaluated: number;
@@ -80,6 +97,12 @@ export const DashboardScreen: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Leaderboard State
+  const [leaderboard, setLeaderboard] = useState<LeaderboardItem[]>([]);
+  const [leaderboardSubject, setLeaderboardSubject] = useState<string>('all');
+  const [leaderboardClass, setLeaderboardClass] = useState<string>('all');
+  const [isLeaderboardLoading, setIsLeaderboardLoading] = useState<boolean>(false);
+
   useEffect(() => {
     let isCancelled = false;
     const fetchSummary = async () => {
@@ -106,6 +129,79 @@ export const DashboardScreen: React.FC = () => {
       isCancelled = true;
     };
   }, []);
+
+  // Fetch Leaderboard whenever Subject or Class filter changes
+  useEffect(() => {
+    let isCancelled = false;
+    const fetchLeaderboard = async () => {
+      try {
+        setIsLeaderboardLoading(true);
+        const res = await apiClient.get<{ leaderboard: LeaderboardItem[] }>(
+          `/api/dashboard/leaderboard?subject=${encodeURIComponent(leaderboardSubject)}&class_name=${encodeURIComponent(leaderboardClass)}`
+        );
+        if (!isCancelled) {
+          setLeaderboard(res.leaderboard || []);
+        }
+      } catch (err) {
+        console.error('Failed to load leaderboard:', err);
+      } finally {
+        if (!isCancelled) {
+          setIsLeaderboardLoading(false);
+        }
+      }
+    };
+
+    fetchLeaderboard();
+    return () => {
+      isCancelled = true;
+    };
+  }, [leaderboardSubject, leaderboardClass]);
+
+  // Unique Subjects for Leaderboard Filter
+  const availableSubjects = useMemo(() => {
+    const set = new Set<string>();
+    if (data?.subject_performance) {
+      data.subject_performance.forEach((s) => {
+        if (s.subject && s.subject.trim()) set.add(s.subject.trim());
+      });
+    }
+    if (data?.recent_sheets) {
+      data.recent_sheets.forEach((s) => {
+        if (s.subject && s.subject.trim()) set.add(s.subject.trim());
+      });
+    }
+    return Array.from(set).sort();
+  }, [data]);
+
+  // Unique Classes for Leaderboard Filter
+  const availableClasses = useMemo(() => {
+    const set = new Set<string>();
+    if (data?.recent_sheets) {
+      data.recent_sheets.forEach((s) => {
+        if (s.class_name && s.class_name.trim()) set.add(s.class_name.trim());
+      });
+    }
+    return Array.from(set).sort();
+  }, [data]);
+
+  // Grade badge styling helper
+  const getGradeBadgeClass = (grade: string) => {
+    if (grade === 'O' || grade.startsWith('A')) {
+      return 'bg-emerald-100 dark:bg-[#1A2B23] text-emerald-800 dark:text-[#7CC9A3] border border-emerald-200 dark:border-[#294236]';
+    }
+    if (grade.startsWith('B')) {
+      return 'bg-teal-100 dark:bg-[#1B2929] text-teal-800 dark:text-[#3A7D8C] border border-teal-200 dark:border-[#204040]';
+    }
+    if (grade === 'F' || grade === 'Needs Support') {
+      return 'bg-rose-100 dark:bg-[#2B191D] text-rose-800 dark:text-[#E57D8A] border border-rose-200 dark:border-[#45262C]';
+    }
+    return 'bg-amber-100 dark:bg-[#2B2416] text-amber-800 dark:text-[#E5B567] border border-amber-200 dark:border-[#42361F]';
+  };
+
+  const handleOpenLeaderboardReport = (sheetId: string) => {
+    window.location.hash = `#/reports?sheetId=${sheetId}`;
+    store.setStep('reports' as any);
+  };
 
   const totalSheetsDistribution = data
     ? (data.score_distribution.high +
@@ -403,6 +499,167 @@ export const DashboardScreen: React.FC = () => {
                 </span>
               </div>
             </div>
+          </div>
+
+          {/* Top Performers Leaderboard Bento Card */}
+          <div className="bg-white dark:bg-[#181B19] border border-[#E2E8E4] dark:border-[#2A2F2C] rounded-[20px] p-5 shadow-none dark:shadow-none">
+            {/* Header with Title and Filters */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#E2E8E4] dark:border-[#2A2F2C]">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-[#E8F3EE] dark:bg-[#1A2B23] text-[#0F5132] dark:text-[#7CC9A3] flex items-center justify-center border border-[#0F5132]/20 dark:border-[#294236]">
+                  <Trophy className="w-4 h-4" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-bold text-[#111827] dark:text-[#ECEEED] tracking-tight">
+                    Top Performers Leaderboard
+                  </h2>
+                  <p className="text-xs text-[#6B7280] dark:text-[#68706C]">
+                    Cross-subject &amp; cross-stream academic excellence
+                  </p>
+                </div>
+              </div>
+
+              {/* Stream / Class & Subject Filters */}
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Class / Stream Dropdown */}
+                <div className="relative flex items-center">
+                  <select
+                    value={leaderboardClass}
+                    onChange={(e) => setLeaderboardClass(e.target.value)}
+                    className="h-8 text-xs bg-[#F1F4F2] dark:bg-[#202422] border border-[#E2E8E4] dark:border-[#2F3532] rounded-lg px-2.5 font-medium text-[#111827] dark:text-[#ECEEED] focus:ring-1 focus:ring-[#0F5132] dark:focus:ring-[#1F6E4A] focus:outline-none cursor-pointer"
+                  >
+                    <option value="all">All Streams / Classes</option>
+                    {availableClasses.map((cls) => (
+                      <option key={cls} value={cls}>
+                        {cls}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Subject Dropdown */}
+                <div className="relative flex items-center">
+                  <select
+                    value={leaderboardSubject}
+                    onChange={(e) => setLeaderboardSubject(e.target.value)}
+                    className="h-8 text-xs bg-[#F1F4F2] dark:bg-[#202422] border border-[#E2E8E4] dark:border-[#2F3532] rounded-lg px-2.5 font-medium text-[#111827] dark:text-[#ECEEED] focus:ring-1 focus:ring-[#0F5132] dark:focus:ring-[#1F6E4A] focus:outline-none cursor-pointer"
+                  >
+                    <option value="all">All Subjects</option>
+                    {availableSubjects.map((sub) => (
+                      <option key={sub} value={sub}>
+                        {sub}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Content Table / Empty State */}
+            {isLeaderboardLoading ? (
+              <div className="py-10 flex flex-col items-center justify-center space-y-2">
+                <div className="w-5 h-5 border-2 border-[#0F5132] dark:border-[#1F6E4A] border-t-transparent rounded-full animate-spin" />
+                <span className="text-xs font-mono text-slate-400">Loading topper ranks...</span>
+              </div>
+            ) : leaderboard.length === 0 ? (
+              <div className="py-10 text-center text-slate-400 dark:text-[#68706C] text-xs space-y-1">
+                <p className="font-semibold text-slate-600 dark:text-[#ECEEED]">No evaluated submissions found</p>
+                <p>No topper records found for this filter combination.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto pt-2">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-[#E2E8E4] dark:border-[#2F3532] text-slate-500 dark:text-[#969E9A] font-semibold uppercase text-[10px] tracking-wider">
+                      <th className="py-2.5 px-3 w-16 text-center">Rank</th>
+                      <th className="py-2.5 px-3">Student Name</th>
+                      <th className="py-2.5 px-3">Roll No.</th>
+                      <th className="py-2.5 px-3">Class / Stream</th>
+                      <th className="py-2.5 px-3">Subject</th>
+                      <th className="py-2.5 px-3 text-center">Score</th>
+                      <th className="py-2.5 px-3 text-center">Percentage</th>
+                      <th className="py-2.5 px-3 text-center">Grade</th>
+                      <th className="py-2.5 px-3 text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-[#2A2F2C]">
+                    {leaderboard.map((item) => (
+                      <tr
+                        key={item.sheet_id}
+                        onClick={() => handleOpenLeaderboardReport(item.sheet_id)}
+                        className="hover:bg-slate-50/80 dark:hover:bg-[#202422]/60 transition-colors cursor-pointer group"
+                      >
+                        {/* Rank Badge */}
+                        <td className="py-2.5 px-3 text-center">
+                          <span
+                            className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-mono font-bold ${
+                              item.rank === 1
+                                ? 'bg-[#0F5132] text-white dark:bg-[#1F6E4A]'
+                                : item.rank === 2
+                                ? 'bg-[#E8F3EE] text-[#0F5132] dark:bg-[#1A2B23] dark:text-[#7CC9A3] border border-[#0F5132]/30 dark:border-[#294236]'
+                                : item.rank === 3
+                                ? 'bg-amber-50 text-amber-800 dark:bg-[#2B2416] dark:text-[#E5B567] border border-amber-200 dark:border-[#42361F]'
+                                : 'bg-slate-100 text-slate-600 dark:bg-[#202422] dark:text-[#969E9A]'
+                            }`}
+                          >
+                            #{item.rank}
+                          </span>
+                        </td>
+
+                        {/* Student Name */}
+                        <td className="py-2.5 px-3 font-semibold text-slate-900 dark:text-[#ECEEED] group-hover:text-[#0F5132] dark:group-hover:text-[#7CC9A3] transition-colors">
+                          {item.student_name}
+                        </td>
+
+                        {/* Roll Number */}
+                        <td className="py-2.5 px-3 font-mono text-slate-600 dark:text-[#969E9A]">
+                          {item.roll_number || '—'}
+                        </td>
+
+                        {/* Class Pill */}
+                        <td className="py-2.5 px-3">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-slate-100 dark:bg-[#202422] text-slate-700 dark:text-[#ECEEED] border border-slate-200 dark:border-[#2F3532]">
+                            {item.class_name || 'Standard'}
+                          </span>
+                        </td>
+
+                        {/* Subject Pill */}
+                        <td className="py-2.5 px-3">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-[#E8F3EE] dark:bg-[#1A2B23] text-[#0F5132] dark:text-[#7CC9A3] border border-[#0F5132]/15 dark:border-[#294236]">
+                            {item.subject}
+                          </span>
+                        </td>
+
+                        {/* Score */}
+                        <td className="py-2.5 px-3 text-center font-mono font-semibold text-slate-800 dark:text-[#ECEEED]">
+                          {item.total_score} <span className="text-[10px] text-slate-400 font-normal">/ {item.max_marks}</span>
+                        </td>
+
+                        {/* Percentage */}
+                        <td className="py-2.5 px-3 text-center font-mono font-bold text-[#0F5132] dark:text-[#7CC9A3]">
+                          {item.percentage.toFixed(1)}%
+                        </td>
+
+                        {/* Grade */}
+                        <td className="py-2.5 px-3 text-center">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${getGradeBadgeClass(item.grade)}`}>
+                            {item.grade}
+                          </span>
+                        </td>
+
+                        {/* Action Link */}
+                        <td className="py-2.5 px-3 text-right">
+                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#0F5132] dark:text-[#7CC9A3] group-hover:underline">
+                            <span>Report</span>
+                            <ArrowRight className="w-3 h-3" />
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
 
           {/* Recent Evaluated Sheets Table */}

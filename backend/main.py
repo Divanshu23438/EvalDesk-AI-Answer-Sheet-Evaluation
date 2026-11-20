@@ -8,6 +8,10 @@ import hashlib
 import asyncio
 import logging
 import traceback
+import tempfile
+import time
+import zipfile
+import fitz
 from datetime import datetime
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -5196,6 +5200,364 @@ async def export_student_report_pdf(sheet_id: str):
         media_type="application/pdf",
         filename=clean_name,
     )
+
+
+class BatchReportsPayload(BaseModel):
+    sheet_ids: List[str]
+    format: str = "zip"  # "zip" or "pdf"
+
+
+class ConsolidatedExportPayload(BaseModel):
+    sheet_ids: List[str]
+    format: str = "xlsx"  # "xlsx" or "pdf"
+
+
+class CompareSheetsPayload(BaseModel):
+    sheet_ids: List[str]
+
+
+@app.get("/api/dashboard/leaderboard")
+def get_dashboard_leaderboard(
+    subject: Optional[str] = None,
+    class_name: Optional[str] = None,
+    limit: int = 10,
+):
+    """
+    Returns top performing students across subjects and streams.
+    Supports optional subject and class_name query filters.
+    """
+    with get_db() as conn:
+        cursor = conn.cursor()
+        sql = """
+            SELECT
+                s.id as sheet_id,
+                s.paper_id,
+                COALESCE(s.student_name, 'Student') as student_name,
+                COALESCE(s.roll_number, '') as roll_number,
+                COALESCE(s.class_name, '') as class_name,
+                COALESCE(p.subject, 'General') as subject,
+                COALESCE(p.title, 'Examination') as paper_title,
+                COALESCE(s.total_score, 0.0) as total_score,
+                COALESCE(s.max_marks, p.total_marks, 100.0) as max_marks,
+                COALESCE(s.percentage, 0.0) as percentage,
+                COALESCE(s.grade, '—') as grade
+            FROM sheets s
+            JOIN papers p ON s.paper_id = p.id
+            WHERE s.total_score IS NOT NULL
+        """
+        params: List[Any] = []
+        if subject and subject.strip().lower() != "all":
+            sql += " AND LOWER(p.subject) = ?"
+            params.append(subject.strip().lower())
+        if class_name and class_name.strip().lower() != "all":
+            sql += " AND LOWER(s.class_name) = ?"
+            params.append(class_name.strip().lower())
+
+        sql += " ORDER BY s.percentage DESC, s.total_score DESC, s.student_name ASC LIMIT ?"
+        params.append(max(1, min(limit, 100)))
+
+        cursor.execute(sql, tuple(params))
+        rows = cursor.fetchall()
+
+        leaderboard = []
+        for idx, r in enumerate(rows, start=1):
+            item = dict(r)
+            item["rank"] = idx
+            leaderboard.append(item)
+
+        return {"leaderboard": leaderboard}
+
+
+@app.post("/api/sheets/compare")
+def compare_sheets_endpoint(payload: CompareSheetsPayload):
+    """
+    Fetches comparative data and question-by-question marks for 2 to 10 selected students.
+    """
+    if not payload.sheet_ids:
+        return {"students": [], "questions": [], "matrix": {}}
+
+    with get_db() as conn:
+        cursor = conn.cursor()
+        placeholders = ",".join(["?"] * len(payload.sheet_ids))
+        cursor.execute(
+            f"""
+            SELECT
+                s.id as sheet_id,
+                s.paper_id,
+                COALESCE(s.student_name, 'Student') as student_name,
+                COALESCE(s.roll_number, '') as roll_number,
+                COALESCE(s.class_name, '') as class_name,
+                COALESCE(p.subject, 'General') as subject,
+                COALESCE(p.title, 'Examination') as paper_title,
+                COALESCE(s.total_score, 0.0) as total_score,
+                COALESCE(s.max_marks, p.total_marks, 100.0) as max_marks,
+                COALESCE(s.percentage, 0.0) as percentage,
+                COALESCE(s.grade, '—') as grade
+            FROM sheets s
+            JOIN papers p ON s.paper_id = p.id
+            WHERE s.id IN ({placeholders})
+            ORDER BY s.percentage DESC, s.total_score DESC
+            """,
+            payload.sheet_ids,
+        )
+        students = [dict(r) for r in cursor.fetchall()]
+        for idx, st in enumerate(students, start=1):
+            st["rank"] = idx
+
+        # Fetch evaluations with questions for all these sheets
+        cursor.execute(
+            f"""
+            SELECT
+                e.sheet_id,
+                e.final_marks,
+                q.id as question_id,
+                q.q_no,
+                q.question_text,
+                q.max_marks,
+                q.section_name,
+                q.order_idx
+            FROM evaluations e
+            JOIN questions q ON e.question_id = q.id
+            WHERE e.sheet_id IN ({placeholders})
+            ORDER BY q.order_idx ASC
+            """,
+            payload.sheet_ids,
+        )
+        eval_rows = cursor.fetchall()
+
+        q_dict: Dict[str, Dict[str, Any]] = {}
+        matrix: Dict[str, Dict[str, float]] = {}
+        for er in eval_rows:
+            qid = str(er["question_id"])
+            if qid not in q_dict:
+                q_dict[qid] = {
+                    "question_id": qid,
+                    "q_no": er["q_no"],
+                    "question_text": er["question_text"],
+                    "max_marks": float(er["max_marks"] or 0.0),
+                    "section_name": er["section_name"] or "",
+                    "order_idx": er["order_idx"] or 0,
+                }
+            if qid not in matrix:
+                matrix[qid] = {}
+            matrix[qid][str(er["sheet_id"])] = float(er["final_marks"] or 0.0)
+
+        questions = sorted(q_dict.values(), key=lambda x: x["order_idx"])
+
+        return {
+            "students": students,
+            "questions": questions,
+            "matrix": matrix,
+        }
+
+
+@app.post("/api/sheets/export/batch-reports")
+def export_batch_reports(payload: BatchReportsPayload):
+    """
+    Exports individual student report cards as a zip archive or merged multi-page PDF.
+    """
+    if not payload.sheet_ids:
+        raise HTTPException(status_code=400, detail="sheet_ids list cannot be empty")
+
+    pdf_files = []
+    with get_db() as conn:
+        cursor = conn.cursor()
+        for sid in payload.sheet_ids:
+            try:
+                get_sheet_report_endpoint(sid)
+            except Exception as e:
+                logger.warning(f"Failed to generate report for {sid}: {e}")
+
+            cursor.execute("SELECT paper_id, student_name, roll_number FROM sheets WHERE id = ?", (sid,))
+            row = cursor.fetchone()
+            if row:
+                roll = row["roll_number"] or ""
+                sname = row["student_name"] or "Student"
+                card_name = f"report_card_{roll or sname or sid[:8]}.pdf"
+                pdf_path = get_reports_dir(row["paper_id"]) / card_name
+                if pdf_path.exists():
+                    clean_name = re.sub(r"[^\w\-\.]", "_", f"report_card_{roll or sname or sid[:8]}.pdf")
+                    pdf_files.append((pdf_path, clean_name))
+
+    if not pdf_files:
+        raise HTTPException(status_code=404, detail="No report card PDFs available for selected students")
+
+    tmp_dir = Path(tempfile.gettempdir()) / "evaldesk_batch"
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+
+    if payload.format.lower() == "pdf":
+        merged_doc = fitz.open()
+        for pdf_path, _ in pdf_files:
+            try:
+                with fitz.open(str(pdf_path)) as doc:
+                    merged_doc.insert_pdf(doc)
+            except Exception as e:
+                logger.error(f"Error merging pdf {pdf_path}: {e}")
+
+        out_pdf_name = f"merged_student_reports_{int(time.time())}.pdf"
+        out_pdf_path = tmp_dir / out_pdf_name
+        merged_doc.save(str(out_pdf_path))
+        merged_doc.close()
+
+        return FileResponse(
+            str(out_pdf_path),
+            media_type="application/pdf",
+            filename="consolidated_student_reports.pdf",
+        )
+    else:
+        zip_name = f"student_report_cards_{int(time.time())}.zip"
+        zip_path = tmp_dir / zip_name
+        with zipfile.ZipFile(str(zip_path), "w", zipfile.ZIP_DEFLATED) as zf:
+            for pdf_path, clean_name in pdf_files:
+                zf.write(str(pdf_path), arcname=clean_name)
+
+        return FileResponse(
+            str(zip_path),
+            media_type="application/zip",
+            filename="batch_student_reports.zip",
+        )
+
+
+@app.post("/api/sheets/export/consolidated")
+def export_consolidated_results(payload: ConsolidatedExportPayload):
+    """
+    Exports consolidated class / selected student result sheet as Excel (.xlsx) or PDF (.pdf).
+    """
+    if not payload.sheet_ids:
+        raise HTTPException(status_code=400, detail="sheet_ids list cannot be empty")
+
+    with get_db() as conn:
+        cursor = conn.cursor()
+        placeholders = ",".join(["?"] * len(payload.sheet_ids))
+        cursor.execute(
+            f"""
+            SELECT
+                s.id as sheet_id,
+                s.paper_id,
+                COALESCE(s.student_name, 'Student') as student_name,
+                COALESCE(s.roll_number, '') as roll_number,
+                COALESCE(s.class_name, '') as class_name,
+                COALESCE(p.subject, 'General') as subject,
+                COALESCE(p.title, 'Examination') as paper_title,
+                COALESCE(s.total_score, 0.0) as total_score,
+                COALESCE(s.max_marks, p.total_marks, 100.0) as max_marks,
+                COALESCE(s.percentage, 0.0) as percentage,
+                COALESCE(s.grade, '—') as grade,
+                COALESCE(s.status, 'evaluated') as status
+            FROM sheets s
+            JOIN papers p ON s.paper_id = p.id
+            WHERE s.id IN ({placeholders})
+            ORDER BY s.roll_number ASC, s.student_name ASC
+            """,
+            payload.sheet_ids,
+        )
+        students = [dict(r) for r in cursor.fetchall()]
+
+    if not students:
+        raise HTTPException(status_code=404, detail="No matching sheets found for export")
+
+    tmp_dir = Path(tempfile.gettempdir()) / "evaldesk_export"
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+
+    if payload.format.lower() == "pdf":
+        pdf_name = f"consolidated_class_marksheet_{int(time.time())}.pdf"
+        pdf_path = tmp_dir / pdf_name
+        first_paper = students[0]["paper_title"] if students else "Academic Assessment"
+        first_subj = students[0]["subject"] if students else "General"
+        first_class = students[0]["class_name"] if students else ""
+        first_max = students[0]["max_marks"] if students else 100.0
+
+        generate_class_marksheet_pdf(
+            output_path=pdf_path,
+            paper_title=first_paper,
+            subject=first_subj,
+            students=students,
+            total_marks=float(first_max),
+            class_name=first_class,
+        )
+        return FileResponse(
+            str(pdf_path),
+            media_type="application/pdf",
+            filename="consolidated_class_marksheet.pdf",
+        )
+    else:
+        import openpyxl
+        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Consolidated Results"
+
+        emerald_fill = PatternFill(start_color="0F5132", end_color="0F5132", fill_type="solid")
+        zebra_fill = PatternFill(start_color="F9FAF9", end_color="F9FAF9", fill_type="solid")
+        header_font = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
+        title_font = Font(name="Calibri", size=13, bold=True, color="0F5132")
+        bold_font = Font(name="Calibri", size=10, bold=True)
+        regular_font = Font(name="Calibri", size=10)
+        thin_border = Border(
+            left=Side(style="thin", color="E2E8E4"),
+            right=Side(style="thin", color="E2E8E4"),
+            top=Side(style="thin", color="E2E8E4"),
+            bottom=Side(style="thin", color="E2E8E4"),
+        )
+
+        ws.merge_cells("A1:I1")
+        ws["A1"] = "EVALDESK ACADEMIC ASSESSMENT — CONSOLIDATED RESULT SHEET"
+        ws["A1"].font = title_font
+        ws["A1"].alignment = Alignment(horizontal="left", vertical="center")
+        ws.row_dimensions[1].height = 28
+
+        ws["A2"] = f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | Total Candidates: {len(students)}"
+        ws["A2"].font = Font(name="Calibri", size=9, italic=True, color="6B7280")
+        ws.row_dimensions[2].height = 18
+
+        headers = ["Roll No.", "Student Name", "Class / Stream", "Subject", "Score", "Max Marks", "Percentage (%)", "Grade", "Status"]
+        header_row = 4
+        ws.row_dimensions[header_row].height = 24
+
+        for col_idx, header in enumerate(headers, start=1):
+            cell = ws.cell(row=header_row, column=col_idx, value=header)
+            cell.font = header_font
+            cell.fill = emerald_fill
+            cell.alignment = Alignment(horizontal="center" if col_idx not in (1, 2) else "left", vertical="center")
+            cell.border = thin_border
+
+        for row_idx, st in enumerate(students, start=5):
+            ws.row_dimensions[row_idx].height = 20
+            row_data = [
+                st["roll_number"],
+                st["student_name"],
+                st["class_name"],
+                st["subject"],
+                st["total_score"],
+                st["max_marks"],
+                round(float(st["percentage"]), 1),
+                st["grade"],
+                st["status"].upper(),
+            ]
+            fill = zebra_fill if (row_idx % 2 == 0) else None
+            for col_idx, val in enumerate(row_data, start=1):
+                cell = ws.cell(row=row_idx, column=col_idx, value=val)
+                cell.font = bold_font if col_idx in (1, 5, 7, 8) else regular_font
+                if fill:
+                    cell.fill = fill
+                cell.border = thin_border
+                cell.alignment = Alignment(horizontal="center" if col_idx not in (1, 2) else "left", vertical="center")
+
+        for col in ws.columns:
+            max_len = max(len(str(cell.value or "")) for cell in col)
+            col_letter = openpyxl.utils.get_column_letter(col[0].column)
+            ws.column_dimensions[col_letter].width = max(max_len + 4, 12)
+
+        excel_name = f"consolidated_results_{int(time.time())}.xlsx"
+        excel_path = tmp_dir / excel_name
+        wb.save(str(excel_path))
+
+        return FileResponse(
+            str(excel_path),
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            filename="consolidated_results.xlsx",
+        )
 
 
 # ----------------- SCREEN 7: VERIFY MODE & TRAINING EXPORT -----------------
