@@ -1,7 +1,40 @@
 # STATUS (update at the end of every session)
 Date / author (agent or model name): 2026-11-20 / Antigravity (Gemini 3.8 Flash)
-Current phase and task: Multi-Student Search, Sequential Stepper, Cohort Comparison, and Cross-Stream Toppers Leaderboard Complete 100%.
+Current phase and task: Decoupled 1-Page Bento Report Card (`StudentReportCard.tsx` & `/api/sheets/{sheetId}/export/report-card-pdf`) Complete 100%.
 Done (task id, commit, proof file):
+- Decoupled Dedicated 1-Page Bento Report Card & PDF Generation (`src/components/StudentReportCard.tsx`, `src/screens/ReportsCenterScreen.tsx`, `backend/reports_generator.py`, `backend/main.py`, `scripts/verify_bento_report.py`):
+  1. Complete Decoupling from Post-Evaluation Route:
+     - Post-evaluation workflow route (`#/report/:sheetId` in `src/screens/ReportScreen.tsx` / `src/components/StudentReportView.tsx`) remains 100% untouched with its active 3-step workflow stepper, scanned answer booklet viewer, OCR overlays, and 3 full tabs (`Overview`, `Question-wise Marks`, `Analytics & Charts`).
+     - Sidebar "Report Card" section (`#/reports` in `src/screens/ReportsCenterScreen.tsx`) exclusively renders the dedicated 1-page Bento Report Card (`<StudentReportCard sheetId={...} />`).
+  2. Standalone 1-Page Bento Report Card Component (`src/components/StudentReportCard.tsx`):
+     - Strictly formatted to fit on a single A4 page (`max-w-[1050px] mx-auto`) on screen and print.
+     - Strictly Excluded: No scanned booklet canvas/images, no question text paragraphs, no student verbatim written transcripts, and no multi-page overflow.
+     - Strictly Included (All on 1 Single Bento Page):
+       - Header & Candidate Identity Bento Row: Deep Forest Emerald banner with Paper Title, Subject, Code, Date, `VERIFIED REPORT CARD` badge, Sheet ID, Candidate Name, Roll Number (`font-mono`), Class/Stream, and Applied Strictness (`Level X/5`).
+       - Aggregate Score & Result Summary Strip: Total Marks (`{score} / {max_marks}`), Percentage (`{percentage}%`), Awarded Grade, and `PASS` / `RE-APPEAR` badge.
+       - Visual Charts & Telemetry Row (2-Column Bento):
+         - Left: Question-wise performance bar chart (obtained vs max marks for Q.1 to Q.N, color-coded Emerald = Full, Amber = Partial, Rose = Zero).
+         - Right: Section & Topic Mastery horizontal progress bars with syllabus coverage percentages.
+       - Compact Question Marks Ledger (Scores Only — No Transcripts): dense, compact grid showing `Q.No`, scored/max marks (`1.76/2`), and compact status badge (`Full`, `Part`, `0`).
+       - 3-Column Verification Sign-Off Strip: `AI Rubric Audit` (Multi-Pass Alignment Verified · Officially Certified), `Course Instructor` (Department Academic Faculty · Sign-off: Approved), and `Controller of Examinations` (Office of Evaluation · Institutional Seal: Official).
+       - Bottom 1-Line Grading Scale Legend.
+     - Action toolbar: `Print` (`window.print()`) and `Download 1-Page PDF` (`/api/sheets/{sheet_id}/export/report-card-pdf`).
+  3. Dedicated 1-Page Report Card PDF Generator (`backend/reports_generator.py` & `backend/main.py`):
+     - Added `generate_one_page_bento_report_card_pdf`: builds a strict 1-page A4 PDF using ReportLab with vector bar charts (`reportlab.graphics.shapes`), section progress bars, candidate metadata grid, compact question marks table, and 3-column verification sign-offs.
+     - Endpoint `GET /api/sheets/{sheet_id}/export/report-card-pdf` (and alias `/api/sheets/{sheet_id}/report-card/pdf`).
+     - Updated batch reports export `POST /api/sheets/export/batch-reports` for `.zip` and merged `.pdf` to use the 1-page bento report card generator.
+  4. Integration in Sidebar Report Card (`src/screens/ReportsCenterScreen.tsx`):
+     - Sequential Stepper embeds `<StudentReportCard sheetId={currentStepperStudent.id} />`.
+     - Stepper header action points to `/api/sheets/{currentStepperStudent.id}/export/report-card-pdf`.
+  5. Verification & Tests:
+     - `npx tsc --noEmit`: 0 errors.
+     - `python scripts/check_all.py`: `RESULT: ALL PASS` (banned strings, no sensitive files, pytest, tsc, and live AI provider health).
+     - PyMuPDF assertion verified: `assert len(doc) == 1` for single-sheet export and `assert len(doc) == len(sheet_ids)` for merged batch export.
+     - Playwright browser test (`scripts/verify_bento_report.py`): verified single-page bento rendering in light mode and dark mode with zero booklet preview and zero transcripts, verified post-evaluation route intact with booklet preview and tabs.
+     - Captured evidence screenshots:
+       - `docs/proof/ui/screenshots/proof_bento_report_card_light.png`
+       - `docs/proof/ui/screenshots/proof_bento_report_card_dark.png`
+       - `docs/proof/ui/screenshots/proof_report_post_evaluation_intact.png`
 - Multi-Student & Whole-Class Search, Sequential Stepper, Side-by-Side Comparison, and Dashboard Leaderboard (`src/screens/ReportsCenterScreen.tsx`, `src/components/StudentReportView.tsx`, `src/screens/DashboardScreen.tsx`, `backend/main.py`, `verify_evaldesk_features.py`):
   1. Hide Scanned Answer Sheet in Report Card (`#/reports`) Only:
      - `src/components/StudentReportView.tsx`: added `hideAnswerSheet?: boolean` prop.

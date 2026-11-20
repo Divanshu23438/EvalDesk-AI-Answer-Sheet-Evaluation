@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { apiClient } from '../api/client';
-import { StudentReportView } from '../components/StudentReportView';
+import { StudentReportCard } from '../components/StudentReportCard';
 import {
   FileSpreadsheet,
   Filter,
@@ -480,12 +480,12 @@ export const ReportsCenterScreen: React.FC = () => {
               {/* Right: Download Actions for Stepper */}
               <div className="flex items-center gap-2">
                 <a
-                  href={`/api/sheets/${currentStepperStudent.id}/export/pdf`}
+                  href={`/api/sheets/${currentStepperStudent.id}/export/report-card-pdf`}
                   download={`report_card_${currentStepperStudent.roll_number || currentStepperStudent.student_name}.pdf`}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#E8F3EE] dark:bg-[#1A2B23] text-[#0F5132] dark:text-[#7CC9A3] hover:bg-[#0F5132] hover:text-white dark:hover:bg-[#1F6E4A] dark:hover:text-white text-xs font-semibold border border-[#0F5132]/20 dark:border-[#294236] transition cursor-pointer"
                 >
                   <Download className="w-3.5 h-3.5" />
-                  <span>Download This PDF</span>
+                  <span>Download Report Card PDF</span>
                 </a>
 
                 {stepperList.length > 1 && (
@@ -526,12 +526,10 @@ export const ReportsCenterScreen: React.FC = () => {
             )}
           </header>
 
-          {/* Full-Width Digital Report Card with Scanned Answer Sheet Hidden */}
+          {/* Full-Width Digital 1-Page Bento Report Card */}
           <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-            <StudentReportView
+            <StudentReportCard
               sheetId={currentStepperStudent.id}
-              hideAnswerSheet={true}
-              onBack={() => setViewMode('directory')}
             />
           </div>
         </div>

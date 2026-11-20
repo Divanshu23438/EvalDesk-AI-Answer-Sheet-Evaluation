@@ -76,6 +76,7 @@ from backend.marking_engine import (
 from backend.strictness import resolve_level
 from backend.reports_generator import (
     generate_student_report_card_pdf,
+    generate_one_page_bento_report_card_pdf,
     generate_paper_summary_pdf,
     generate_paper_report_excel,
     generate_class_marksheet_pdf,
@@ -5202,6 +5203,53 @@ async def export_student_report_pdf(sheet_id: str):
     )
 
 
+@app.get("/api/sheets/{sheet_id}/export/report-card-pdf")
+@app.get("/api/sheets/{sheet_id}/report-card/pdf")
+async def export_student_report_card_1page_pdf(sheet_id: str):
+    """
+    Downloads a strictly 1-page A4 Bento Report Card PDF containing ONLY:
+    Header, Candidate Details, Aggregate Score, Question-wise Marks Chart, Section Mastery,
+    Compact Question Marks Overview (scores & status only - zero answer transcripts), and Verification Sign-offs.
+    """
+    report_data = get_sheet_report_endpoint(sheet_id)
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT paper_id, student_name, roll_number, class_name FROM sheets WHERE id = ?", (sheet_id,))
+        s = cursor.fetchone()
+        if not s:
+            raise HTTPException(status_code=404, detail="Sheet not found")
+
+    roll = s["roll_number"] or ""
+    sname = s["student_name"] or "Student"
+    reports_dir = get_reports_dir(s["paper_id"])
+    card_name = f"bento_report_card_{roll or sname or sheet_id[:8]}.pdf"
+    pdf_path = reports_dir / card_name
+
+    generate_one_page_bento_report_card_pdf(
+        output_path=pdf_path,
+        student_name=sname,
+        roll_number=roll,
+        paper_title=report_data.get("paper_title") or "Academic Assessment",
+        subject=report_data.get("subject") or "General",
+        total_score=float(report_data.get("total_score") or 0.0),
+        max_marks=float(report_data.get("max_marks") or 100.0),
+        percentage=float(report_data.get("percentage") or 0.0),
+        grade=report_data.get("grade") or "N/A",
+        questions=report_data.get("questions") or [],
+        class_name=s["class_name"] or "",
+        subject_code=report_data.get("subject_code") or "",
+        strictness=int(report_data.get("paper_strictness") or 3),
+        sheet_id=sheet_id,
+    )
+
+    clean_name = re.sub(r"[^\w\-\.]", "_", f"report_card_{sname or roll or sheet_id[:8]}.pdf")
+    return FileResponse(
+        str(pdf_path),
+        media_type="application/pdf",
+        filename=clean_name,
+    )
+
+
 class BatchReportsPayload(BaseModel):
     sheet_ids: List[str]
     format: str = "zip"  # "zip" or "pdf"
@@ -5354,30 +5402,51 @@ def compare_sheets_endpoint(payload: CompareSheetsPayload):
 @app.post("/api/sheets/export/batch-reports")
 def export_batch_reports(payload: BatchReportsPayload):
     """
-    Exports individual student report cards as a zip archive or merged multi-page PDF.
+    Exports 1-page student report cards as a zip archive or merged multi-page PDF.
     """
     if not payload.sheet_ids:
         raise HTTPException(status_code=400, detail="sheet_ids list cannot be empty")
 
     pdf_files = []
+    sheet_meta = {}
     with get_db() as conn:
         cursor = conn.cursor()
         for sid in payload.sheet_ids:
-            try:
-                get_sheet_report_endpoint(sid)
-            except Exception as e:
-                logger.warning(f"Failed to generate report for {sid}: {e}")
-
-            cursor.execute("SELECT paper_id, student_name, roll_number FROM sheets WHERE id = ?", (sid,))
+            cursor.execute("SELECT id, paper_id, student_name, roll_number, class_name FROM sheets WHERE id = ?", (sid,))
             row = cursor.fetchone()
             if row:
-                roll = row["roll_number"] or ""
-                sname = row["student_name"] or "Student"
-                card_name = f"report_card_{roll or sname or sid[:8]}.pdf"
-                pdf_path = get_reports_dir(row["paper_id"]) / card_name
-                if pdf_path.exists():
-                    clean_name = re.sub(r"[^\w\-\.]", "_", f"report_card_{roll or sname or sid[:8]}.pdf")
-                    pdf_files.append((pdf_path, clean_name))
+                sheet_meta[sid] = dict(row)
+
+    for sid in payload.sheet_ids:
+        row = sheet_meta.get(sid)
+        if not row:
+            continue
+        try:
+            rep_data = get_sheet_report_endpoint(sid)
+            roll = row.get("roll_number") or ""
+            sname = row.get("student_name") or "Student"
+            card_name = f"bento_report_card_{roll or sname or sid[:8]}.pdf"
+            pdf_path = get_reports_dir(row["paper_id"]) / card_name
+            generate_one_page_bento_report_card_pdf(
+                output_path=pdf_path,
+                student_name=sname,
+                roll_number=roll,
+                paper_title=rep_data.get("paper_title") or "Academic Assessment",
+                subject=rep_data.get("subject") or "General",
+                total_score=float(rep_data.get("total_score") or 0.0),
+                max_marks=float(rep_data.get("max_marks") or 100.0),
+                percentage=float(rep_data.get("percentage") or 0.0),
+                grade=rep_data.get("grade") or "N/A",
+                questions=rep_data.get("questions") or [],
+                class_name=row.get("class_name") or "",
+                subject_code=rep_data.get("subject_code") or "",
+                strictness=int(rep_data.get("paper_strictness") or 3),
+                sheet_id=sid,
+            )
+            clean_name = re.sub(r"[^\w\-\.]", "_", f"report_card_{roll or sname or sid[:8]}.pdf")
+            pdf_files.append((pdf_path, clean_name))
+        except Exception as e:
+            logger.warning(f"Failed to generate 1-page report for {sid}: {e}")
 
     if not pdf_files:
         raise HTTPException(status_code=404, detail="No report card PDFs available for selected students")
