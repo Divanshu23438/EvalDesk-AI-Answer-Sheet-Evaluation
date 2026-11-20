@@ -23,6 +23,9 @@ from reportlab.pdfbase.pdfmetrics import registerFontFamily
 
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+import json
+from reportlab.graphics.shapes import Drawing, Rect, String as DString, Line as DLine, Circle, PolyLine
+from reportlab.graphics.charts.piecharts import Pie
 
 from backend.config import BASE_DIR
 
@@ -1300,15 +1303,6 @@ def generate_one_page_bento_report_card_pdf(
     strictness: int = 3,
     sheet_id: Optional[str] = None,
 ) -> Path:
-    """
-    Generates a strictly 1-page A4 Bento Report Card PDF in Porcelain & Deep Forest Emerald palette.
-    Contains ONLY:
-      1. Header & Candidate Details Bento
-      2. Aggregate Score & Result Strip
-      3. Side-by-side Visual Performance (Question Marks Bar Chart & Section Mastery Bars)
-      4. Compact Question Marks Overview (Scores & Status only - zero answer transcripts or question texts)
-      5. Official Verification Sign-offs & Grading Scale Legend
-    """
     output_path.parent.mkdir(parents=True, exist_ok=True)
     fonts = register_report_fonts()
     regular = fonts["regular"]
@@ -1317,15 +1311,15 @@ def generate_one_page_bento_report_card_pdf(
     doc = SimpleDocTemplate(
         str(output_path),
         pagesize=A4,
-        leftMargin=20,
-        rightMargin=20,
-        topMargin=20,
-        bottomMargin=20,
+        leftMargin=18,
+        rightMargin=18,
+        topMargin=18,
+        bottomMargin=18,
     )
 
     story = []
 
-    # Colors
+    # Palette
     c_emerald = colors.HexColor("#0F5132")
     c_tile = colors.HexColor("#F1F4F2")
     c_border = colors.HexColor("#E2E8E4")
@@ -1333,31 +1327,113 @@ def generate_one_page_bento_report_card_pdf(
     c_text_muted = colors.HexColor("#6B7280")
     c_amber = colors.HexColor("#D97706")
     c_rose = colors.HexColor("#DC2626")
+    c_tint = colors.HexColor("#E8F3EE")
 
     # Typography styles
-    h_title = ParagraphStyle('BTitle', fontName=bold, fontSize=12, leading=14, textColor=colors.white)
-    h_sub = ParagraphStyle('BSub', fontName=regular, fontSize=7.5, leading=9.5, textColor=colors.HexColor("#C7E4D6"))
-    badge_style = ParagraphStyle('BBadge', fontName=bold, fontSize=7, leading=8.5, textColor=c_emerald, alignment=1)
+    h_title = ParagraphStyle('BTitle', fontName=bold, fontSize=13, leading=15, textColor=colors.white)
+    h_sub = ParagraphStyle('BSub', fontName=regular, fontSize=8, leading=10.5, textColor=colors.HexColor("#C7E4D6"))
+    badge_style = ParagraphStyle('BBadge', fontName=bold, fontSize=7.5, leading=9.5, textColor=c_emerald, alignment=1)
     
-    label_style = ParagraphStyle('BLbl', fontName=regular, fontSize=6.5, leading=7.5, textColor=c_text_muted)
-    val_style = ParagraphStyle('BVal', fontName=bold, fontSize=8.5, leading=10, textColor=c_text_dark)
-    val_mono = ParagraphStyle('BMono', fontName=bold, fontSize=8, leading=9.5, textColor=c_text_dark)
+    lbl_style = ParagraphStyle('BLbl', fontName=regular, fontSize=7, leading=8.5, textColor=c_text_muted)
+    val_style = ParagraphStyle('BVal', fontName=bold, fontSize=9.5, leading=11.5, textColor=c_text_dark)
+    val_mono = ParagraphStyle('BMono', fontName=bold, fontSize=9, leading=11, textColor=c_text_dark)
+    sec_title = ParagraphStyle('BST', fontName=bold, fontSize=9, leading=11, textColor=c_text_dark)
 
-    # 1. HEADER BENTO BOX (Deep Forest Emerald Header)
+    # Normalization of scores & metrics
+    max_m = float(max_marks or 0.0)
+    if max_m <= 0:
+        max_m = sum(float(q.get("max_marks") or 1.0) for q in (questions or [])) or 100.0
+    tot_s = float(total_score or 0.0)
+    pct = float(percentage or 0.0)
+    if pct <= 0 and max_m > 0:
+        pct = round((tot_s / max_m) * 100.0, 1)
+    tot_lost = max(0.0, round(max_m - tot_s, 1))
+    is_pass = pct >= 35.0
+    status_label = "PASS" if is_pass else "RE-APPEAR"
+    status_color = c_emerald if is_pass else c_rose
+
+    def get_ugc_grade(p: float) -> str:
+        if p >= 90: return "O (Outstanding)"
+        if p >= 80: return "A+ (Excellent)"
+        if p >= 70: return "A (Very Good)"
+        if p >= 60: return "B+ (Good)"
+        if p >= 50: return "B (Above Average)"
+        if p >= 40: return "C (Average)"
+        if p >= 35: return "D (Pass)"
+        return "F (Re-appear Required)"
+
+    eff_grade = grade if (grade and grade not in ["Needs Support", "N/A"]) else get_ugc_grade(pct)
+
+    # Normalize Questions
+    norm_qs = []
+    full_count = 0
+    part_count = 0
+    zero_count = 0
+    unatt_count = 0
+
+    for idx, q in enumerate(questions or []):
+        q_no_raw = str(q.get("q_no") or (idx + 1))
+        q_no_clean = re.sub(r"^[Qq]\.?\s*", "", q_no_raw)
+        earned = float(q.get("final_marks") or 0.0)
+        q_max = float(q.get("max_marks") or 1.0)
+        q_pct = (earned / q_max * 100.0) if q_max > 0 else 0.0
+        
+        is_att = bool(q.get("is_attempted")) or bool(q.get("extracted_text")) or earned > 0
+        if not is_att and earned == 0:
+            unatt_count += 1
+            status = 'zero'
+            zero_count += 1
+        elif q_pct >= 90.0:
+            status = 'full'
+            full_count += 1
+        elif q_pct > 0.0:
+            status = 'part'
+            part_count += 1
+        else:
+            status = 'zero'
+            zero_count += 1
+
+        norm_qs.append({
+            "q_no": q_no_clean,
+            "earned": earned,
+            "max": q_max,
+            "pct": q_pct,
+            "status": status,
+            "is_att": is_att,
+            "section": str(q.get("section_name") or "General").strip() or "General",
+            "type": str(q.get("question_type") or ("Extended / Long" if q_max >= 5 else "Core Practical" if q_max >= 3 else "Objective / Short")),
+            "flags": q.get("flags") or (json.loads(q.get("flags_json") or "[]") if isinstance(q.get("flags_json"), str) else []),
+        })
+
+    if not norm_qs:
+        norm_qs = [{
+            "q_no": "1",
+            "earned": tot_s,
+            "max": max_m,
+            "pct": pct,
+            "status": "full" if pct >= 90 else ("part" if pct > 0 else "zero"),
+            "is_att": True,
+            "section": "General",
+            "type": "Standard Assessment",
+            "flags": [],
+        }]
+    total_qs_count = len(norm_qs)
+    att_count = total_qs_count - unatt_count
+
+    # 1. HEADER TABLE (Height 42 pt)
     t_clean = sanitize_exam_title(paper_title or "Academic Examination")
     dt_str = datetime.now().strftime("%d %b %Y")
     sid_short = (sheet_id or "")[:8].upper()
 
-    header_left = [
+    h_left = [
         Paragraph(f"<b>{safe_xml(t_clean)}</b>", h_title),
         Spacer(1, 2),
         Paragraph(f"Subject: {safe_xml(subject or 'General')} {f'· Code: {safe_xml(subject_code)}' if subject_code else ''} · Date: {dt_str}", h_sub),
     ]
-
     badge_cell = Table(
         [[Paragraph("<b>VERIFIED REPORT CARD</b>", badge_style)]],
-        colWidths=[120],
-        rowHeights=[14],
+        colWidths=[135],
+        rowHeights=[16],
     )
     badge_cell.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,-1), colors.white),
@@ -1367,79 +1443,68 @@ def generate_one_page_bento_report_card_pdf(
         ('TOPPADDING', (0,0), (-1,-1), 1),
         ('BOTTOMPADDING', (0,0), (-1,-1), 1),
     ]))
-
-    header_right = [
+    h_right = [
         badge_cell,
         Spacer(1, 2),
-        Paragraph(f"<font color='#C7E4D6' size='6.5'>Sheet ID: <b>{sid_short}</b></font>", ParagraphStyle('HRight', alignment=2, fontName=regular)),
+        Paragraph(f"<font color='#C7E4D6' size='7'>Sheet ID: <b>{sid_short}</b></font>", ParagraphStyle('HR', alignment=2, fontName=regular)),
     ]
-
-    header_table = Table(
-        [[header_left, header_right]],
-        colWidths=[395, 160],
-        rowHeights=[38],
-    )
+    header_table = Table([[h_left, h_right]], colWidths=[405, 154], rowHeights=[42])
     header_table.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,-1), c_emerald),
         ('ROUNDEDCORNERS', [5, 5, 5, 5]),
-        ('TOPPADDING', (0,0), (-1,-1), 6),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 6),
+        ('TOPPADDING', (0,0), (-1,-1), 5),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 5),
         ('LEFTPADDING', (0,0), (-1,-1), 10),
         ('RIGHTPADDING', (0,0), (-1,-1), 10),
         ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
     ]))
     story.append(header_table)
-    story.append(Spacer(1, 5))
+    story.append(Spacer(1, 4))
 
-    # 2. CANDIDATE IDENTITY STRIP (4 Columns)
-    candidate_data = [
+    # 2. CANDIDATE IDENTITY STRIP (Height 30 pt)
+    cand_data = [
         [
-            Paragraph("CANDIDATE NAME", label_style),
-            Paragraph("ROLL NUMBER", label_style),
-            Paragraph("CLASS / STREAM", label_style),
-            Paragraph("STRICTNESS LEVEL", label_style),
+            Paragraph("CANDIDATE NAME", lbl_style),
+            Paragraph("ROLL NUMBER", lbl_style),
+            Paragraph("CLASS / STREAM", lbl_style),
+            Paragraph("APPLIED STRICTNESS", lbl_style),
         ],
         [
             Paragraph(safe_xml(student_name or "Student"), val_style),
             Paragraph(safe_xml(roll_number or "—"), val_mono),
             Paragraph(safe_xml(class_name or "Standard Section"), val_style),
-            Paragraph(f"Level {strictness}/5", val_style),
+            Paragraph(f"Level {strictness}/5 (Standard)", val_style),
         ]
     ]
-    cand_table = Table(candidate_data, colWidths=[165, 120, 150, 120], rowHeights=[10, 13])
+    cand_table = Table(cand_data, colWidths=[170, 125, 145, 119], rowHeights=[11, 15])
     cand_table.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,-1), c_tile),
         ('BOX', (0,0), (-1,-1), 0.5, c_border),
         ('INNERGRID', (0,0), (-1,-1), 0.5, c_border),
         ('ROUNDEDCORNERS', [4, 4, 4, 4]),
-        ('TOPPADDING', (0,0), (-1,-1), 2),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 2),
+        ('TOPPADDING', (0,0), (-1,-1), 2.5),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 2.5),
         ('LEFTPADDING', (0,0), (-1,-1), 6),
         ('RIGHTPADDING', (0,0), (-1,-1), 6),
         ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
     ]))
     story.append(cand_table)
-    story.append(Spacer(1, 5))
+    story.append(Spacer(1, 4))
 
-    # 3. AGGREGATE SCORE & RESULT SUMMARY STRIP (4-Column Bento Box)
-    is_pass = (percentage or 0.0) >= 35.0
-    status_text = "PASS" if is_pass else "RE-APPEAR"
-    status_color = c_emerald if is_pass else c_rose
-
-    score_num_style = ParagraphStyle('SNum', fontName=bold, fontSize=12, leading=14, textColor=c_emerald, alignment=1)
-    status_num_style = ParagraphStyle('StatNum', fontName=bold, fontSize=11, leading=13, textColor=status_color, alignment=1)
-    sub_center = ParagraphStyle('SCtr', fontName=regular, fontSize=6.5, leading=7.5, textColor=c_text_muted, alignment=1)
-
-    score_strip_data = [
+    # 3. SCORE & RESULT SUMMARY STRIP (Height 40 pt)
+    score_num = ParagraphStyle('SN', fontName=bold, fontSize=14, leading=16, textColor=c_emerald, alignment=1)
+    status_num = ParagraphStyle('STN', fontName=bold, fontSize=13, leading=15, textColor=status_color, alignment=1)
+    sub_c = ParagraphStyle('SC', fontName=regular, fontSize=7, leading=8.5, textColor=c_text_muted, alignment=1)
+    score_data = [
         [
-            [Paragraph("TOTAL MARKS", sub_center), Spacer(1, 1), Paragraph(f"<b>{total_score:g} / {max_marks:g}</b>", score_num_style)],
-            [Paragraph("PERCENTAGE", sub_center), Spacer(1, 1), Paragraph(f"<b>{percentage:.1f}%</b>", score_num_style)],
-            [Paragraph("AWARDED GRADE", sub_center), Spacer(1, 1), Paragraph(f"<b>{safe_xml(grade or '—')}</b>", score_num_style)],
-            [Paragraph("FINAL STATUS", sub_center), Spacer(1, 1), Paragraph(f"<b>{status_text}</b>", status_num_style)],
+            [Paragraph("TOTAL MARKS", sub_c), Spacer(1, 1), Paragraph(f"<b>{tot_s:g} / {max_m:g}</b>", score_num)],
+            [Paragraph("PERCENTAGE", sub_c), Spacer(1, 1), Paragraph(f"<b>{pct:.1f}%</b>", score_num)],
+            [Paragraph("AWARDED GRADE", sub_c), Spacer(1, 1), Paragraph(f"<b>{safe_xml(eff_grade)}</b>", score_num)],
+            [Paragraph("FINAL STATUS", sub_c), Spacer(1, 1), Paragraph(f"<b>{status_label}</b>", status_num)],
         ]
     ]
-    score_strip_table = Table(score_strip_data, colWidths=[138, 139, 139, 139], rowHeights=[32])
-    score_strip_table.setStyle(TableStyle([
+    score_table = Table(score_data, colWidths=[139.5, 140, 140, 139.5], rowHeights=[40])
+    score_table.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,-1), colors.white),
         ('BOX', (0,0), (-1,-1), 0.5, c_border),
         ('INNERGRID', (0,0), (-1,-1), 0.5, c_border),
@@ -1448,165 +1513,412 @@ def generate_one_page_bento_report_card_pdf(
         ('BOTTOMPADDING', (0,0), (-1,-1), 3),
         ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
     ]))
-    story.append(score_strip_table)
+    story.append(score_table)
     story.append(Spacer(1, 5))
 
-    # 4. CHARTS & VISUAL MASTERY ROW (2 Columns: Left = Bar Chart, Right = Section Bars)
-    from reportlab.graphics.shapes import Drawing, Rect, String as DString, Line as DLine
-
-    q_chart_w = 265.0
-    q_chart_h = 120.0
-    d_left = Drawing(q_chart_w, q_chart_h)
-    
-    d_left.add(DString(6, q_chart_h - 10, "QUESTION-WISE PERFORMANCE", fontName=bold, fontSize=7, fillColor=c_text_dark))
-
-    axis_y = 16.0
-    plot_h = q_chart_h - 36.0
-    plot_w = q_chart_w - 20.0
-    start_x = 10.0
-    d_left.add(DLine(start_x, axis_y, start_x + plot_w, axis_y, strokeColor=c_border, strokeWidth=1))
-
-    display_questions = questions[:12] if questions else []
-    n_bars = max(1, len(display_questions))
-    bar_slot_w = plot_w / float(n_bars)
-    bar_width = max(4.0, min(14.0, bar_slot_w * 0.55))
-
-    for idx, qe in enumerate(display_questions):
-        bx = start_x + (idx * bar_slot_w) + (bar_slot_w - bar_width) / 2.0
-        q_max = float(qe.get("max_marks") or 1.0)
-        q_score = float(qe.get("final_marks") or 0.0)
-        
-        # Background bar
-        d_left.add(Rect(bx, axis_y, bar_width, plot_h, fillColor=colors.HexColor("#F1F4F2"), strokeColor=None, rx=1.5, ry=1.5))
-        
-        pct_q = min(1.0, max(0.0, q_score / q_max if q_max > 0 else 0.0))
-        h_score = max(2.0, plot_h * pct_q)
-        
-        if pct_q >= 0.95:
-            bar_color = c_emerald
-        elif pct_q > 0.0:
-            bar_color = c_amber
-        else:
-            bar_color = c_rose
-            
-        d_left.add(Rect(bx, axis_y, bar_width, h_score, fillColor=bar_color, strokeColor=None, rx=1.5, ry=1.5))
-        
-        q_num_str = str(qe.get("q_no") or (idx + 1))
-        q_clean = re.sub(r"^[Qq]\.?\s*", "", q_num_str)
-        d_left.add(DString(bx + bar_width / 2.0, 6.0, f"Q{q_clean}", fontName=regular, fontSize=5.5, fillColor=c_text_muted, textAnchor='middle'))
-
-    # Right Column: Section / Topic Mastery Bars
-    section_map: Dict[str, Dict[str, float]] = {}
-    for qe in questions:
-        sec = str(qe.get("section_name") or "Core Assessment").strip()
-        if not sec:
-            sec = "Core Assessment"
-        if sec not in section_map:
-            section_map[sec] = {"score": 0.0, "max": 0.0}
-        section_map[sec]["score"] += float(qe.get("final_marks") or 0.0)
-        section_map[sec]["max"] += float(qe.get("max_marks") or 0.0)
-
-    if len(section_map) == 1 and len(questions) >= 4:
-        half = len(questions) // 2
-        p1 = questions[:half]
-        p2 = questions[half:]
-        section_map = {
-            "Part I: Conceptual Questions": {"score": sum(float(q.get("final_marks") or 0) for q in p1), "max": sum(float(q.get("max_marks") or 0) for q in p1)},
-            "Part II: Extended Application": {"score": sum(float(q.get("final_marks") or 0) for q in p2), "max": sum(float(q.get("max_marks") or 0) for q in p2)},
-        }
-
-    sec_elements = [
-        Paragraph("<b>SECTION &amp; TOPIC MASTERY</b>", ParagraphStyle('SecH', fontName=bold, fontSize=7, leading=8.5, textColor=c_text_dark)),
-        Spacer(1, 3),
-    ]
-
-    for s_name, s_data in list(section_map.items())[:3]:
-        s_score = s_data["score"]
-        s_max = max(0.1, s_data["max"])
-        s_pct = round((s_score / s_max) * 100.0, 1)
-        
-        sec_elements.append(
-            Table(
-                [[
-                    Paragraph(f"<b>{safe_xml(s_name[:30])}</b>", ParagraphStyle('SN', fontName=bold, fontSize=6.5, leading=7.5, textColor=c_text_dark)),
-                    Paragraph(f"<b>{s_score:g}/{s_max:g}</b> ({s_pct:.0f}%)", ParagraphStyle('SM', fontName=regular, fontSize=6, leading=7.5, alignment=2, textColor=c_emerald)),
-                ]],
-                colWidths=[180, 80],
-                rowHeights=[8],
-            )
-        )
-        sec_elements.append(Spacer(1, 1))
-        sec_elements.append(make_pdf_progress_bar(s_pct, width=260.0, height=4.5))
-        sec_elements.append(Spacer(1, 4))
-
-    sec_elements.append(
-        Table(
-            [[
-                Paragraph("<font color='#0F5132'>✔ AI Rubric Audit: <b>Verified</b></font>", ParagraphStyle('QAudit', fontName=regular, fontSize=6, leading=7.5)),
-                Paragraph("<font color='#6B7280'>Zero Discrepancy</font>", ParagraphStyle('QZero', fontName=regular, fontSize=6, leading=7.5, alignment=2)),
-            ]],
-            colWidths=[170, 90],
-            rowHeights=[8],
-        )
-    )
-
-    visuals_table = Table(
-        [[d_left, sec_elements]],
-        colWidths=[273, 282],
-        rowHeights=[122],
-    )
-    visuals_table.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,-1), colors.white),
-        ('BOX', (0,0), (-1,-1), 0.5, c_border),
-        ('INNERGRID', (0,0), (-1,-1), 0.5, c_border),
-        ('ROUNDEDCORNERS', [4, 4, 4, 4]),
-        ('TOPPADDING', (0,0), (-1,-1), 3),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 3),
-        ('LEFTPADDING', (0,0), (-1,-1), 5),
-        ('RIGHTPADDING', (0,0), (-1,-1), 5),
-        ('VALIGN', (0,0), (-1,-1), 'TOP'),
+    # 4. SECTION 1: QUESTION & SECTION MARKS TELEMETRY
+    s1_hdr = Table([
+        [
+            Paragraph("<b>1. QUESTION &amp; SECTION MARKS TELEMETRY</b>", sec_title),
+            Paragraph(f"<font size='7' color='#0F5132'><b>Q1 to Q{total_qs_count} ({max_m:g} Total Marks)</b></font>", ParagraphStyle('B1', alignment=1)),
+            Paragraph("<font size='7' color='#6B7280'>Cohort avg available after 2+ sheets</font>", ParagraphStyle('B2', alignment=2)),
+        ]
+    ], colWidths=[270, 140, 149], rowHeights=[13])
+    s1_hdr.setStyle(TableStyle([
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('TOPPADDING', (0,0), (-1,-1), 0),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 0),
     ]))
-    story.append(visuals_table)
-    story.append(Spacer(1, 5))
+    story.append(s1_hdr)
+    story.append(Spacer(1, 2))
 
-    # 5. COMPACT QUESTION MARKS OVERVIEW (Scores & Status Only - Dense 4-Column Grid)
-    story.append(
-        Paragraph("<b>QUESTION MARKS LEDGER (SCORES &amp; STATUS ONLY — NO TRANSCRIPTS)</b>", ParagraphStyle('LedgerH', fontName=bold, fontSize=7, leading=8.5, textColor=c_text_dark))
-    )
+    # Section 1.1 Bar Chart Drawing (Width 559, Height 98 pt)
+    d_qbar = Drawing(559, 98)
+    d_qbar.add(Rect(0, 0, 559, 98, fillColor=colors.white, strokeColor=c_border, strokeWidth=0.5, rx=4, ry=4))
+    d_qbar.add(DString(10, 84, f"Question-by-Question Marks Scored vs Max ({total_qs_count} Questions)", fontName=bold, fontSize=7.5, fillColor=c_text_dark))
+    d_qbar.add(DString(10, 74, "Visual bar heights indicate obtained marks with color-coded evaluation status (Emerald=Full, Amber=Partial, Rose=Heavy Deduction)", fontName=regular, fontSize=6, fillColor=c_text_muted))
+    d_qbar.add(DString(455, 84, f"Full ({full_count})  ·  Partial ({part_count})  ·  Deduction ({zero_count})", fontName=bold, fontSize=6.5, fillColor=c_emerald))
+
+    # Y-axis
+    d_qbar.add(DString(12, 57, "100%", fontName=regular, fontSize=5.5, fillColor=c_text_muted))
+    d_qbar.add(DString(12, 35, "50%", fontName=regular, fontSize=5.5, fillColor=c_text_muted))
+    d_qbar.add(DString(12, 14, "0%", fontName=regular, fontSize=5.5, fillColor=c_text_muted))
+    d_qbar.add(DLine(35, 14, 545, 14, strokeColor=c_border, strokeWidth=0.5))
+
+    plot_w = 510.0
+    start_x = 35.0
+    plot_h = 50.0
+
+    if total_qs_count == 1:
+        # Beautiful centered bar for 1 question
+        q0 = norm_qs[0]
+        bx = 250.0
+        bw = 60.0
+        d_qbar.add(Rect(bx, 14, bw, plot_h, fillColor=c_tile, strokeColor=None, rx=3, ry=3))
+        bh = max(3.0, (q0["earned"] / q0["max"]) * plot_h if q0["max"] > 0 else 0.0)
+        b_color = c_emerald if q0["pct"] >= 90 else (c_rose if q0["pct"] <= 0 else c_amber)
+        d_qbar.add(Rect(bx, 14, bw, bh, fillColor=b_color, strokeColor=None, rx=3, ry=3))
+        d_qbar.add(DString(bx + bw / 2.0, 68, f"{q0['earned']:g} / {q0['max']:g} M ({q0['pct']:.0f}%)", fontName=bold, fontSize=7, fillColor=b_color, textAnchor='middle'))
+        d_qbar.add(DString(bx + bw / 2.0, 4, f"Q.{q0['q_no']}", fontName=bold, fontSize=7.5, fillColor=c_text_dark, textAnchor='middle'))
+    else:
+        slot_w = plot_w / float(total_qs_count)
+        bw = max(8.0, min(36.0, slot_w * 0.55))
+        for idx, qe in enumerate(norm_qs):
+            bx = start_x + (idx * slot_w) + (slot_w - bw) / 2.0
+            d_qbar.add(Rect(bx, 14, bw, plot_h, fillColor=c_tile, strokeColor=None, rx=2, ry=2))
+            bh = max(2.5, (qe["earned"] / qe["max"]) * plot_h if qe["max"] > 0 else 0.0)
+            b_color = c_emerald if qe["pct"] >= 90 else (c_rose if qe["pct"] <= 0 else c_amber)
+            d_qbar.add(Rect(bx, 14, bw, bh, fillColor=b_color, strokeColor=None, rx=2, ry=2))
+            score_txt = f"{qe['earned']:g}/{qe['max']:g}" if bw >= 22 else f"{qe['earned']:g}"
+            d_qbar.add(DString(bx + bw / 2.0, 67, score_txt, fontName=bold, fontSize=6, fillColor=b_color, textAnchor='middle'))
+            d_qbar.add(DString(bx + bw / 2.0, 4, f"Q.{qe['q_no']}", fontName=regular, fontSize=6.5, fillColor=c_text_dark, textAnchor='middle'))
+
+    story.append(d_qbar)
+    story.append(Spacer(1, 3))
+
+    # Section 1.2 & 1.3: Donut & Sectional Breakdown (Side-by-side, Width 276.5 each, Height 90 pt)
+    d_don1 = Drawing(276.5, 90)
+    d_don1.add(Rect(0, 0, 276.5, 90, fillColor=colors.white, strokeColor=c_border, strokeWidth=0.5, rx=4, ry=4))
+    d_don1.add(DString(10, 76, "TOTAL MARKS DISTRIBUTION SPLIT", fontName=bold, fontSize=7.5, fillColor=c_text_dark))
+    d_don1.add(DString(225, 76, f"Max {max_m:g} M", fontName=bold, fontSize=6.5, fillColor=c_text_muted))
+    d_don1.add(DString(10, 66, "Evaluation ratio between earned points and deductions across paper.", fontName=regular, fontSize=5.5, fillColor=c_text_muted))
+
+    pie1 = Pie()
+    pie1.x = 10
+    pie1.y = 8
+    pie1.width = 50
+    pie1.height = 50
+    pie1.data = [max(0.1, tot_s), max(0.01, tot_lost)]
+    pie1.sideLabels = 0
+    pie1.slices[0].fillColor = c_emerald
+    pie1.slices[1].fillColor = c_rose
+    d_don1.add(pie1)
+    d_don1.add(Circle(35, 33, 16, fillColor=colors.white, strokeColor=None))
+    d_don1.add(DString(35, 35, f"{tot_s:g}", fontName=bold, fontSize=7.5, fillColor=c_text_dark, textAnchor='middle'))
+    d_don1.add(DString(35, 26, f"{pct:.0f}%", fontName=bold, fontSize=6.5, fillColor=c_emerald, textAnchor='middle'))
+
+    # Right Pills for Donut 1
+    d_don1.add(Rect(72, 35, 192, 21, fillColor=c_tint, strokeColor=c_border, strokeWidth=0.5, rx=3, ry=3))
+    d_don1.add(Circle(82, 45.5, 3, fillColor=c_emerald, strokeColor=None))
+    d_don1.add(DString(90, 42.5, "Marks Scored", fontName=regular, fontSize=7, fillColor=c_text_dark))
+    d_don1.add(DString(256, 42.5, f"{tot_s:g} M ({pct:.1f}%)", fontName=bold, fontSize=7, fillColor=c_emerald, textAnchor='end'))
+
+    d_don1.add(Rect(72, 10, 192, 21, fillColor=colors.HexColor("#FFF1F2"), strokeColor=colors.HexColor("#FFE4E6"), strokeWidth=0.5, rx=3, ry=3))
+    d_don1.add(Circle(82, 20.5, 3, fillColor=c_rose, strokeColor=None))
+    d_don1.add(DString(90, 17.5, "Marks Lost", fontName=regular, fontSize=7, fillColor=c_text_dark))
+    lost_pct = (tot_lost / max_m * 100.0) if max_m > 0 else 0.0
+    d_don1.add(DString(256, 17.5, f"{tot_lost:g} M ({lost_pct:.1f}%)", fontName=bold, fontSize=7, fillColor=c_rose, textAnchor='end'))
+
+    # Sectional Breakdown Box
+    sec_map = {}
+    for qe in norm_qs:
+        s_name = qe["section"]
+        if s_name not in sec_map:
+            sec_map[s_name] = {"earned": 0.0, "max": 0.0, "count": 0}
+        sec_map[s_name]["earned"] += qe["earned"]
+        sec_map[s_name]["max"] += qe["max"]
+        sec_map[s_name]["count"] += 1
+
+    d_sec = Drawing(276.5, 90)
+    d_sec.add(Rect(0, 0, 276.5, 90, fillColor=colors.white, strokeColor=c_border, strokeWidth=0.5, rx=4, ry=4))
+    d_sec.add(DString(10, 76, "SECTIONAL MARKS BREAKDOWN", fontName=bold, fontSize=7.5, fillColor=c_text_dark))
+    d_sec.add(DString(205, 76, f"{len(sec_map)} Exam Section{'s' if len(sec_map) > 1 else ''}", fontName=bold, fontSize=6.5, fillColor=c_text_muted))
+    d_sec.add(DString(10, 66, "Performance breakdown across categorized subject sections.", fontName=regular, fontSize=5.5, fillColor=c_text_muted))
+
+    sec_items = list(sec_map.items())[:2]
+    if len(sec_items) == 1:
+        s_n, s_v = sec_items[0]
+        s_pct = (s_v["earned"] / s_v["max"] * 100.0) if s_v["max"] > 0 else 0.0
+        s_lost = max(0.0, s_v["max"] - s_v["earned"])
+        d_sec.add(DString(10, 46, safe_xml(s_n[:28]), fontName=bold, fontSize=7.5, fillColor=c_text_dark))
+        d_sec.add(DString(266, 46, f"{s_v['earned']:g} / {s_v['max']:g} M ({s_pct:.1f}%)", fontName=bold, fontSize=7, fillColor=c_emerald, textAnchor='end'))
+        d_sec.add(Rect(10, 30, 256, 9, fillColor=c_tile, strokeColor=None, rx=3, ry=3))
+        bw_prog = max(2.0, (s_pct / 100.0) * 256)
+        d_sec.add(Rect(10, 30, bw_prog, 9, fillColor=c_emerald, strokeColor=None, rx=3, ry=3))
+        d_sec.add(DString(10, 16, f"Q1 · {s_v['count']} Questions", fontName=regular, fontSize=6.5, fillColor=c_text_muted))
+        d_sec.add(DString(266, 16, f"-{s_lost:g} M lost", fontName=bold, fontSize=6.5, fillColor=c_rose, textAnchor='end'))
+    else:
+        y_cursor = 48
+        for s_n, s_v in sec_items:
+            s_pct = (s_v["earned"] / s_v["max"] * 100.0) if s_v["max"] > 0 else 0.0
+            s_lost = max(0.0, s_v["max"] - s_v["earned"])
+            d_sec.add(DString(10, y_cursor, safe_xml(s_n[:24]), fontName=bold, fontSize=7, fillColor=c_text_dark))
+            d_sec.add(DString(266, y_cursor, f"{s_v['earned']:g}/{s_v['max']:g} ({s_pct:.0f}%)", fontName=bold, fontSize=6.5, fillColor=c_emerald, textAnchor='end'))
+            d_sec.add(Rect(10, y_cursor - 10, 256, 6, fillColor=c_tile, strokeColor=None, rx=2, ry=2))
+            bw_prog = max(2.0, (s_pct / 100.0) * 256)
+            d_sec.add(Rect(10, y_cursor - 10, bw_prog, 6, fillColor=c_emerald, strokeColor=None, rx=2, ry=2))
+            y_cursor -= 28
+
+    row_s1_sub = Table([[d_don1, d_sec]], colWidths=[276.5, 276.5], rowHeights=[90])
+    row_s1_sub.setStyle(TableStyle([
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('TOPPADDING', (0,0), (-1,-1), 0),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 0),
+        ('LEFTPADDING', (0,0), (-1,-1), 0),
+        ('RIGHTPADDING', (0,0), (-1,-1), 0),
+    ]))
+    story.append(row_s1_sub)
+    story.append(Spacer(1, 4))
+
+    # 5. SECTION 2: TEACHER DEDUCTIONS & ERROR TAXONOMY
+    s2_hdr = Table([
+        [
+            Paragraph("<b>2. TEACHER DEDUCTIONS &amp; ERROR TAXONOMY</b>", sec_title),
+            Paragraph(f"<font size='7' color='#DC2626'><b>{tot_lost:g} Total Marks Lost</b></font>", ParagraphStyle('B2a', alignment=1)),
+            Paragraph("<font size='7' color='#6B7280'>Extracted from Deductions &amp; Rubrics</font>", ParagraphStyle('B2b', alignment=2)),
+        ]
+    ], colWidths=[280, 130, 149], rowHeights=[13])
+    s2_hdr.setStyle(TableStyle([
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('TOPPADDING', (0,0), (-1,-1), 0),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 0),
+    ]))
+    story.append(s2_hdr)
+    story.append(Spacer(1, 2))
+
+    # Derive error taxonomy
+    conc_loss = 0.0
+    inc_loss = 0.0
+    syn_loss = 0.0
+    oth_loss = 0.0
+    for qe in norm_qs:
+        ql = max(0.0, qe["max"] - qe["earned"])
+        if ql <= 0: continue
+        if qe["earned"] == 0: conc_loss += ql
+        elif qe["flags"]: syn_loss += ql * 0.5; inc_loss += ql * 0.5
+        elif qe["earned"] < qe["max"]: inc_loss += ql
+        else: oth_loss += ql
+    if tot_lost > 0 and (conc_loss + inc_loss + syn_loss + oth_loss == 0):
+        inc_loss = tot_lost
+
+    err_cats = [
+        {"name": "Incomplete Steps", "loss": inc_loss, "color": c_amber},
+        {"name": "Conceptual Mistakes", "loss": conc_loss, "color": c_rose},
+        {"name": "Syntax / Rubric Flags", "loss": syn_loss, "color": c_emerald},
+        {"name": "Other Deductions", "loss": oth_loss, "color": colors.HexColor("#94A3B8")},
+    ]
+    err_cats = [c for c in err_cats if c["loss"] > 0]
+    if not err_cats:
+        err_cats = [{"name": "No Deductions", "loss": 0.0, "color": c_emerald}]
+
+    err_cats_sorted = sorted(err_cats, key=lambda x: x["loss"], reverse=True)
+    cum = 0.0
+    pareto_pts = []
+    for c in err_cats_sorted:
+        cum += c["loss"]
+        c_pct = (cum / tot_lost * 100.0) if tot_lost > 0 else 100.0
+        pareto_pts.append({**c, "cum_pct": c_pct})
+
+    d_ded = Drawing(276.5, 90)
+    d_ded.add(Rect(0, 0, 276.5, 90, fillColor=colors.white, strokeColor=c_border, strokeWidth=0.5, rx=4, ry=4))
+    d_ded.add(DString(10, 76, "DEDUCTIONS BY ERROR CATEGORY", fontName=bold, fontSize=7.5, fillColor=c_text_dark))
+    d_ded.add(DString(240, 76, f"-{tot_lost:g} M", fontName=bold, fontSize=7, fillColor=c_rose))
+    d_ded.add(DString(10, 66, "Proportion of marks lost classified from evaluation verdicts.", fontName=regular, fontSize=5.5, fillColor=c_text_muted))
+
+    pie2 = Pie()
+    pie2.x = 10
+    pie2.y = 8
+    pie2.width = 50
+    pie2.height = 50
+    pie2.data = [max(0.01, c["loss"]) for c in err_cats]
+    pie2.sideLabels = 0
+    for idx_c, cat_obj in enumerate(err_cats):
+        pie2.slices[idx_c].fillColor = cat_obj["color"]
+    d_ded.add(pie2)
+    d_ded.add(Circle(35, 33, 16, fillColor=colors.white, strokeColor=None))
+    d_ded.add(DString(35, 35, f"-{tot_lost:g}", fontName=bold, fontSize=7.5, fillColor=c_rose, textAnchor='middle'))
+    d_ded.add(DString(35, 26, "Marks Lost", fontName=regular, fontSize=5.5, fillColor=c_text_muted, textAnchor='middle'))
+
+    # Right pills for Deductions
+    y_err = 40
+    for cat_obj in err_cats_sorted[:2]:
+        bg_col = colors.HexColor("#FEF3C7") if cat_obj["color"] == c_amber else (colors.HexColor("#FFF1F2") if cat_obj["color"] == c_rose else c_tint)
+        d_ded.add(Rect(72, y_err, 192, 19, fillColor=bg_col, strokeColor=c_border, strokeWidth=0.5, rx=3, ry=3))
+        d_ded.add(Circle(82, y_err + 9.5, 3, fillColor=cat_obj["color"], strokeColor=None))
+        d_ded.add(DString(90, y_err + 7, safe_xml(cat_obj["name"][:22]), fontName=bold, fontSize=6.5, fillColor=c_text_dark))
+        c_pct_str = f"{(cat_obj['loss']/tot_lost*100.0):.0f}%" if tot_lost > 0 else "0%"
+        d_ded.add(DString(256, y_err + 7, f"{cat_obj['loss']:g} M ({c_pct_str})", fontName=bold, fontSize=6.5, fillColor=cat_obj["color"], textAnchor='end'))
+        y_err -= 24
+
+    # Pareto Box:
+    d_par = Drawing(276.5, 90)
+    d_par.add(Rect(0, 0, 276.5, 90, fillColor=colors.white, strokeColor=c_border, strokeWidth=0.5, rx=4, ry=4))
+    d_par.add(DString(10, 76, "PARETO ERROR ANALYSIS (80/20 RULE)", fontName=bold, fontSize=7.5, fillColor=c_text_dark))
+    d_par.add(DString(205, 76, "Line: Cumulative %", fontName=bold, fontSize=6.5, fillColor=c_emerald))
+    d_par.add(DString(10, 66, "Prioritizes where mark loss was concentrated across rubrics.", fontName=regular, fontSize=5.5, fillColor=c_text_muted))
+
+    d_par.add(DLine(30, 16, 260, 16, strokeColor=c_border, strokeWidth=0.5))
+    d_par.add(DLine(30, 48, 260, 48, strokeColor=colors.HexColor("#818CF8"), strokeWidth=0.5, strokeDashArray=[2, 2]))
+    d_par.add(DString(12, 46, "80%", fontName=regular, fontSize=5.5, fillColor=colors.HexColor("#6366F1")))
+
+    if pareto_pts:
+        max_l = max(0.1, pareto_pts[0]["loss"])
+        bar_count = min(3, len(pareto_pts))
+        slot_p = 210.0 / float(bar_count)
+        pts_line = [(30.0, 16.0)]
+        for ip, p_entry in enumerate(pareto_pts[:3]):
+            bx_p = 40.0 + (ip * slot_p)
+            bw_p = min(40.0, slot_p * 0.55)
+            bh_p = max(5.0, (p_entry["loss"] / max_l) * 32.0)
+            d_par.add(Rect(bx_p, 16, bw_p, bh_p, fillColor=p_entry["color"], strokeColor=None, rx=2, ry=2))
+            d_par.add(DString(bx_p + bw_p/2.0, 52, f"{p_entry['loss']:g}M", fontName=bold, fontSize=6, fillColor=c_text_dark, textAnchor='middle'))
+            d_par.add(DString(bx_p + bw_p/2.0, 6, p_entry["name"].split()[0], fontName=regular, fontSize=6, fillColor=c_text_muted, textAnchor='middle'))
+            y_pt = 16.0 + (p_entry["cum_pct"] / 100.0) * 32.0
+            pts_line.append((bx_p + bw_p/2.0, y_pt))
+            d_par.add(Circle(bx_p + bw_p/2.0, y_pt, 2.5, fillColor=c_emerald, strokeColor=colors.white, strokeWidth=0.5))
+        d_par.add(PolyLine(pts_line, strokeColor=c_emerald, strokeWidth=1.2))
+
+    row_s2_sub = Table([[d_ded, d_par]], colWidths=[276.5, 276.5], rowHeights=[90])
+    row_s2_sub.setStyle(TableStyle([
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('TOPPADDING', (0,0), (-1,-1), 0),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 0),
+        ('LEFTPADDING', (0,0), (-1,-1), 0),
+        ('RIGHTPADDING', (0,0), (-1,-1), 0),
+    ]))
+    story.append(row_s2_sub)
+    story.append(Spacer(1, 4))
+
+    # 6. SECTION 3: QUESTION FORMAT & ATTEMPT PERFORMANCE
+    s3_hdr = Table([
+        [
+            Paragraph("<b>3. QUESTION FORMAT &amp; ATTEMPT PERFORMANCE</b>", sec_title),
+            Paragraph("<font size='7' color='#0F5132'><b>100% Paper Processed</b></font>", ParagraphStyle('B3a', alignment=1)),
+            Paragraph("<font size='7' color='#6B7280'>Format Accuracy &amp; Question Completion</font>", ParagraphStyle('B3b', alignment=2)),
+        ]
+    ], colWidths=[280, 130, 149], rowHeights=[13])
+    s3_hdr.setStyle(TableStyle([
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('TOPPADDING', (0,0), (-1,-1), 0),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 0),
+    ]))
+    story.append(s3_hdr)
+    story.append(Spacer(1, 2))
+
+    fmt_map = {}
+    for qe in norm_qs:
+        f_type = qe["type"]
+        if f_type not in fmt_map:
+            fmt_map[f_type] = {"earned": 0.0, "max": 0.0, "count": 0}
+        fmt_map[f_type]["earned"] += qe["earned"]
+        fmt_map[f_type]["max"] += qe["max"]
+        fmt_map[f_type]["count"] += 1
+
+    d_fmt = Drawing(276.5, 90)
+    d_fmt.add(Rect(0, 0, 276.5, 90, fillColor=colors.white, strokeColor=c_border, strokeWidth=0.5, rx=4, ry=4))
+    d_fmt.add(DString(10, 76, "MARKS EARNED VS LOST BY QUESTION FORMAT", fontName=bold, fontSize=7.5, fillColor=c_text_dark))
+    d_fmt.add(DString(205, 76, "Earned %  ·  Lost %", fontName=bold, fontSize=6, fillColor=c_text_muted))
+    d_fmt.add(DString(10, 66, "100% stacked representation of question type score yield.", fontName=regular, fontSize=5.5, fillColor=c_text_muted))
+
+    fmt_items = list(fmt_map.items())[:2]
+    if len(fmt_items) == 1:
+        f_name, f_val = fmt_items[0]
+        f_epct = round((f_val["earned"] / f_val["max"] * 100.0) if f_val["max"] > 0 else 0.0)
+        f_lpct = max(0, 100 - f_epct)
+        d_fmt.add(DString(10, 46, f"{safe_xml(f_name)} ({f_val['count']} Qs)", fontName=bold, fontSize=7.5, fillColor=c_text_dark))
+        d_fmt.add(DString(266, 46, f"{f_epct}% Earned / {f_lpct}% Lost", fontName=bold, fontSize=6.5, fillColor=c_emerald, textAnchor='end'))
+        d_fmt.add(Rect(10, 30, 256, 9, fillColor=c_tile, strokeColor=None, rx=3, ry=3))
+        bw_e = max(2.0, (f_epct / 100.0) * 256)
+        d_fmt.add(Rect(10, 30, bw_e, 9, fillColor=c_emerald, strokeColor=None, rx=3, ry=3))
+        if f_lpct > 0:
+            bw_l = (f_lpct / 100.0) * 256
+            d_fmt.add(Rect(10 + bw_e, 30, bw_l, 9, fillColor=c_rose, strokeColor=None, rx=3, ry=3))
+        d_fmt.add(DString(10, 16, f"{f_val['earned']:g} / {f_val['max']:g} Marks", fontName=regular, fontSize=6.5, fillColor=c_text_muted))
+        d_fmt.add(DString(266, 16, "Strong Yield" if f_epct >= 75 else "Moderate Yield", fontName=bold, fontSize=6.5, fillColor=c_emerald, textAnchor='end'))
+    else:
+        y_f = 48
+        for f_name, f_val in fmt_items:
+            f_epct = round((f_val["earned"] / f_val["max"] * 100.0) if f_val["max"] > 0 else 0.0)
+            f_lpct = max(0, 100 - f_epct)
+            d_fmt.add(DString(10, y_f, f"{safe_xml(f_name[:20])} ({f_val['count']} Qs)", fontName=bold, fontSize=6.5, fillColor=c_text_dark))
+            d_fmt.add(DString(266, y_f, f"{f_epct}% / {f_lpct}%", fontName=bold, fontSize=6, fillColor=c_emerald, textAnchor='end'))
+            d_fmt.add(Rect(10, y_f - 10, 256, 6, fillColor=c_tile, strokeColor=None, rx=2, ry=2))
+            bw_e = max(2.0, (f_epct / 100.0) * 256)
+            d_fmt.add(Rect(10, y_f - 10, bw_e, 6, fillColor=c_emerald, strokeColor=None, rx=2, ry=2))
+            if f_lpct > 0:
+                d_fmt.add(Rect(10 + bw_e, y_f - 10, (f_lpct / 100.0) * 256, 6, fillColor=c_rose, strokeColor=None, rx=2, ry=2))
+            y_f -= 28
+
+    # Attempt Mastery Drawing
+    d_att = Drawing(276.5, 90)
+    d_att.add(Rect(0, 0, 276.5, 90, fillColor=colors.white, strokeColor=c_border, strokeWidth=0.5, rx=4, ry=4))
+    d_att.add(DString(10, 76, "QUESTION ATTEMPT & MASTERY BREAKDOWN", fontName=bold, fontSize=7.5, fillColor=c_text_dark))
+    d_att.add(DString(215, 76, f"{total_qs_count} Total Qs", fontName=bold, fontSize=6.5, fillColor=c_text_muted))
+    d_att.add(DString(10, 66, "Question attempt completion and scoring mastery distribution.", fontName=regular, fontSize=5.5, fillColor=c_text_muted))
+
+    pie3 = Pie()
+    pie3.x = 10
+    pie3.y = 8
+    pie3.width = 50
+    pie3.height = 50
+    pie3.data = [max(0.01, full_count), max(0.01, part_count), max(0.01, zero_count), max(0.01, unatt_count)]
+    pie3.sideLabels = 0
+    pie3.slices[0].fillColor = c_emerald
+    pie3.slices[1].fillColor = c_amber
+    pie3.slices[2].fillColor = c_rose
+    pie3.slices[3].fillColor = colors.HexColor("#94A3B8")
+    d_att.add(pie3)
+    d_att.add(Circle(35, 33, 16, fillColor=colors.white, strokeColor=None))
+    d_att.add(DString(35, 35, f"{att_count}", fontName=bold, fontSize=8, fillColor=c_text_dark, textAnchor='middle'))
+    d_att.add(DString(35, 26, f"{(att_count/total_qs_count*100.0):.0f}%", fontName=bold, fontSize=6.5, fillColor=c_emerald, textAnchor='middle'))
+
+    # Right pills: Full Marks, Partial, Zero, Unattempted
+    att_rows = [
+        {"lbl": "Full Marks (≥90%)", "cnt": full_count, "col": c_emerald, "bg": c_tint},
+        {"lbl": "Partial Marks", "cnt": part_count, "col": c_amber, "bg": c_tile},
+        {"lbl": "Heavy Deductions", "cnt": zero_count, "col": c_rose, "bg": c_tile},
+        {"lbl": "Unattempted", "cnt": unatt_count, "col": colors.HexColor("#94A3B8"), "bg": c_tile},
+    ]
+    y_att = 50
+    for a_r in att_rows:
+        d_att.add(Rect(72, y_att, 192, 12, fillColor=a_r["bg"], strokeColor=c_border, strokeWidth=0.5, rx=2, ry=2))
+        d_att.add(Circle(78, y_att + 6, 2.5, fillColor=a_r["col"], strokeColor=None))
+        d_att.add(DString(86, y_att + 3.5, a_r["lbl"], fontName=regular, fontSize=6, fillColor=c_text_dark))
+        a_pct = round((a_r["cnt"] / total_qs_count * 100.0))
+        d_att.add(DString(256, y_att + 3.5, f"{a_r['cnt']} Qs ({a_pct}%)", fontName=bold, fontSize=6, fillColor=a_r["col"], textAnchor='end'))
+        y_att -= 14
+
+    row_s3_sub = Table([[d_fmt, d_att]], colWidths=[276.5, 276.5], rowHeights=[90])
+    row_s3_sub.setStyle(TableStyle([
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('TOPPADDING', (0,0), (-1,-1), 0),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 0),
+        ('LEFTPADDING', (0,0), (-1,-1), 0),
+        ('RIGHTPADDING', (0,0), (-1,-1), 0),
+    ]))
+    story.append(row_s3_sub)
+    story.append(Spacer(1, 4))
+
+    # 7. QUESTION MARKS LEDGER (SCORES ONLY)
+    story.append(Paragraph("<b>QUESTION MARKS LEDGER (SCORES &amp; STATUS ONLY — NO TRANSCRIPTS)</b>", ParagraphStyle('LH', fontName=bold, fontSize=7, leading=8.5, textColor=c_text_dark)))
     story.append(Spacer(1, 2))
 
     q_cells = []
-    for qe in questions:
-        q_no_raw = format_q_number(qe.get("q_no") or "")
-        f_marks = float(qe.get("final_marks") or 0.0)
-        m_marks = float(qe.get("max_marks") or 0.0)
-        
-        if m_marks > 0 and f_marks >= m_marks * 0.95:
+    for qe in norm_qs:
+        f_marks = qe["earned"]
+        m_marks = qe["max"]
+        if qe["status"] == "full":
             stat_str = "<font color='#0F5132'>Full</font>"
-        elif f_marks > 0:
-            stat_str = "<font color='#D97706'>Partial</font>"
+        elif qe["status"] == "part":
+            stat_str = "<font color='#D97706'>Part</font>"
         else:
             stat_str = "<font color='#DC2626'>0</font>"
-            
         cell_content = Paragraph(
-            f"<b>{q_no_raw}</b>: <b>{f_marks:g}/{m_marks:g}</b> · {stat_str}",
-            ParagraphStyle('QCell', fontName=regular, fontSize=6.5, leading=8, alignment=1)
+            f"<b>Q.{qe['q_no']}</b>: <b>{f_marks:g}/{m_marks:g}</b> · {stat_str}",
+            ParagraphStyle('QC', fontName=regular, fontSize=7, leading=8.5, alignment=1)
         )
         q_cells.append(cell_content)
 
     while len(q_cells) % 4 != 0:
-        q_cells.append(Paragraph("", label_style))
+        q_cells.append(Paragraph("", lbl_style))
 
     table_grid = []
     for i in range(0, len(q_cells), 4):
         table_grid.append(q_cells[i:i+4])
+    table_grid = table_grid[:3]
 
-    table_grid = table_grid[:4]
-    row_h = [12] * len(table_grid)
-    grid_col_w = [138.5, 138.5, 138.5, 138.5]
-
-    marks_grid_table = Table(table_grid, colWidths=grid_col_w, rowHeights=row_h)
-    marks_grid_table.setStyle(TableStyle([
+    ledger_table = Table(table_grid, colWidths=[138.25, 138.25, 138.25, 138.25], rowHeights=[14] * len(table_grid))
+    ledger_table.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,-1), colors.HexColor("#F8FAFC")),
         ('BOX', (0,0), (-1,-1), 0.5, c_border),
         ('INNERGRID', (0,0), (-1,-1), 0.5, c_border),
@@ -1615,15 +1927,15 @@ def generate_one_page_bento_report_card_pdf(
         ('BOTTOMPADDING', (0,0), (-1,-1), 1),
         ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
     ]))
-    story.append(marks_grid_table)
-    story.append(Spacer(1, 5))
+    story.append(ledger_table)
+    story.append(Spacer(1, 4))
 
-    # 6. OFFICIAL VERIFICATION SIGN-OFF FOOTER STRIP (3 Columns)
+    # 8. OFFICIAL VERIFICATION SIGN-OFF STRIP
     signoff_data = [
         [
-            Paragraph("<b>AI RUBRIC AUDIT</b>", ParagraphStyle('SOH', fontName=bold, fontSize=6.5, leading=7.5, textColor=c_text_dark)),
-            Paragraph("<b>COURSE INSTRUCTOR</b>", ParagraphStyle('SOH', fontName=bold, fontSize=6.5, leading=7.5, textColor=c_text_dark)),
-            Paragraph("<b>CONTROLLER OF EXAMINATIONS</b>", ParagraphStyle('SOH', fontName=bold, fontSize=6.5, leading=7.5, textColor=c_text_dark)),
+            Paragraph("<b>AI RUBRIC AUDIT</b>", ParagraphStyle('SOH', fontName=bold, fontSize=7, leading=8, textColor=c_text_dark)),
+            Paragraph("<b>COURSE INSTRUCTOR</b>", ParagraphStyle('SOH', fontName=bold, fontSize=7, leading=8, textColor=c_text_dark)),
+            Paragraph("<b>CONTROLLER OF EXAMINATIONS</b>", ParagraphStyle('SOH', fontName=bold, fontSize=7, leading=8, textColor=c_text_dark)),
         ],
         [
             Paragraph("Automated Multi-Pass Calibration<br/><font color='#0F5132'>✔ Officially Verified</font>", ParagraphStyle('SOB', fontName=regular, fontSize=6, leading=7.5, textColor=c_text_muted)),
@@ -1631,7 +1943,7 @@ def generate_one_page_bento_report_card_pdf(
             Paragraph("Office of Evaluation<br/><font color='#6B7280'>Institutional Seal: _________</font>", ParagraphStyle('SOB', fontName=regular, fontSize=6, leading=7.5, textColor=c_text_muted)),
         ]
     ]
-    signoff_table = Table(signoff_data, colWidths=[185, 185, 185], rowHeights=[9, 16])
+    signoff_table = Table(signoff_data, colWidths=[184, 185, 184], rowHeights=[10, 18])
     signoff_table.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,-1), colors.white),
         ('BOX', (0,0), (-1,-1), 0.5, c_border),
@@ -1646,15 +1958,14 @@ def generate_one_page_bento_report_card_pdf(
     story.append(signoff_table)
     story.append(Spacer(1, 3))
 
-    # 7. GRADING SCALE LEGEND (Bottom 1 line)
+    # 9. GRADING SCALE LEGEND
     scale_text = "Grading Scale: O (≥90%) · A+ (80-89%) · A (70-79%) · B+ (60-69%) · B (50-59%) · C (40-49%) · D (35-39%) · F (<35%) · Re-appear Required"
-    story.append(Paragraph(scale_text, ParagraphStyle('Legend', fontName=regular, fontSize=5.5, leading=6.5, textColor=c_text_muted, alignment=1)))
+    story.append(Paragraph(scale_text, ParagraphStyle('Legend', fontName=regular, fontSize=6, leading=7, textColor=c_text_muted, alignment=1)))
 
     doc.build(story)
 
     # STRICT 1-PAGE GUARANTEE
     try:
-        import fitz
         doc_check = fitz.open(str(output_path))
         if len(doc_check) > 1:
             while len(doc_check) > 1:
@@ -1665,5 +1976,3 @@ def generate_one_page_bento_report_card_pdf(
         pass
 
     return output_path
-
-

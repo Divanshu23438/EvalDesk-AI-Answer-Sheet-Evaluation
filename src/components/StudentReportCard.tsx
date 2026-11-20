@@ -645,28 +645,33 @@ export const StudentReportCard: React.FC<StudentReportCardProps> = ({ sheetId })
               </div>
 
               {/* Chart Canvas */}
-              <div className="bg-[#F1F4F2] dark:bg-[#202422] border border-[#E2E8E4] dark:border-[#2F3532] rounded-lg p-2 relative select-none">
-                <div className="absolute left-2 top-1 bottom-4 flex flex-col justify-between text-[8px] font-mono text-[#6B7280] dark:text-[#68706C]">
+              <div className="bg-[#F1F4F2] dark:bg-[#202422] border border-[#E2E8E4] dark:border-[#2F3532] rounded-lg p-2.5 relative select-none">
+                <div className="absolute left-2.5 top-2 bottom-6 flex flex-col justify-between text-[9px] font-mono text-[#6B7280] dark:text-[#68706C]">
                   <span>100%</span>
                   <span>50%</span>
                   <span>0%</span>
                 </div>
-                <div className="ml-8 h-20 flex items-end justify-between gap-1.5 pb-0.5">
+                <div className={`ml-8 h-28 sm:h-32 flex items-end ${normalizedQuestions.length === 1 ? 'justify-center' : normalizedQuestions.length <= 4 ? 'justify-around' : 'justify-between'} gap-2 pb-0.5`}>
                   {normalizedQuestions.map((q, idx) => {
                     const barColor = q.status === 'full'
                       ? 'bg-[#0F5132] dark:bg-[#1F6E4A]'
                       : q.status === 'zero'
                       ? 'bg-rose-500 dark:bg-[#E57D8A]'
                       : 'bg-amber-500 dark:bg-[#E5B567]';
+                    const barWidthClass = normalizedQuestions.length === 1
+                      ? 'w-20 max-w-[80px]'
+                      : normalizedQuestions.length <= 4
+                      ? 'w-14 max-w-[56px]'
+                      : 'w-full max-w-[32px]';
                     return (
-                      <div key={idx} className="flex-1 flex flex-col items-center h-full justify-end group">
-                        <span className="text-[8px] font-mono font-bold text-[#0F5132] dark:text-[#7CC9A3] opacity-0 group-hover:opacity-100 transition">
+                      <div key={idx} className={`${normalizedQuestions.length <= 4 ? '' : 'flex-1'} flex flex-col items-center h-full justify-end group`}>
+                        <span className={`font-mono font-bold text-[#0F5132] dark:text-[#7CC9A3] mb-1 ${normalizedQuestions.length <= 4 ? 'text-xs opacity-100' : 'text-[9px] opacity-80 group-hover:opacity-100 transition'}`}>
                           {q.earned}/{q.max}
                         </span>
-                        <div className="w-full max-w-[28px] h-full flex flex-col justify-end bg-[#E2E8E4] dark:bg-[#2A2F2C] rounded-t-sm overflow-hidden">
-                          <div className={`w-full ${barColor} rounded-t-sm transition-all duration-300`} style={{ height: `${Math.max(8, q.pct)}%` }} />
+                        <div className={`${barWidthClass} h-full flex flex-col justify-end bg-[#E2E8E4] dark:bg-[#2A2F2C] rounded-t-md overflow-hidden`}>
+                          <div className={`w-full ${barColor} rounded-t-md transition-all duration-300`} style={{ height: `${Math.max(8, q.pct)}%` }} />
                         </div>
-                        <span className="text-[8px] font-mono font-semibold mt-0.5 text-[#4B5563] dark:text-[#969E9A]">
+                        <span className={`font-mono font-bold mt-1 text-[#111827] dark:text-[#ECEEED] ${normalizedQuestions.length <= 4 ? 'text-xs' : 'text-[10px]'}`}>
                           Q.{q.q_no}
                         </span>
                       </div>
@@ -678,22 +683,22 @@ export const StudentReportCard: React.FC<StudentReportCardProps> = ({ sheetId })
               {/* 1.2 & 1.3 Donut Split & Horizontal Sectional Breakdown */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-0.5">
                 {/* 1.2 Total Marks Distribution Split */}
-                <div className="p-2 rounded-xl bg-white dark:bg-[#181B19] border border-[#E2E8E4] dark:border-[#2A2F2C] space-y-1">
+                <div className="p-2 sm:p-2.5 rounded-xl bg-white dark:bg-[#181B19] border border-[#E2E8E4] dark:border-[#2A2F2C] space-y-1">
                   <div className="flex items-center justify-between">
-                    <h5 className="text-[10px] font-bold text-[#111827] dark:text-[#ECEEED] uppercase tracking-wider">
+                    <h5 className="text-[11px] font-bold text-[#111827] dark:text-[#ECEEED] uppercase tracking-wider">
                       Total Marks Distribution Split
                     </h5>
-                    <span className="text-[9px] font-mono bg-[#F1F4F2] dark:bg-[#202422] text-[#4B5563] dark:text-[#969E9A] px-1.5 py-0.2 rounded">
+                    <span className="text-[10px] font-mono bg-[#F1F4F2] dark:bg-[#202422] text-[#4B5563] dark:text-[#969E9A] px-2 py-0.5 rounded font-semibold">
                       Max {maxMarks} M
                     </span>
                   </div>
-                  <p className="text-[9px] text-[#4B5563] dark:text-[#969E9A]">
+                  <p className="text-[10px] text-[#4B5563] dark:text-[#969E9A]">
                     Evaluation ratio between earned points and deductions across entire paper.
                   </p>
-                  <div className="flex items-center justify-center gap-3 pt-1">
-                    <div className="relative w-16 h-16 shrink-0 flex items-center justify-center">
-                      <svg className="w-16 h-16 -rotate-90" viewBox="0 0 70 70">
-                        <circle cx="35" cy="35" fill="transparent" r="28" stroke="#F1F4F2" strokeWidth="9" className="stroke-[#F1F4F2] dark:stroke-[#202422]" />
+                  <div className="flex items-center justify-center gap-3 pt-1.5">
+                    <div className="relative w-20 h-20 sm:w-22 sm:h-22 shrink-0 flex items-center justify-center">
+                      <svg className="w-20 h-20 sm:w-22 sm:h-22 -rotate-90" viewBox="0 0 70 70">
+                        <circle cx="35" cy="35" fill="transparent" r="28" stroke="#F1F4F2" strokeWidth="8" className="stroke-[#F1F4F2] dark:stroke-[#202422]" />
                         <circle
                           cx="35"
                           cy="35"
@@ -703,7 +708,7 @@ export const StudentReportCard: React.FC<StudentReportCardProps> = ({ sheetId })
                           strokeDasharray={`${scoredDash} ${C_DONUT}`}
                           strokeDashoffset="0"
                           strokeLinecap="round"
-                          strokeWidth="9"
+                          strokeWidth="8"
                           className="stroke-[#0F5132] dark:stroke-[#1F6E4A]"
                         />
                         <circle
@@ -715,71 +720,71 @@ export const StudentReportCard: React.FC<StudentReportCardProps> = ({ sheetId })
                           strokeDasharray={`${lostDash} ${C_DONUT}`}
                           strokeDashoffset={`-${scoredDash}`}
                           strokeLinecap="round"
-                          strokeWidth="9"
+                          strokeWidth="8"
                           className="stroke-rose-500 dark:stroke-[#E57D8A]"
                         />
                       </svg>
                       <div className="absolute flex flex-col items-center justify-center text-center">
-                        <span className="text-xs font-mono font-bold text-[#111827] dark:text-[#ECEEED] leading-none">
+                        <span className="text-sm sm:text-base font-mono font-bold text-[#111827] dark:text-[#ECEEED] leading-none">
                           {totalScore}
                         </span>
-                        <span className="text-[7px] font-mono text-[#6B7280] dark:text-[#68706C]">
+                        <span className="text-[8px] font-mono text-[#6B7280] dark:text-[#68706C]">
                           /{maxMarks}M
                         </span>
-                        <span className="text-[7px] font-bold text-[#0F5132] dark:text-[#7CC9A3]">
+                        <span className="text-[8px] sm:text-[9px] font-bold text-[#0F5132] dark:text-[#7CC9A3]">
                           {effectivePct.toFixed(0)}%
                         </span>
                       </div>
                     </div>
 
-                    <div className="space-y-1 text-[10px] font-mono flex-1">
-                      <div className="p-1 rounded bg-[#E8F3EE]/60 border border-[#E8F3EE] dark:bg-[#1A2B23]/50 dark:border-[#294236] flex items-center justify-between">
-                        <div className="flex items-center space-x-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#0F5132] dark:bg-[#1F6E4A]" />
-                          <span className="font-sans text-[#111827] dark:text-[#ECEEED] text-[9px]">Marks Scored</span>
+                    <div className="space-y-1.5 text-xs font-mono flex-1">
+                      <div className="p-1.5 rounded-lg bg-[#E8F3EE]/60 border border-[#E8F3EE] dark:bg-[#1A2B23]/50 dark:border-[#294236] flex items-center justify-between">
+                        <div className="flex items-center space-x-1.5">
+                          <span className="w-2 h-2 rounded-full bg-[#0F5132] dark:bg-[#1F6E4A]" />
+                          <span className="font-sans text-[#111827] dark:text-[#ECEEED] text-[10px] sm:text-xs">Marks Scored</span>
                         </div>
-                        <span className="font-bold text-[#0F5132] dark:text-[#7CC9A3] text-[9px]">{totalScore} M ({effectivePct.toFixed(1)}%)</span>
+                        <span className="font-bold text-[#0F5132] dark:text-[#7CC9A3] text-[10px] sm:text-xs">{totalScore} M ({effectivePct.toFixed(1)}%)</span>
                       </div>
-                      <div className="p-1 rounded bg-rose-50/60 border border-rose-100 dark:bg-[#2B191D]/50 dark:border-[#45262C] flex items-center justify-between">
-                        <div className="flex items-center space-x-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-rose-500 dark:bg-[#E57D8A]" />
-                          <span className="font-sans text-[#111827] dark:text-[#ECEEED] text-[9px]">Marks Lost</span>
+                      <div className="p-1.5 rounded-lg bg-rose-50/60 border border-rose-100 dark:bg-[#2B191D]/50 dark:border-[#45262C] flex items-center justify-between">
+                        <div className="flex items-center space-x-1.5">
+                          <span className="w-2 h-2 rounded-full bg-rose-500 dark:bg-[#E57D8A]" />
+                          <span className="font-sans text-[#111827] dark:text-[#ECEEED] text-[10px] sm:text-xs">Marks Lost</span>
                         </div>
-                        <span className="font-bold text-rose-600 dark:text-[#E57D8A] text-[9px]">{totalLost} M ({maxMarks > 0 ? ((totalLost / maxMarks) * 100).toFixed(1) : 0}%)</span>
+                        <span className="font-bold text-rose-600 dark:text-[#E57D8A] text-[10px] sm:text-xs">{totalLost} M ({maxMarks > 0 ? ((totalLost / maxMarks) * 100).toFixed(1) : 0}%)</span>
                       </div>
                     </div>
                   </div>
                 </div>
 
                 {/* 1.3 Sectional Marks Breakdown */}
-                <div className="p-2 rounded-xl bg-white dark:bg-[#181B19] border border-[#E2E8E4] dark:border-[#2A2F2C] space-y-1">
+                <div className="p-2 sm:p-2.5 rounded-xl bg-white dark:bg-[#181B19] border border-[#E2E8E4] dark:border-[#2A2F2C] space-y-1">
                   <div className="flex items-center justify-between">
-                    <h5 className="text-[10px] font-bold text-[#111827] dark:text-[#ECEEED] uppercase tracking-wider">
+                    <h5 className="text-[11px] font-bold text-[#111827] dark:text-[#ECEEED] uppercase tracking-wider">
                       Sectional Marks Breakdown
                     </h5>
-                    <span className="text-[9px] font-mono text-[#6B7280] dark:text-[#68706C]">
-                      {sectionalList.length} Exam Sections
+                    <span className="text-[10px] font-mono text-[#6B7280] dark:text-[#68706C]">
+                      {sectionalList.length} Exam Section{sectionalList.length > 1 ? 's' : ''}
                     </span>
                   </div>
-                  <p className="text-[9px] text-[#4B5563] dark:text-[#969E9A]">
+                  <p className="text-[10px] text-[#4B5563] dark:text-[#969E9A]">
                     Performance breakdown across categorized subject sections.
                   </p>
-                  <div className="space-y-1.5 pt-0.5 text-xs">
+                  <div className="space-y-2 pt-1 text-xs">
                     {sectionalList.map((sec, i) => (
-                      <div key={i} className="space-y-0.5">
-                        <div className="flex justify-between items-center text-[10px]">
-                          <span className="font-semibold text-[#111827] dark:text-[#ECEEED] font-sans truncate max-w-[140px]">{sec.name}</span>
-                          <div className="space-x-1 font-mono text-[9px]">
+                      <div key={i} className="space-y-1">
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="font-semibold text-[#111827] dark:text-[#ECEEED] font-sans truncate max-w-[150px]">{sec.name}</span>
+                          <div className="space-x-1.5 font-mono text-[10px] sm:text-xs">
                             <span className={`font-bold ${sec.textColor}`}>{sec.earned} / {sec.max} M</span>
-                            <span className={`font-bold px-1 rounded border ${sec.badgeClass}`}>{sec.pct}%</span>
+                            <span className={`font-bold px-1.5 py-0.2 rounded border ${sec.badgeClass}`}>{sec.pct}%</span>
                           </div>
                         </div>
-                        <div className="w-full bg-[#F1F4F2] dark:bg-[#202422] h-1.5 rounded-full overflow-hidden flex">
-                          <div className={`${sec.barColor} h-full rounded-full`} style={{ width: `${sec.pct}%` }} />
+                        <div className="w-full bg-[#F1F4F2] dark:bg-[#202422] h-2 rounded-full overflow-hidden flex">
+                          <div className={`${sec.barColor} h-full rounded-full transition-all duration-300`} style={{ width: `${sec.pct}%` }} />
                         </div>
-                        <div className="flex justify-between text-[8px] text-[#6B7280] dark:text-[#68706C] font-mono">
-                          <span>{sec.qNos.slice(0, 4).join(', ')} · {sec.count} Qs</span>
-                          <span className="text-rose-500 dark:text-[#E57D8A]">-{sec.lost} M lost</span>
+                        <div className="flex justify-between text-[9px] text-[#6B7280] dark:text-[#68706C] font-mono">
+                          <span>{sec.qNos.slice(0, 4).join(', ')} · {sec.count} Questions</span>
+                          <span className="text-rose-500 dark:text-[#E57D8A] font-semibold">-{sec.lost} M lost</span>
                         </div>
                       </div>
                     ))}
@@ -800,30 +805,30 @@ export const StudentReportCard: React.FC<StudentReportCardProps> = ({ sheetId })
             <div className="p-2 sm:p-2.5 rounded-xl bg-white dark:bg-[#181B19] border border-[#E2E8E4] dark:border-[#2A2F2C] space-y-1.5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-1.5">
-                  <span className="w-1.5 h-3 bg-rose-500 dark:bg-[#E57D8A] rounded-sm" />
-                  <h4 className="text-[10px] font-bold text-[#111827] dark:text-[#ECEEED] uppercase tracking-wider">
+                  <span className="w-1.5 h-3.5 bg-rose-500 dark:bg-[#E57D8A] rounded-sm" />
+                  <h4 className="text-[11px] font-bold text-[#111827] dark:text-[#ECEEED] uppercase tracking-wider">
                     2. Teacher Deductions &amp; Error Taxonomy
                   </h4>
                 </div>
-                <span className="px-1.5 py-0.2 rounded bg-rose-50 text-rose-700 dark:bg-[#2B191D] dark:text-[#E57D8A] font-mono text-[8px] font-semibold border border-rose-200 dark:border-[#45262C]">
+                <span className="px-2 py-0.5 rounded bg-rose-50 text-rose-700 dark:bg-[#2B191D] dark:text-[#E57D8A] font-mono text-[9px] font-semibold border border-rose-200 dark:border-[#45262C]">
                   {totalLost} Total Marks Lost
                 </span>
               </div>
-              <p className="text-[8px] text-[#6B7280] dark:text-[#68706C]">
+              <p className="text-[9px] text-[#6B7280] dark:text-[#68706C]">
                 Extracted from Deductions &amp; Evaluation Rubrics
               </p>
 
               {/* Deductions Donut & Pareto Row */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-0.5">
                 {/* Deductions by Error Category Donut */}
-                <div className="bg-[#F8FAFC] dark:bg-[#202422] rounded-lg p-1.5 border border-[#E2E8E4] dark:border-[#2F3532] space-y-1">
-                  <div className="flex justify-between items-center text-[9px] font-bold">
+                <div className="bg-[#F8FAFC] dark:bg-[#202422] rounded-lg p-2 border border-[#E2E8E4] dark:border-[#2F3532] space-y-1">
+                  <div className="flex justify-between items-center text-[10px] font-bold">
                     <span className="text-[#111827] dark:text-[#ECEEED]">Deductions by Category</span>
                     <span className="text-rose-600 dark:text-[#E57D8A]">-{totalLost} M</span>
                   </div>
-                  <div className="flex items-center justify-center gap-2 pt-0.5">
-                    <div className="relative w-14 h-14 shrink-0 flex items-center justify-center">
-                      <svg className="w-14 h-14 -rotate-90" viewBox="0 0 70 70">
+                  <div className="flex items-center justify-center gap-2 pt-1">
+                    <div className="relative w-16 h-16 sm:w-18 sm:h-18 shrink-0 flex items-center justify-center">
+                      <svg className="w-16 h-16 sm:w-18 sm:h-18 -rotate-90" viewBox="0 0 70 70">
                         <circle cx="35" cy="35" fill="transparent" r="28" stroke="#F1F4F2" strokeWidth="8" className="stroke-[#F1F4F2] dark:stroke-[#181B19]" />
                         {errorSegments.map((seg, i) => (
                           <circle
@@ -841,16 +846,16 @@ export const StudentReportCard: React.FC<StudentReportCardProps> = ({ sheetId })
                         ))}
                       </svg>
                       <div className="absolute flex flex-col items-center justify-center text-center">
-                        <span className="text-[10px] font-mono font-bold text-rose-600 dark:text-[#E57D8A] leading-none">
+                        <span className="text-xs sm:text-sm font-mono font-bold text-rose-600 dark:text-[#E57D8A] leading-none">
                           -{totalLost}
                         </span>
-                        <span className="text-[6px] font-mono text-[#6B7280]">Marks Lost</span>
+                        <span className="text-[7px] font-mono text-[#6B7280]">Marks Lost</span>
                       </div>
                     </div>
 
-                    <div className="space-y-0.5 text-[8px] font-mono flex-1">
+                    <div className="space-y-1 text-[9px] font-mono flex-1">
                       {errorSegments.slice(0, 3).map((seg, i) => (
-                        <div key={i} className="flex items-center justify-between p-0.5 rounded bg-white dark:bg-[#181B19] border border-[#E2E8E4] dark:border-[#2F3532]">
+                        <div key={i} className="flex items-center justify-between p-1 rounded bg-white dark:bg-[#181B19] border border-[#E2E8E4] dark:border-[#2F3532]">
                           <div className="flex items-center space-x-1">
                             <span className={`w-1.5 h-1.5 rounded-full ${seg.dotClass}`} />
                             <span className="font-sans text-[#111827] dark:text-[#ECEEED] truncate max-w-[65px]">{seg.name}</span>
@@ -863,27 +868,27 @@ export const StudentReportCard: React.FC<StudentReportCardProps> = ({ sheetId })
                 </div>
 
                 {/* Pareto Error Analysis (80/20 Rule) */}
-                <div className="bg-[#F8FAFC] dark:bg-[#202422] rounded-lg p-1.5 border border-[#E2E8E4] dark:border-[#2F3532] space-y-1">
-                  <div className="flex justify-between items-center text-[9px]">
+                <div className="bg-[#F8FAFC] dark:bg-[#202422] rounded-lg p-2 border border-[#E2E8E4] dark:border-[#2F3532] space-y-1">
+                  <div className="flex justify-between items-center text-[10px]">
                     <span className="font-bold text-[#111827] dark:text-[#ECEEED]">Pareto (80/20 Rule)</span>
-                    <span className="text-[8px] font-mono text-[#0F5132] dark:text-[#7CC9A3] font-semibold">Line: Cum. %</span>
+                    <span className="text-[9px] font-mono text-[#0F5132] dark:text-[#7CC9A3] font-semibold">Line: Cum. %</span>
                   </div>
-                  <div className="relative h-14 bg-white dark:bg-[#181B19] rounded border border-[#E2E8E4] dark:border-[#2F3532] p-1">
-                    <svg className="w-full h-full" viewBox="0 0 160 50">
-                      <line stroke="#E2E8F0" strokeDasharray="2 2" x1="10" x2="150" y1="12" y2="12" className="stroke-[#E2E8E4] dark:stroke-[#2F3532]" />
-                      <line stroke="#CBD5E1" strokeWidth="1" x1="10" x2="150" y1="42" y2="42" className="stroke-[#CBD5E1] dark:stroke-[#2F3532]" />
+                  <div className="relative h-20 sm:h-22 bg-white dark:bg-[#181B19] rounded border border-[#E2E8E4] dark:border-[#2F3532] p-1">
+                    <svg className="w-full h-full" viewBox="0 0 160 55">
+                      <line stroke="#E2E8F0" strokeDasharray="2 2" x1="10" x2="150" y1="14" y2="14" className="stroke-[#E2E8E4] dark:stroke-[#2F3532]" />
+                      <line stroke="#CBD5E1" strokeWidth="1" x1="10" x2="150" y1="46" y2="46" className="stroke-[#CBD5E1] dark:stroke-[#2F3532]" />
                       <line stroke="#818CF8" strokeDasharray="1 1" strokeWidth="0.8" x1="10" x2="150" y1="18" y2="18" />
-                      <text fill="#6366F1" fontSize="5" x="140" y="16">80%</text>
+                      <text fill="#6366F1" fontSize="5.5" x="135" y="15">80% Cutoff</text>
 
                       {paretoData.slice(0, 3).map((d, i) => {
                         const x = 20 + i * 45;
                         const maxL = paretoData[0]?.loss || 1;
-                        const barH = Math.max(6, Math.min(30, (d.loss / maxL) * 30));
-                        const y = 42 - barH;
+                        const barH = Math.max(8, Math.min(32, (d.loss / maxL) * 32));
+                        const y = 46 - barH;
                         return (
                           <g key={i}>
-                            <rect fill={d.color} height={barH} width="16" x={x} y={y} rx="1" />
-                            <text fill="#475569" fontSize="5" textAnchor="middle" x={x + 8} y="48">
+                            <rect fill={d.color} height={barH} width="18" x={x} y={y} rx="2" />
+                            <text fill="#475569" fontSize="6" textAnchor="middle" x={x + 9} y="53">
                               {d.name.split(' ')[0]}
                             </text>
                           </g>
@@ -892,9 +897,9 @@ export const StudentReportCard: React.FC<StudentReportCardProps> = ({ sheetId })
                       {paretoData.length > 0 && (
                         <polyline
                           fill="none"
-                          points={paretoData.slice(0, 3).map((d, i) => `${28 + i * 45},${Math.round(42 - (d.cumPct / 100) * 30)}`).join(' ')}
+                          points={paretoData.slice(0, 3).map((d, i) => `${29 + i * 45},${Math.round(46 - (d.cumPct / 100) * 32)}`).join(' ')}
                           stroke="#0F5132"
-                          strokeWidth="1.2"
+                          strokeWidth="1.5"
                         />
                       )}
                     </svg>
@@ -907,46 +912,46 @@ export const StudentReportCard: React.FC<StudentReportCardProps> = ({ sheetId })
             <div className="p-2 sm:p-2.5 rounded-xl bg-white dark:bg-[#181B19] border border-[#E2E8E4] dark:border-[#2A2F2C] space-y-1.5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-1.5">
-                  <span className="w-1.5 h-3 bg-[#0F5132] dark:bg-[#1F6E4A] rounded-sm" />
-                  <h4 className="text-[10px] font-bold text-[#111827] dark:text-[#ECEEED] uppercase tracking-wider">
+                  <span className="w-1.5 h-3.5 bg-[#0F5132] dark:bg-[#1F6E4A] rounded-sm" />
+                  <h4 className="text-[11px] font-bold text-[#111827] dark:text-[#ECEEED] uppercase tracking-wider">
                     3. Question Format &amp; Attempt Performance
                   </h4>
                 </div>
-                <span className="px-1.5 py-0.2 rounded bg-[#E8F3EE] text-[#0B3D26] dark:bg-[#1A2B23] dark:text-[#7CC9A3] font-mono text-[8px] font-semibold border border-[#0F5132]/20 dark:border-[#294236]">
+                <span className="px-2 py-0.5 rounded bg-[#E8F3EE] text-[#0B3D26] dark:bg-[#1A2B23] dark:text-[#7CC9A3] font-mono text-[9px] font-semibold border border-[#0F5132]/20 dark:border-[#294236]">
                   100% Processed
                 </span>
               </div>
-              <p className="text-[8px] text-[#6B7280] dark:text-[#68706C]">
+              <p className="text-[9px] text-[#6B7280] dark:text-[#68706C]">
                 Format Accuracy &amp; Question Completion
               </p>
 
               {/* Format Stacked Bars & Mastery Donut Row */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-0.5">
                 {/* Marks by Question Format */}
-                <div className="bg-[#F8FAFC] dark:bg-[#202422] rounded-lg p-1.5 border border-[#E2E8E4] dark:border-[#2F3532] space-y-1">
-                  <div className="flex justify-between items-center text-[9px]">
+                <div className="bg-[#F8FAFC] dark:bg-[#202422] rounded-lg p-2 border border-[#E2E8E4] dark:border-[#2F3532] space-y-1">
+                  <div className="flex justify-between items-center text-[10px]">
                     <span className="font-bold text-[#111827] dark:text-[#ECEEED]">Format Yield</span>
-                    <div className="flex items-center gap-1.5 text-[8px]">
-                      <span className="text-[#0F5132] dark:text-[#7CC9A3]">Earned</span>
+                    <div className="flex items-center gap-1.5 text-[9px]">
+                      <span className="text-[#0F5132] dark:text-[#7CC9A3] font-semibold">Earned</span>
                       <span>·</span>
-                      <span className="text-rose-500">Lost</span>
+                      <span className="text-rose-500 font-semibold">Lost</span>
                     </div>
                   </div>
 
-                  <div className="space-y-1 pt-0.5">
+                  <div className="space-y-1.5 pt-0.5">
                     {formatsList.slice(0, 2).map((f, i) => (
                       <div key={i} className="space-y-0.5">
-                        <div className="flex justify-between text-[8px] font-mono">
-                          <span className="text-[#111827] dark:text-[#ECEEED] font-sans truncate max-w-[80px]">{f.fmt}</span>
+                        <div className="flex justify-between text-[9px] font-mono">
+                          <span className="text-[#111827] dark:text-[#ECEEED] font-sans truncate max-w-[85px] font-semibold">{f.fmt}</span>
                           <span className="text-[#0F5132] dark:text-[#7CC9A3] font-bold">{f.earnedPct}% / {f.lostPct}%</span>
                         </div>
-                        <div className="w-full bg-[#E2E8E4] dark:bg-[#2A2F2C] h-1.5 rounded-full overflow-hidden flex">
+                        <div className="w-full bg-[#E2E8E4] dark:bg-[#2A2F2C] h-2 rounded-full overflow-hidden flex">
                           <div className="bg-[#0F5132] dark:bg-[#1F6E4A] h-full" style={{ width: `${f.earnedPct}%` }} />
                           <div className="bg-rose-500 dark:bg-[#E57D8A] h-full" style={{ width: `${f.lostPct}%` }} />
                         </div>
-                        <div className="flex justify-between text-[7px] text-[#6B7280] font-mono">
+                        <div className="flex justify-between text-[8px] text-[#6B7280] font-mono">
                           <span>{f.earned}/{f.max} M</span>
-                          <span>{f.earnedPct >= 75 ? 'Strong' : 'Moderate'}</span>
+                          <span className="font-semibold text-[#0F5132] dark:text-[#7CC9A3]">{f.earnedPct >= 75 ? 'Strong Yield' : 'Moderate Yield'}</span>
                         </div>
                       </div>
                     ))}
@@ -954,15 +959,15 @@ export const StudentReportCard: React.FC<StudentReportCardProps> = ({ sheetId })
                 </div>
 
                 {/* Attempt & Mastery Breakdown Donut + Badges */}
-                <div className="bg-[#F8FAFC] dark:bg-[#202422] rounded-lg p-1.5 border border-[#E2E8E4] dark:border-[#2F3532] space-y-1">
-                  <div className="flex justify-between items-center text-[9px] font-bold">
+                <div className="bg-[#F8FAFC] dark:bg-[#202422] rounded-lg p-2 border border-[#E2E8E4] dark:border-[#2F3532] space-y-1">
+                  <div className="flex justify-between items-center text-[10px] font-bold">
                     <span className="text-[#111827] dark:text-[#ECEEED]">Attempt Mastery</span>
-                    <span className="text-[8px] font-mono text-[#0F5132] dark:text-[#7CC9A3]">{totalAttempted}/{normalizedQuestions.length} Qs</span>
+                    <span className="text-[9px] font-mono text-[#0F5132] dark:text-[#7CC9A3] font-semibold">{totalAttempted}/{normalizedQuestions.length} Qs</span>
                   </div>
 
-                  <div className="flex items-center justify-center gap-2 pt-0.5">
-                    <div className="relative w-14 h-14 shrink-0 flex items-center justify-center">
-                      <svg className="w-14 h-14 -rotate-90" viewBox="0 0 70 70">
+                  <div className="flex items-center justify-center gap-2 pt-1">
+                    <div className="relative w-16 h-16 sm:w-18 sm:h-18 shrink-0 flex items-center justify-center">
+                      <svg className="w-16 h-16 sm:w-18 sm:h-18 -rotate-90" viewBox="0 0 70 70">
                         <circle cx="35" cy="35" fill="transparent" r="28" stroke="#F1F4F2" strokeWidth="8" className="stroke-[#F1F4F2] dark:stroke-[#181B19]" />
                         {attemptSegments.map((seg, i) => (
                           <circle
@@ -980,16 +985,16 @@ export const StudentReportCard: React.FC<StudentReportCardProps> = ({ sheetId })
                         ))}
                       </svg>
                       <div className="absolute flex flex-col items-center justify-center text-center">
-                        <span className="text-[10px] font-mono font-bold text-[#111827] dark:text-[#ECEEED] leading-none">
+                        <span className="text-xs sm:text-sm font-mono font-bold text-[#111827] dark:text-[#ECEEED] leading-none">
                           {totalAttempted}
                         </span>
-                        <span className="text-[6px] font-mono text-[#6B7280]">Attempted</span>
+                        <span className="text-[7px] font-mono text-[#6B7280]">Attempted</span>
                       </div>
                     </div>
 
-                    <div className="space-y-0.5 text-[8px] font-mono flex-1">
+                    <div className="space-y-0.5 text-[8.5px] font-mono flex-1">
                       {attemptCategories.slice(0, 3).map((cat, i) => (
-                        <div key={i} className="flex items-center justify-between p-0.5 rounded bg-white dark:bg-[#181B19] border border-[#E2E8E4] dark:border-[#2F3532]">
+                        <div key={i} className="flex items-center justify-between p-0.5 px-1 rounded bg-white dark:bg-[#181B19] border border-[#E2E8E4] dark:border-[#2F3532]">
                           <div className="flex items-center space-x-1">
                             <span className={`w-1.5 h-1.5 rounded-full ${cat.dotClass}`} />
                             <span className="font-sans text-[#111827] dark:text-[#ECEEED] truncate max-w-[65px]">{cat.label.split(' ')[0]}</span>
@@ -1006,30 +1011,30 @@ export const StudentReportCard: React.FC<StudentReportCardProps> = ({ sheetId })
         )}
 
         {/* 5. COMPACT QUESTION MARKS OVERVIEW GRID (Numbers & Status Only - Zero Transcripts) */}
-        <div className="space-y-1 pt-0.5">
+        <div className="space-y-1.5 pt-0.5">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold text-[#111827] dark:text-[#ECEEED] uppercase tracking-wider">
+            <span className="text-xs font-bold text-[#111827] dark:text-[#ECEEED] uppercase tracking-wider">
               Question Marks Ledger (Scores Only — No Transcripts)
             </span>
-            <span className="text-[9px] font-mono text-[#6B7280] dark:text-[#68706C]">
+            <span className="text-[10px] font-mono text-[#6B7280] dark:text-[#68706C]">
               {normalizedQuestions.length} Items Total
             </span>
           </div>
 
-          <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-11 gap-1">
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-11 gap-1.5">
             {normalizedQuestions.map((q, idx) => (
               <div
                 key={idx}
-                className="bg-[#F8FAFC] dark:bg-[#202422] border border-[#E2E8E4] dark:border-[#2F3532] rounded-lg p-1 text-center"
+                className="bg-[#F8FAFC] dark:bg-[#202422] border border-[#E2E8E4] dark:border-[#2F3532] rounded-lg p-1.5 text-center"
               >
-                <span className="text-[9px] font-bold text-[#111827] dark:text-[#ECEEED] block">
+                <span className="text-xs font-bold text-[#111827] dark:text-[#ECEEED] block">
                   Q.{q.q_no}
                 </span>
-                <span className="font-mono text-[9px] font-semibold text-[#0F5132] dark:text-[#7CC9A3] block mt-0.5">
+                <span className="font-mono text-xs font-bold text-[#0F5132] dark:text-[#7CC9A3] block mt-0.5">
                   {q.earned}/{q.max}
                 </span>
                 <span
-                  className={`text-[8px] font-bold px-1 rounded inline-block mt-0.5 ${
+                  className={`text-[9px] font-bold px-1.5 py-0.2 rounded inline-block mt-0.5 ${
                     q.status === 'full'
                       ? 'bg-emerald-100 dark:bg-[#1A2B23] text-emerald-800 dark:text-[#7CC9A3]'
                       : q.status === 'zero'
@@ -1045,48 +1050,48 @@ export const StudentReportCard: React.FC<StudentReportCardProps> = ({ sheetId })
         </div>
 
         {/* 6. OFFICIAL VERIFICATION FOOTER STRIP & GRADING KEY LEGEND */}
-        <div className="space-y-1.5 pt-0.5">
+        <div className="space-y-2 pt-1">
           {/* 3-Column Sign-Off Strip */}
-          <div className="grid grid-cols-3 gap-2 bg-[#F8FAFC] dark:bg-[#202422] border border-[#E2E8E4] dark:border-[#2F3532] rounded-xl p-2 text-center text-xs">
-            <div className="space-y-0.2">
-              <span className="font-bold text-[#111827] dark:text-[#ECEEED] block text-[10px]">
+          <div className="grid grid-cols-3 gap-2 bg-[#F8FAFC] dark:bg-[#202422] border border-[#E2E8E4] dark:border-[#2F3532] rounded-xl p-2.5 sm:p-3 text-center text-xs">
+            <div className="space-y-0.5">
+              <span className="font-bold text-[#111827] dark:text-[#ECEEED] block text-xs">
                 AI Rubric Audit
               </span>
-              <span className="text-[9px] text-[#6B7280] dark:text-[#969E9A] block">
+              <span className="text-[10px] text-[#6B7280] dark:text-[#969E9A] block">
                 Multi-Pass Alignment Verified
               </span>
-              <span className="text-[9px] font-semibold text-[#0F5132] dark:text-[#7CC9A3] block">
+              <span className="text-[10px] font-semibold text-[#0F5132] dark:text-[#7CC9A3] block">
                 ✔ Officially Certified
               </span>
             </div>
 
-            <div className="space-y-0.2">
-              <span className="font-bold text-[#111827] dark:text-[#ECEEED] block text-[10px]">
+            <div className="space-y-0.5">
+              <span className="font-bold text-[#111827] dark:text-[#ECEEED] block text-xs">
                 Course Instructor
               </span>
-              <span className="text-[9px] text-[#6B7280] dark:text-[#969E9A] block">
+              <span className="text-[10px] text-[#6B7280] dark:text-[#969E9A] block">
                 Department Academic Faculty
               </span>
-              <span className="text-[9px] text-[#6B7280] dark:text-[#68706C] block">
+              <span className="text-[10px] text-[#6B7280] dark:text-[#68706C] block">
                 Sign-off: Approved
               </span>
             </div>
 
-            <div className="space-y-0.2">
-              <span className="font-bold text-[#111827] dark:text-[#ECEEED] block text-[10px]">
+            <div className="space-y-0.5">
+              <span className="font-bold text-[#111827] dark:text-[#ECEEED] block text-xs">
                 Controller of Examinations
               </span>
-              <span className="text-[9px] text-[#6B7280] dark:text-[#969E9A] block">
+              <span className="text-[10px] text-[#6B7280] dark:text-[#969E9A] block">
                 Office of Evaluation
               </span>
-              <span className="text-[9px] text-[#6B7280] dark:text-[#68706C] block">
+              <span className="text-[10px] text-[#6B7280] dark:text-[#68706C] block">
                 Institutional Seal: Official
               </span>
             </div>
           </div>
 
           {/* Compact 1-Line Grading Key Legend */}
-          <div className="text-center text-[9px] font-mono text-[#6B7280] dark:text-[#68706C]">
+          <div className="text-center text-[10px] sm:text-xs font-mono text-[#6B7280] dark:text-[#68706C]">
             Grading Scale: O (≥90%) · A+ (80-89%) · A (70-79%) · B+ (60-69%) · B (50-59%) · C (40-49%) · D (35-39%) · F (&lt;35%) · Re-appear Required
           </div>
         </div>
