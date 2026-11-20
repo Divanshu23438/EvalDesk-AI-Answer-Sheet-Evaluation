@@ -1,7 +1,32 @@
 # STATUS (update at the end of every session)
 Date / author (agent or model name): 2026-11-20 / Antigravity (Gemini 3.8 Flash)
-Current phase and task: Restored & Enhanced Teacher Guide & FAQ Screen (`#/guide`, `#/help`, `#/faq`) with Dark Mode & Progress Tracking Complete 100%.
+Current phase and task: Integrated In-Depth Telemetry into 1-Page Bento Report Card (`StudentReportCard.tsx`) Complete 100%.
 Done (task id, commit, proof file):
+- Integrated In-Depth Telemetry into 1-Page Bento Report Card (`src/components/StudentReportCard.tsx`, `scripts/verify_telemetry_bento.py`):
+  1. Telemetry Section 1: Question & Section Marks Telemetry:
+     - Question-by-Question Marks Scored vs Max bar chart with Full (Emerald), Partial (Amber), and Deduction (Rose) counts.
+     - Total Marks Distribution Split donut gauge showing Marks Scored vs Marks Lost and total percentage.
+     - Sectional Marks Breakdown horizontal progress bars with marks earned/max, percentage badges, question lists, and marks lost.
+  2. Telemetry Section 2: Teacher Deductions & Error Taxonomy:
+     - Deductions by Error Category donut gauge with total marks lost (-X M) and classified error categories: Conceptual Mistakes, Incomplete Steps, Syntax/Rubric Flags, Other Deductions.
+     - Pareto Error Analysis (80/20 Rule) SVG bar chart with ranked deductions, cumulative percentage polyline, and 80% reference cutoff line.
+  3. Telemetry Section 3: Question Format & Attempt Performance:
+     - Marks Earned vs Lost by Question Format 100% stacked horizontal bars (Objective / Short, Core Practical, Extended / Long) with yield classification.
+     - Question Attempt & Mastery Breakdown donut gauge showing total attempted count/percentage and 4 mastery category rows: Full Marks (≥90%), Partial Marks, Heavy Deductions/Zero, Unattempted.
+  4. 1-Page Fit & Academic Bento Polish:
+     - Header & Candidate Identity Bento Row (Title, Subject, Date, Verified Badge, ID, Name, Roll No, Class, Strictness).
+     - Aggregate Score & Result Summary Strip (Total Marks, Percentage, Awarded Grade, Final Status PASS/RE-APPEAR).
+     - Sub-nav pill buttons (`All Telemetry`, `1. Marks & Sections`, `2. Error Taxonomy`, `3. Formats & Attempt`).
+     - Question Marks Ledger (Scores and status only — zero transcripts).
+     - 3-Column Verification Sign-Off Strip (AI Rubric Audit, Course Instructor, Controller of Examinations) + 1-line grading legend.
+     - Ultra-dense bento layout fitting cleanly onto 1 single A4 page on screen and `@media print` (`@page { size: A4 portrait; margin: 6mm; }`).
+  5. Verification & Gate Checks:
+     - `npx tsc --noEmit`: 0 errors.
+     - `python scripts/check_all.py`: `RESULT: ALL PASS` (banned strings, no sensitive files, pytest, tsc, and live AI provider health).
+     - Playwright browser test (`scripts/verify_telemetry_bento.py`): verified in light mode and dark mode.
+     - Captured evidence screenshots:
+       - `docs/proof/ui/screenshots/proof_bento_report_card_light.png`
+       - `docs/proof/ui/screenshots/proof_bento_report_card_dark.png`
 - Restored & Enhanced Dedicated Teacher User Manual & FAQ Screen (`src/screens/GuideScreen.tsx`, `src/components/AppSidebar.tsx`, `src/App.tsx`, `src/screens/HomeScreen.tsx`, `src/state/useSheetStore.ts`, `scripts/verify_guide_screen.py`):
   1. Route & Alias Navigation:
      - Registered `#/guide` and aliased `#/help` and `#/faq` in both `src/App.tsx` and `src/state/useSheetStore.ts` to seamlessly render `<GuideScreen />`.
