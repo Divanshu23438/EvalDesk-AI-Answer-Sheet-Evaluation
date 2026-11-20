@@ -381,6 +381,9 @@ export const ReportsCenterScreen: React.FC = () => {
 
                             {/* Score Display */}
                             <div className="text-right shrink-0">
+                              <span className="text-[10px] font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#68706C] block">
+                                Total Score
+                              </span>
                               <div className="font-mono font-bold text-sm text-[#0F5132] dark:text-[#7CC9A3]">
                                 {s.score} <span className="text-xs text-[#6B7280] dark:text-[#68706C] font-normal">/ {s.max_marks}</span>
                               </div>
@@ -417,7 +420,7 @@ export const ReportsCenterScreen: React.FC = () => {
                             }}
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#E8F3EE] dark:bg-[#1A2B23] text-[#0F5132] dark:text-[#7CC9A3] hover:bg-[#0F5132] hover:text-white dark:hover:bg-[#1F6E4A] dark:hover:text-white text-xs font-semibold transition-colors cursor-pointer border border-[#0F5132]/20 dark:border-[#294236]"
                           >
-                            <span>Open Report Card</span>
+                            <span>View Report Card</span>
                             <ArrowRight className="w-3 h-3" />
                           </button>
                         </div>

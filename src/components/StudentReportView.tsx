@@ -158,6 +158,12 @@ export const StudentReportView: React.FC<StudentReportViewProps> = ({
     };
   }, [activeSheetId, state.paperId, fetchStudentReport, fetchReviewData, fetchPaperSheets, fetchPaperReports]);
 
+  // Reset question index and booklet page when sheetId changes
+  useEffect(() => {
+    setSelectedQuestionIndex(0);
+    setCurrentPage(1);
+  }, [activeSheetId]);
+
   // Normalize questions from review and report endpoints
   const normalizedQuestions: NormalizedQuestion[] = useMemo(() => {
     const evals = reviewData?.evaluations || [];
