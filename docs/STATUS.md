@@ -1,8 +1,25 @@
 # STATUS (update at the end of every session)
 Date / author (agent or model name): 2026-11-20 / Antigravity (Gemini 3.8 Flash)
-Current phase and task: Integrated In-Depth Telemetry into 1-Page Bento Report Card (`StudentReportCard.tsx`) Complete 100%.
+Current phase and task: Dynamic Data Scaling for 1-Page Bento Report Card & PDF Download Complete 100%.
 Done (task id, commit, proof file):
-- Integrated In-Depth Telemetry into 1-Page Bento Report Card (`src/components/StudentReportCard.tsx`, `scripts/verify_telemetry_bento.py`):
+- Dynamically Scaled 1-Page Bento Report Card UI & PDF Telemetry (`src/components/StudentReportCard.tsx`, `backend/reports_generator.py`):
+  1. Complete Telemetry Integration into Both UI and Downloaded PDF:
+     - Prominently incorporated all 3 core telemetry sections into both on-screen report card view and downloaded 1-page PDF:
+       - `1. QUESTION & SECTION MARKS TELEMETRY`: Question-by-Question Marks Scored vs Max Bar Chart, Total Marks Distribution Split donut gauge (`Marks Scored` vs `Marks Lost`), Sectional Marks Breakdown horizontal progress bars.
+       - `2. TEACHER DEDUCTIONS & ERROR TAXONOMY`: Total Marks Lost badge, Deductions by Category donut gauge, Pareto Error Analysis (80/20 Rule) with 80% reference cutoff line.
+       - `3. QUESTION FORMAT & ATTEMPT PERFORMANCE`: Marks Earned vs Lost by Question Format 100% stacked bars with yield classification, Question Attempt & Mastery Breakdown donut gauge.
+  2. Dynamic Data Scaling (Adapts Proportionally to Question Volume):
+     - Question Bar Chart: Scales bar width dynamically from 60pt (1 question) to 36-45pt (2-4 questions) and proportional auto-fit (>4 questions) so bars are never miniature hairline lines.
+     - Donut Gauges & Legends: Expanded dimensions from cramped 56px to generous 80-96px (`w-20 h-20` to `w-24 h-24` in UI, 50-54pt in PDF) with large bold percentage displays.
+     - Sectional & Format Progress Bars: Thickened bars to 8-10px (`h-2` to `h-2.5` in UI, 8-10pt in PDF) with clear percentage badges and lost mark indicators.
+     - Typography: Increased font sizes from miniature 6-8pt to readable 10-15pt bold headers and 8-10pt ledger values.
+  3. Strict 1-Page A4 Guarantee:
+     - PDF printable vertical height budgeted to ~640-700pt out of 805pt printable area (utilizing ~80% of page height), eliminating large empty bottom gaps while strictly guaranteeing `assert len(doc) == 1`.
+     - Tested and verified across all 42 evaluated student sheets in the SQLite database (`build_bento_pdf` strictly returns 1 page for 100% of sheets).
+  4. Verification & Gate Checks:
+     - `npx tsc --noEmit`: 0 errors.
+     - `python scripts/check_all.py`: `RESULT: ALL PASS` (banned strings, git secrets, pytest, tsc, and live AI provider health).
+     - Fast-forward merged and synchronized across `restore_report_ui_search`, `main`, `master`, and pushed to remote `origin`.
   1. Telemetry Section 1: Question & Section Marks Telemetry:
      - Question-by-Question Marks Scored vs Max bar chart with Full (Emerald), Partial (Amber), and Deduction (Rose) counts.
      - Total Marks Distribution Split donut gauge showing Marks Scored vs Marks Lost and total percentage.
