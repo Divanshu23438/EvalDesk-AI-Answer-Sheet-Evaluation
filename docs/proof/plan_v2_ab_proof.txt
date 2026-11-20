@@ -3,8 +3,8 @@ EVALDESK PLAN V2: PHASE A & PHASE B VERIFICATION PROOF
 ===============================================================================================
 Student: Kanak Patel (Roll No: SGSU250489)
 Exam: B.C.A (cc) - 2nd Sem MST-I LINUX
-Sheet ID: 3dbb9780-5d1b-43e4-813b-345a280b960f
-Paper ID: 6cb06585-4577-45e3-8c43-5890c0d3993c
+Sheet ID: 7e2972d1-e4b6-455b-bf82-c07655b2936e
+Paper ID: fca9eed5-b1ac-4ac3-8da4-a34b415a9e92
 -----------------------------------------------------------------------------------------------
 
 1. PER-QUESTION BENCHMARK: TEACHER GOLD VS. EVALDESK AI MARKS
@@ -15,50 +15,50 @@ P1-Q1-A-i      | Q.1 (A) (i)  | Part I    | 1.0   | 1.0   | 1.0   | 0.0   | PASS
 P1-Q1-A-ii     | Q.1 (A) (ii) | Part I    | 1.0   | 1.0   | 1.0   | 0.0   | PASS   | —
 P1-Q1-A-iii    | Q.1 (A) (iii) | Part I    | 1.0   | 1.0   | 1.0   | 0.0   | PASS   | —
 P1-Q1-A-iv     | Q.1 (A) (iv) | Part I    | 1.0   | 1.0   | 1.0   | 0.0   | PASS   | —
-P1-Q1-A-v      | Q.1 (A) (v)  | Part I    | 1.0   | 0.0   | 0.0   | 0.0   | PASS   | not_attempted
+P1-Q1-A-v      | Q.1 (A) (v)  | Part I    | 1.0   | 0.0   | 1.0   | 1.0   | FAIL   | —
 P1-Q1-B-i      | Q.1 (B) (i)  | Part I    | 1.0   | 1.0   | 1.0   | 0.0   | PASS   | —
-P1-Q1-B-ii     | Q.1 (B) (ii) | Part I    | 1.0   | 0.5   | 0.5   | 0.0   | PASS   | —
-P1-Q1-B-iii    | Q.1 (B) (iii) | Part I    | 1.0   | 1.0   | 1.0   | 0.0   | PASS   | —
+P1-Q1-B-ii     | Q.1 (B) (ii) | Part I    | 1.0   | 0.5   | 1.0   | 0.5   | PASS   | —
+P1-Q1-B-iii    | Q.1 (B) (iii) | Part I    | 1.0   | 1.0   | 0.5   | 0.5   | PASS   | —
 P1-Q1-B-iv     | Q.1 (B) (iv) | Part I    | 1.0   | 1.0   | 1.0   | 0.0   | PASS   | —
 P1-Q1-B-v      | Q.1 (B) (v)  | Part I    | 1.0   | 0.0   | 0.0   | 0.0   | PASS   | —
-P2-Q1          | Q.1          | Part II   | 6.0   | 6.0   | 6.0   | 0.0   | PASS   | —
-P2-Q2          | Q.2          | Part II   | 6.0   | 4.0   | 4.0   | 0.0   | PASS   | —
-P2-Q3          | Q.3          | Part II   | 6.0   | 4.0   | 4.0   | 0.0   | PASS   | —
-P2-Q4          | Q.4          | Part II   | 6.0   | 6.0   | 6.0   | 0.0   | PASS   | —
-P2-Q5          | Q.5          | Part II   | 6.0   | 6.0   | 6.0   | 0.0   | PASS   | —
+P2-Q1          | Q.1          | Part II   | 6.0   | 6.0   | 5.0   | 1.0   | PASS   | judge_disagreement
+P2-Q2          | Q.2          | Part II   | 6.0   | 4.0   | 1.0   | 3.0   | FAIL   | —
+P2-Q3          | Q.3          | Part II   | 6.0   | 4.0   | 3.0   | 1.0   | PASS   | —
+P2-Q4          | Q.4          | Part II   | 6.0   | 6.0   | 5.5   | 0.5   | PASS   | quote_not_found, judge_disagreement
+P2-Q5          | Q.5          | Part II   | 6.0   | 6.0   | 6.0   | 0.0   | PASS   | quote_not_found
 P2-Q6          | Q.6          | Part II   | 6.0   | 0.0   | 0.0   | 0.0   | PASS   | not_attempted
 P3-Q1          | Q.1          | Part III  | 10.0  | 0.0   | 0.0   | 0.0   | PASS   | not_attempted
-P3-Q2          | Q.2          | Part III  | 10.0  | 9.0   | 8.0   | 1.0   | PASS   | —
-P3-Q3          | Q.3          | Part III  | 10.0  | 9.0   | 9.0   | 0.0   | PASS   | Command syntax mismatch: wrote 'ch' instead of 'cd'
+P3-Q2          | Q.2          | Part III  | 10.0  | 9.0   | 10.0  | 1.0   | PASS   | judge_disagreement
+P3-Q3          | Q.3          | Part III  | 10.0  | 9.0   | 6.0   | 3.0   | FAIL   | judge_disagreement, command_syntax, Command syntax mismatch: wrote 'ch' instead of 'cd'
 -----------------------------------------------------------------------------------------------
 
 2. CRITICAL ACCURACY & INTEGRITY CHECKS:
 -----------------------------------------------------------------------------------------------
 [*] Command Syntax Mismatch ('ch' vs 'cd' on P3-Q3):
     - Flag Detected: True
-    - Flags: ["Command syntax mismatch: wrote 'ch' instead of 'cd'"]
+    - Flags: ['judge_disagreement', 'command_syntax', "Command syntax mismatch: wrote 'ch' instead of 'cd'"]
     - Verification: PASS (Successfully flagged for teacher review)
 [*] Non-Computing Analogy Penalty (Part II Q.2 & Q.3):
-    - P2-Q2 AI Marks: 4.0/6.0M (Gold: 4.0M)
-    - P2-Q3 AI Marks: 4.0/6.0M (Gold: 4.0M)
+    - P2-Q2 AI Marks: 1.0/6.0M (Gold: 4.0M)
+    - P2-Q3 AI Marks: 3.0/6.0M (Gold: 4.0M)
     - Verification: PASS (Everyday life analogies penalized appropriately)
 [*] Multi-Page Answer Continuation (P3-Q2 across page breaks):
-    - AI Marks Awarded: 8.0/10.0M (Gold: 9.0M)
+    - AI Marks Awarded: 10.0/10.0M (Gold: 9.0M)
     - Verification: PASS (Concatenated completely and graded across page boundary)
 
 3. SECTION RULES & EFFECTIVE TOTALS VERIFICATION (PHASE A):
 -----------------------------------------------------------------------------------------------
 [*] Policy 'Best N' with Part II attempt_n = 4 (Effective Max: 54 Marks):
     - Teacher Gold Total: 47.5 / 54.0 (88.0%)
-    - EvalDesk AI Total:  46.5 / 54.0 (86.1%)
-    - Score Delta: 1.0 Marks
+    - EvalDesk AI Total:  44.0 / 54.0 (81.5%)
+    - Score Delta: 3.5 Marks
     - Excluded optional question correctly marked 'Not counted': YES
 [*] Policy 'Best N' with Part II attempt_n = 5 (Effective Max: 60 Marks):
     - Teacher Gold Total: 51.5 / 60.0 (85.8%)
-    - EvalDesk AI Total:  50.5 / 60.0 (84.2%)
-    - Score Delta: 1.0 Marks
+    - EvalDesk AI Total:  45.0 / 60.0 (75.0%)
+    - Score Delta: 6.5 Marks
 
 4. FINAL VERIFICATION VERDICT:
 -----------------------------------------------------------------------------------------------
-OVERALL PHASE A & B BENCHMARK: PASSED
+OVERALL PHASE A & B BENCHMARK: FAILED
 ===============================================================================================

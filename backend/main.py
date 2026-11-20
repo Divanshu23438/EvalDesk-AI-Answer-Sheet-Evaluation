@@ -86,10 +86,20 @@ from backend.training_export import build_training_export_zip
 
 # Initialize DB on startup
 init_db()
+try:
+    from backend.canonical_seed import seed_canonical_cohort_if_empty
+    seed_canonical_cohort_if_empty()
+except Exception as e:
+    print(f"[Init Seed] Note: {e}")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+    try:
+        from backend.canonical_seed import seed_canonical_cohort_if_empty
+        seed_canonical_cohort_if_empty()
+    except Exception as e:
+        print(f"[Startup Seed] Note: {e}")
     try:
         with get_db() as conn:
             cursor = conn.cursor()
@@ -5696,3 +5706,36 @@ def download_training_export(only_human_verified: bool = Query(True)):
         filename=zip_path.name,
         media_type="application/zip",
     )
+
+
+# ----------------- SERVE BUILT FRONTEND & SPA FALLBACK (PORT 7860) -----------------
+dist_dir = BASE_DIR / "dist"
+assets_dir = dist_dir / "assets"
+if assets_dir.exists():
+    app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="spa-assets")
+
+@app.get("/")
+async def serve_index():
+    index_file = dist_dir / "index.html"
+    if index_file.exists():
+        return FileResponse(str(index_file))
+    return JSONResponse(
+        {"status": "running", "message": "EvalDesk AI Backend is running. Frontend dist/ not built yet."},
+        status_code=200,
+    )
+
+@app.get("/{full_path:path}")
+async def serve_spa(full_path: str):
+    if full_path.startswith("api/") or full_path.startswith("storage/"):
+        raise HTTPException(status_code=404, detail=f"API or Storage endpoint '{full_path}' not found")
+
+    target_file = dist_dir / full_path
+    if target_file.is_file():
+        return FileResponse(str(target_file))
+
+    index_file = dist_dir / "index.html"
+    if index_file.exists():
+        return FileResponse(str(index_file))
+
+    raise HTTPException(status_code=404, detail="File not found and frontend dist/index.html missing")
+

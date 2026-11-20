@@ -21,13 +21,24 @@ GROQ_TEXT_MODEL = "openai/gpt-oss-120b"
 
 # Directories
 DATA_DIR = BASE_DIR / "data"
-DB_PATH = DATA_DIR / "app.db"
 STORAGE_DIR = DATA_DIR / "storage"
 PAPERS_STORAGE_DIR = STORAGE_DIR / "papers"
 SHEETS_STORAGE_DIR = STORAGE_DIR / "sheets"
 REPORTS_STORAGE_DIR = STORAGE_DIR / "reports"
 EXPORTS_STORAGE_DIR = STORAGE_DIR / "exports"
 CACHE_DIR = DATA_DIR / "cache"
+UPLOADS_DIR = BASE_DIR / "uploads"
+
+# Database Configuration: prioritize evaldesk.db (Hugging Face Spaces standard), env override, or data/app.db
+_custom_db = os.getenv("EVALDESK_DB_PATH") or os.getenv("DATABASE_PATH")
+if _custom_db:
+    DB_PATH = Path(_custom_db)
+elif (BASE_DIR / "evaldesk.db").exists():
+    DB_PATH = BASE_DIR / "evaldesk.db"
+elif (DATA_DIR / "app.db").exists():
+    DB_PATH = DATA_DIR / "app.db"
+else:
+    DB_PATH = BASE_DIR / "evaldesk.db"
 
 # Ensure essential directories exist
 for path in [
@@ -38,6 +49,7 @@ for path in [
     REPORTS_STORAGE_DIR,
     EXPORTS_STORAGE_DIR,
     CACHE_DIR,
+    UPLOADS_DIR,
 ]:
     path.mkdir(parents=True, exist_ok=True)
 
