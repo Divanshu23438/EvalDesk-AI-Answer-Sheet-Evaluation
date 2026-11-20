@@ -299,7 +299,8 @@ def run_gold_evaluation() -> Dict[str, Any]:
 
         flags = []
         try:
-            flags = json.loads(ev.get("flags_json") or "[]")
+            raw_flags = json.loads(ev.get("flags_json") or "[]")
+            flags = [f if isinstance(f, str) else (f.get("reason") or f.get("name") or f.get("code") or str(f)) for f in raw_flags]
         except Exception:
             flags = []
 

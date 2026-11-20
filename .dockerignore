@@ -1,0 +1,8 @@
+node_modules
+.git
+.pytest_cache
+.reader_cache
+__pycache__
+*.pyc
+.env
+dist

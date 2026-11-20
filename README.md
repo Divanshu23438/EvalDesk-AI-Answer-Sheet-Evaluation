@@ -1,3 +1,13 @@
+---
+title: EvalDesk
+emoji: 📝
+colorFrom: green
+colorTo: gray
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # EvalDesk AI — Teacher Evaluation System
 
 An AI-assisted handwritten answer sheet evaluation platform. EvalDesk evaluates handwritten student exams with speed, objective rubric accuracy, and full transparency.

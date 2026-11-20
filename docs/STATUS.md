@@ -1,7 +1,35 @@
 # STATUS (update at the end of every session)
 Date / author (agent or model name): 2026-11-20 / Antigravity (Gemini 3.8 Flash)
-Current phase and task: Dynamic Data Scaling for 1-Page Bento Report Card & PDF Download Complete 100%.
+Current phase and task: Configure EvalDesk for one-click deployment on Hugging Face Spaces (Docker SDK on port 7860) Complete 100%.
 Done (task id, commit, proof file):
+- Configured EvalDesk for One-Click Deployment on Hugging Face Spaces (Docker SDK on Port 7860) (`main.py`, `Dockerfile`, `.dockerignore`, `README.md`, `backend/canonical_seed.py`, `backend/config.py`, `backend/main.py`):
+  1. Unified Single-Container Entrypoint & Auto-Seeding (`main.py`, `backend/canonical_seed.py`, `backend/config.py`):
+     - Created root entrypoint `main.py` configured for port 7860 (`0.0.0.0:7860`).
+     - Prioritizes SQLite database `evaldesk.db` (root) while mirroring and maintaining compatibility with `data/app.db`.
+     - Created `backend/canonical_seed.py`: automatically initializes and seeds the canonical bilingual `Linux` paper (`fca9eed5-b1ac-4ac3-8da4-a34b415a9e92`) on startup if the database is empty.
+     - Populates 3 exam sections (Part I, Part II, Part III), 19 bilingual questions with answer keys and rubric references, and a realistic 6-student evaluated cohort:
+       - Kanak Patel (`SGSU250489`): 44.5 / 54.0 M, 82.4% (Grade A), with full 9-page answer sheet, per-question extractions, bounding boxes, quotes, and teacher-aligned evaluations.
+       - Devina Roy (`CS2026-101`): 48.0 / 54.0 M, 88.9% (Grade A+).
+       - Aarav Mehta (`CS2026-102`): 40.5 / 54.0 M, 75.0% (Grade B+).
+       - Priya Sharma (`CS2026-103`): 35.5 / 54.0 M, 65.7% (Grade B).
+       - Vikram Malhotra (`CS2026-104`): 31.0 / 54.0 M, 57.4% (Grade C).
+       - Ananya Iyer (`CS2026-105`): 51.5 / 54.0 M, 95.4% (Grade A+).
+     - Provides instant out-of-the-box functionality for Dashboard, Bento Reports Center, Leaderboard, Student Search & Stepper, and Batch PDF/Excel Exports without requiring manual uploads or external database dependencies.
+  2. Built Frontend SPA & Asset Serving (`backend/main.py`):
+     - Mounted `dist/assets` as static files in FastAPI when `dist/assets` exists.
+     - Registered root route `GET /` and catch-all `GET /{full_path:path}` serving `dist/index.html` as the SPA fallback for all frontend routes (`#/reports`, `#/guide`, `#/dashboard`, `#/upload`, etc.).
+     - Strictly preserved 404 responses for unmatched `/api/...` and `/storage/...` endpoints.
+  3. Multi-Stage Dockerfile for Hugging Face Spaces (`Dockerfile`, `.dockerignore`):
+     - Stage 1 (`node:20-slim AS builder`): copies package manifests, runs `npm ci`, and executes `npm run build` to generate optimized `dist/`.
+     - Stage 2 (`python:3.11-slim`): installs Debian system dependencies for Pillow, OpenCV, PyMuPDF, ReportLab, and PDF generation (`libgl1`, `libglib2.0-0`, `libfreetype6`, `libjpeg62-turbo-dev`, `zlib1g-dev`, `fonts-dejavu-core`), installs `requirements.txt`, copies `backend/`, `scripts/`, `main.py`, `evaldesk.db*`, and `--from=builder /app/dist ./dist`.
+     - Creates `/app/uploads` and `/app/data/storage` with `chmod -R 777 /app` to allow full read/write permissions for Hugging Face Spaces user ID `1000`.
+     - Configures standard execution command: `CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "7860"]`.
+  4. Hugging Face Space Metadata (`README.md`):
+     - Prepended required YAML frontmatter to `README.md` with title, emoji, color gradient, `sdk: docker`, and `app_port: 7860`.
+  5. Verification & Gate Checks:
+     - `npm run build`: built in 3.34s with zero errors.
+     - `npx tsc --noEmit`: 0 errors.
+     - `python scripts/check_all.py --base http://127.0.0.1:7860`: `RESULT: ALL PASS` (banned strings, no .env/dist/data/cache tracked, pytest, tsc, and live endpoint health check).
 - Dynamically Scaled 1-Page Bento Report Card UI & PDF Telemetry (`src/components/StudentReportCard.tsx`, `backend/reports_generator.py`):
   1. Complete Telemetry Integration into Both UI and Downloaded PDF:
      - Prominently incorporated all 3 core telemetry sections into both on-screen report card view and downloaded 1-page PDF:
