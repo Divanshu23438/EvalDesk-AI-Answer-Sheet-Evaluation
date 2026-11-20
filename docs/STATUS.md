@@ -1,7 +1,58 @@
 # STATUS (update at the end of every session)
 Date / author (agent or model name): 2026-11-20 / Antigravity (Gemini 3.8 Flash)
-Current phase and task: Original Evaluation Report UI Locked Across #/report/:id and Sidebar Report Card & Search-First Selector Complete 100%.
+Current phase and task: Multi-Student Search, Sequential Stepper, Cohort Comparison, and Cross-Stream Toppers Leaderboard Complete 100%.
 Done (task id, commit, proof file):
+- Multi-Student & Whole-Class Search, Sequential Stepper, Side-by-Side Comparison, and Dashboard Leaderboard (`src/screens/ReportsCenterScreen.tsx`, `src/components/StudentReportView.tsx`, `src/screens/DashboardScreen.tsx`, `backend/main.py`, `verify_evaldesk_features.py`):
+  1. Hide Scanned Answer Sheet in Report Card (`#/reports`) Only:
+     - `src/components/StudentReportView.tsx`: added `hideAnswerSheet?: boolean` prop.
+     - When `hideAnswerSheet={true}` (in `ReportsCenterScreen.tsx`), completely hides the left-side scanned answer booklet preview (`ReportBookletPreview`) and draggable divider handle, expanding the digital student report (`Overview` score summary, `Question-wise Marks`, and `Analytics & Charts`) to 100% full width.
+     - Post-evaluation workflow route (`#/report/:sheetId` in `ReportScreen.tsx`) remains completely unchanged (`hideAnswerSheet={false}`), preserving the active 3-step stepper header and the scanned answer booklet viewer side-by-side with the evaluation report.
+  2. Multi-Student & Whole-Class Search + One-by-One Report Stepper (`src/screens/ReportsCenterScreen.tsx`):
+     - Filter & Multi-Search Bar:
+       - Exam / Subject dropdown (`GET /api/papers`, including "All Exams").
+       - Class / Stream dropdown dynamically extracted from evaluated sheets (`GET /api/sheets/history`, including "All Classes / Streams").
+       - Multi-Student Search supporting comma-separated candidate terms (e.g., searching for multiple students simultaneously).
+     - Multi-Select Directory Table/Cards:
+       - Candidate cards with individual checkboxes and a master `Select All Matching (N)` toggle.
+       - Candidate cards display Student Name, Roll Number (`font-mono`), Class/Stream, Exam/Subject, Total Score (`X / Max`), Percentage, Grade badge, and `View Report Card` button.
+       - Top action bar appears when 1 or more candidates are checked, providing:
+         - `View Report Cards (N) One-by-One →` (opens sequential stepper view).
+         - `Compare Selected (N)` (enabled for 2 to 10 selected candidates).
+         - `Download Bulk Reports` action menu with:
+           - All Selected PDFs (.zip) via `POST /api/sheets/export/batch-reports` (`{ sheet_ids, format: 'zip' }`).
+           - Merged Multi-Page PDF via `POST /api/sheets/export/batch-reports` (`{ sheet_ids, format: 'pdf' }`).
+           - Consolidated Class Results (.xlsx) via `POST /api/sheets/export/consolidated` (`{ sheet_ids, format: 'xlsx' }`).
+           - Consolidated Class Marksheet (.pdf) via `POST /api/sheets/export/consolidated` (`{ sheet_ids, format: 'pdf' }`).
+     - One-by-One Report Card Stepper View:
+       - Top navigation bar featuring `← Back to Selection`, `← Previous` and `Next →` buttons, and candidate label `Student X of Y: Student Name (Roll)`.
+       - Horizontally scrollable quick-jump candidate pills to switch directly to any selected student with active emerald highlighting.
+       - Quick download buttons: `Download This PDF` and `Download All (N) Reports`.
+       - Embeds full-width clean digital report card (`<StudentReportView sheetId={current.id} hideAnswerSheet={true} />`).
+  3. Side-by-Side Student Comparison View (`src/screens/ReportsCenterScreen.tsx`, `backend/main.py`):
+     - Activated when 2 to 10 students are selected via `Compare Selected (N)`.
+     - Backend endpoint `POST /api/sheets/compare` calculates candidate summaries, ranking, question metadata, and question-by-question marks matrix.
+     - Header with `← Back to Selection` and `Export Comparison (.xlsx)` button.
+     - Visual Score Comparison Bar Chart: Recharts `ResponsiveContainer`, `BarChart`, `Bar`, `XAxis`, `YAxis`, and `Tooltip` comparing score percentages across the selected cohort.
+     - Comparison Matrix Table: candidate columns comparing Total Marks, Percentage, Grade, Class/Stream, Rank in Selection, and question-by-question breakdown, highlighting the top scorer per row in soft emerald (`#E8F3EE` / `dark:bg-[#1A2B23]`) with bold emerald text.
+  4. Cross-Subject & Cross-Stream Toppers Leaderboard on Dashboard (`src/screens/DashboardScreen.tsx`, `backend/main.py`):
+     - Backend endpoint `GET /api/dashboard/leaderboard` with optional `?subject=` and `?class_name=` query filters.
+     - Bento card placed on Dashboard between analytics graphs and recent sheets table.
+     - Trophy icon header "Top Performers Leaderboard" with subtext "Cross-subject & cross-stream academic excellence".
+     - Stream / Class and Subject filter dropdowns for localized rankings.
+     - Rank badges with `#1`, `#2`, `#3` highlighted in emerald badge (`bg-[#0F5132]` / `bg-[#E8F3EE]`), student name, roll number in `font-mono`, class pill, subject pill, total score, percentage in `font-mono`, and grade badge.
+     - Clicking a student row navigates directly to `#/reports?sheetId={sheet_id}` to open their digital marksheet.
+     - Empty state for zero evaluated submissions under filter combination.
+  5. Verification & Tests:
+     - `npx tsc --noEmit`: 0 errors.
+     - `python scripts/check_all.py`: `RESULT: ALL PASS` (banned strings, no sensitive files, pytest, tsc, and live AI provider health).
+     - Playwright browser test (`verify_evaldesk_features.py`): verified all 6 sections (Dashboard Leaderboard, Report Card Search Directory, Multi-Select Checkboxes, Side-by-Side Comparison with Recharts chart and matrix, One-by-One Stepper with hidden answer sheet, and Post-Evaluation direct route with intact answer booklet).
+     - Captured evidence screenshots:
+       - `docs/proof/ui/screenshots/proof_dashboard_leaderboard.png`
+       - `docs/proof/ui/screenshots/proof_report_card_directory.png`
+       - `docs/proof/ui/screenshots/proof_report_card_multi_select.png`
+       - `docs/proof/ui/screenshots/proof_report_card_compare_view.png`
+       - `docs/proof/ui/screenshots/proof_report_card_stepper_view.png`
+       - `docs/proof/ui/screenshots/proof_report_post_evaluation_intact.png`
 - Restored & Frozen Exact Original Evaluation Report UI with Dual-Placement and Search-First Selector (`src/components/StudentReportView.tsx`, `src/screens/ReportsCenterScreen.tsx`, `src/screens/ReportScreen.tsx`, `scripts/verify_report_card_search.py`):
   1. Recovered and Frozen Report Component (`src/components/StudentReportView.tsx`):
      - Restored the exact original report component from Git history (`8776ebb`), keeping layout, tabs, charts, colors, and markup 100% identical.
