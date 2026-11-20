@@ -20,7 +20,7 @@ ROOT = Path(__file__).resolve().parent.parent
 PROOF_DIR = ROOT / "docs" / "proof" / "ui" / "screenshots"
 PROOF_DIR.mkdir(parents=True, exist_ok=True)
 
-PORT = 3005
+PORT = 3000
 
 def run_verification():
     with sync_playwright() as p:
@@ -50,10 +50,10 @@ def run_verification():
         assert exam_dropdown.is_visible(), "Exam/Subject filter dropdown not found!"
         print("  [✓] Exam / Subject dropdown is visible.")
 
-        # 4. Verify candidate cards list/grid exists with Open Report Card buttons
-        open_buttons = page.locator("button:has-text('Open Report Card')")
+        # 4. Verify candidate cards list/grid exists with View Report Card buttons
+        open_buttons = page.locator("button:has-text('View Report Card')")
         btn_count = open_buttons.count()
-        assert btn_count > 0, f"Expected evaluated student cards with Open Report Card buttons, found {btn_count}"
+        assert btn_count > 0, f"Expected evaluated student cards with View Report Card buttons, found {btn_count}"
         print(f"  [✓] Found {btn_count} evaluated students in search grid.")
 
         # Save screenshot of initial search-first view
@@ -66,7 +66,7 @@ def run_verification():
         print(f"  Filtering by first student name: {first_student_name}")
         search_input.fill(first_student_name[:4])
         page.wait_for_timeout(500)
-        filtered_count = page.locator("button:has-text('Open Report Card')").count()
+        filtered_count = page.locator("button:has-text('View Report Card')").count()
         assert filtered_count > 0, "Filter yielded 0 results for valid substring!"
         print(f"  [✓] Filter narrowed results to {filtered_count} students.")
 
