@@ -1,4 +1,3 @@
-
 name: Deploy EvalDesk to Hugging Face Spaces
 
 on:
@@ -11,27 +10,47 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Install and build
         run: |
-          npm ci
-          npm run build
+          npm install
+          npx vite build
 
-      - name: Push dist to Hugging Face Space
+      - name: Setup Python for Hugging Face Upload
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Upload dist to Hugging Face Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          cd dist
-          if [ ! -f README.md ]; then
-            printf -- "---\ntitle: EvalDesk\nemoji: 📝\ncolorFrom: green\ncolorTo: gray\nsdk: static\npinned: false\n---\n" > README.md
-          fi
-          git init
-          git config user.name "github-actions"
-          git config user.email "actions@github.com"
-          git add .
-          git commit -m "Deploy EvalDesk static build"
-          git push --force "https://user:${{ secrets.HF_TOKEN }}@huggingface.co/spaces/${{ vars.HF_SPACE }}" HEAD:main
+          pip install --quiet --upgrade huggingface_hub
+          python - << 'EOF'
+          import os
+          from huggingface_hub import HfApi
+
+          token = (os.getenv("HF_TOKEN") or "").strip()
+          if not token:
+              raise SystemExit("ERROR: HF_TOKEN secret is missing in GitHub Secrets.")
+
+          readme_path = os.path.join("dist", "README.md")
+          if not os.path.exists(readme_path):
+              with open(readme_path, "w", encoding="utf-8") as f:
+                  f.write("---\ntitle: EvalDesk\nemoji: 📝\ncolorFrom: green\ncolorTo: gray\nsdk: static\npinned: false\n---\n")
+
+          api = HfApi(token=token)
+          api.upload_folder(
+              repo_id="divyanshu-ks/evaldesk",
+              folder_path="dist",
+              repo_type="space",
+              commit_message="Deploy EvalDesk static build",
+          )
+          print("Upload complete!")
+          EOF
